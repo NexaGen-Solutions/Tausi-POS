@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { ApiError, api, apiUrl } from '../shared/api/client';
 import type { DeviceInfo } from '../shared/api/types';
+import { OfflineBanner } from '../shared/connection/OfflineBanner';
 import { isOffline } from '../shared/connection/status';
 import { useConnection } from '../shared/connection/useConnection';
 import { deviceToken, saveDevice, serverUrl } from '../shared/device/device';
@@ -81,6 +82,7 @@ export function PinLoginPage() {
 
   return (
     <div className="pos-screen">
+      <OfflineBanner />
       <div className="pin-login">
         <aside className="pin-login__side">
           <p className="pin-login__label">{t('pos.terminalLabel')}</p>

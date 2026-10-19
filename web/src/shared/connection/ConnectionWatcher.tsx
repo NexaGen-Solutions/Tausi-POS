@@ -8,7 +8,7 @@ interface Health {
 
 /**
  * Checks /api/health: every 3 seconds while the server is unreachable (so the offline banner
- * clears as soon as it is back), every 20 seconds otherwise.
+ * clears as soon as it is back), every 5 seconds otherwise.
  */
 export function ConnectionWatcher() {
   useEffect(() => {
@@ -30,7 +30,7 @@ export function ConnectionWatcher() {
     const schedule = () => {
       if (stopped) return;
       window.clearTimeout(timer);
-      timer = window.setTimeout(check, connectionState().apiReachable ? 20_000 : 3_000);
+      timer = window.setTimeout(check, connectionState().apiReachable ? 5_000 : 3_000);
     };
 
     // When a request fails, check again soon rather than waiting for the long interval.
