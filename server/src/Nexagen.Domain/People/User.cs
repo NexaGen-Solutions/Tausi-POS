@@ -1,0 +1,30 @@
+using Nexagen.Domain.Common;
+
+namespace Nexagen.Domain.People;
+
+public class User : VersionedEntity
+{
+    public string Name { get; set; } = "";
+    public Guid RoleId { get; set; }
+    public Role? Role { get; set; }
+
+    /// <summary>Slow salted hash (PBKDF2) of the PIN, checked after the lookup below.</summary>
+    public string PinHash { get; set; } = "";
+
+    /// <summary>
+    /// Keyed hash (HMAC with a server secret) of the PIN. It lets login find the user in one
+    /// query and lets the database refuse two active users with the same PIN.
+    /// </summary>
+    public string PinLookup { get; set; } = "";
+
+    public bool Active { get; set; } = true;
+    public bool MustChangePin { get; set; }
+
+    /// <summary>Admin-site sign-in name. Only set for users who may use the admin site.</summary>
+    public string? UserName { get; set; }
+    public string? PasswordHash { get; set; }
+
+    /// <summary>Wrong admin-site passwords in a row; reset on success.</summary>
+    public int FailedAttempts { get; set; }
+    public DateTimeOffset? LockedUntil { get; set; }
+}
