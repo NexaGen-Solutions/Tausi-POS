@@ -26,7 +26,7 @@ public class ChangePinTests : IAsyncLifetime
         await Builders.AddUser(_db.Context, _hasher, "gone", roles["Waiter"], "8642", active: false);
         await _db.Context.SaveChangesAsync();
         _session.User = Builders.Session(_edna, roles["Waiter"]);
-        _change = new ChangePin(_db.Context, _session, _hasher, new AuditLog(_db.Context, _session, new FakeTimeProvider()));
+        _change = new ChangePin(_db.Context, _session, _hasher, new PinRules(_db.Context, _hasher), new AuditLog(_db.Context, _session, new FakeTimeProvider()));
     }
 
     public Task DisposeAsync()

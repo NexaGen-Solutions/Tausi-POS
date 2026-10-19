@@ -23,29 +23,19 @@ public static class PinChangeCodes
 /// be easy to guess, the same as before, or used by another active user; the last case does not
 /// say who has it.
 /// </summary>
-public sealed class ChangePin(INexagenDb db, ICurrentSession session, IPinHasher hasher, IAuditLog audit)
+public sealed class ChangePin(INexagenDb db, ICurrentSession session, IPinHasher hasher, PinRules rules, IAuditLog audit)
 {
     public async Task Execute(ChangePinRequest request, CancellationToken ct)
     {
         var current = session.RequireUser();
         var pin = request.NewPin ?? "";
-        if (!Pin.IsWellFormed(pin))
-            throw new DomainException($"A PIN must be {Pin.MinLength} to {Pin.MaxLength} digits.", PinChangeCodes.Invalid);
-        if (Pin.IsTooSimple(pin))
-            throw new DomainException("That PIN is too easy to guess. Choose another.", PinChangeCodes.TooSimple);
-
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct)
             ?? throw new NotFoundException("User not found.");
-        if (hasher.Verify(pin, user.PinHash))
+        if (Pin.IsWellFormed(pin) && hasher.Verify(pin, user.PinHash))
             throw new DomainException("Choose a PIN different from your current one.", PinChangeCodes.Unchanged);
+        await rules.Check(pin, user.Id, ct);
 
-        var lookup = hasher.Lookup(pin);
-        if (await db.Users.AnyAsync(u => u.Active && u.Id != user.Id && u.PinLookup == lookup, ct))
-            throw Taken();
-
-        user.PinHash = hasher.Hash(pin);
-        user.PinLookup = lookup;
-        user.PinLength = pin.Length;
+        rules.Apply(user, pin);
         user.MustChangePin = false;
         audit.Write(new AuditRecord(
             AuditActions.PinChanged, "User", user.Id.ToString(),
@@ -57,9 +47,7 @@ public sealed class ChangePin(INexagenDb db, ICurrentSession session, IPinHasher
         catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
         {
             // Someone else took the same PIN at the same moment: the unique index caught it.
-            throw Taken();
+            throw PinRules.Taken();
         }
     }
-
-    private static DomainException Taken() => new("Choose a different PIN.", PinChangeCodes.Taken);
 }

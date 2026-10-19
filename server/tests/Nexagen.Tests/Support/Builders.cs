@@ -12,9 +12,9 @@ public static class Builders
     public static async Task<Dictionary<string, Role>> SeedRoles(NexagenDbContext db)
     {
         var roles = new Dictionary<string, Role>();
-        foreach (var (name, adminSite) in DefaultPermissions.Roles)
+        foreach (var (name, roleKey, adminSite) in DefaultPermissions.Roles)
         {
-            var role = new Role { Name = name, CanUseAdminSite = adminSite };
+            var role = new Role { Name = name, SystemKey = roleKey, CanUseAdminSite = adminSite };
             foreach (var key in PermissionKeys.All)
                 role.Permissions.Add(new RolePermission { PermissionKey = key, Value = DefaultPermissions.For(name, key) });
             db.Roles.Add(role);

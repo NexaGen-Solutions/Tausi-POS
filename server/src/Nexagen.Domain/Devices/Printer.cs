@@ -34,6 +34,15 @@ public class Printer : VersionedEntity
     /// <summary>58 or 80 (mm).</summary>
     public int PaperWidthMm { get; set; } = 80;
 
+    /// <summary>
+    /// The dispense-slip template this printer uses, e.g. "Dispense A", or null if it prints no
+    /// dispense slips. Templates are shared: Ticket Printer 1 and Pillar 1 both print "Dispense A".
+    /// </summary>
+    public string? DispenseTemplate { get; set; }
+
+    /// <summary>The header printed on that template's slips, e.g. "Counter A".</summary>
+    public string? DispenseHeader { get; set; }
+
     public PrinterStatus Status { get; set; } = PrinterStatus.Unknown;
     public string? LastError { get; set; }
 

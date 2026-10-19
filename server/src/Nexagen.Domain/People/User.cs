@@ -5,6 +5,14 @@ namespace Nexagen.Domain.People;
 public class User : VersionedEntity
 {
     public string Name { get; set; } = "";
+
+    /// <summary>
+    /// The name trimmed and in capitals, kept in step with <see cref="Name"/> when saving. A unique
+    /// index on it keeps names unique, ignoring case, across active and inactive users.
+    /// </summary>
+    public string NormalizedName { get; set; } = "";
+
+    public static string Normalize(string name) => name.Trim().ToUpperInvariant();
     public Guid RoleId { get; set; }
     public Role? Role { get; set; }
 

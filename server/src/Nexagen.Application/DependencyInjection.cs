@@ -7,6 +7,7 @@ using Nexagen.Application.Printers;
 using Nexagen.Application.Printing;
 using Nexagen.Application.Security;
 using Nexagen.Application.Settings;
+using Nexagen.Application.Staff;
 using Nexagen.Application.Terminals;
 
 namespace Nexagen.Application;
@@ -21,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<PrintQueue>();
         services.AddScoped<PinAuthenticator>();
         services.AddScoped<SessionKeeper>();
+        services.AddScoped<PinRules>();
+        services.AddScoped<StaffAccess>();
 
         // Use cases: one class per action.
         services.AddScoped<PinLogin>();
@@ -28,6 +31,13 @@ public static class DependencyInjection
         services.AddScoped<ChangePin>();
         services.AddScoped<GetMaxPinLength>();
         services.AddScoped<OpenDay>();
+        services.AddScoped<ListStaff>();
+        services.AddScoped<GetStaffMember>();
+        services.AddScoped<CreateStaff>();
+        services.AddScoped<UpdateStaff>();
+        services.AddScoped<ResetStaffPin>();
+        services.AddScoped<DeactivateStaff>();
+        services.AddScoped<ReactivateStaff>();
         services.AddScoped<AdminLogin>();
         services.AddScoped<IssueApproval>();
         services.AddScoped<StartPairing>();

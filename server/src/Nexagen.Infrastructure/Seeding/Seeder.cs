@@ -26,15 +26,18 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
     public async Task SeedBase(CancellationToken ct)
     {
         var roles = await db.Roles.Include(r => r.Permissions).ToListAsync(ct);
-        foreach (var (name, adminSite) in DefaultPermissions.Roles)
+        foreach (var (name, roleKey, adminSite) in DefaultPermissions.Roles)
         {
-            var role = roles.FirstOrDefault(r => r.Name == name);
+            var role = roles.FirstOrDefault(r => r.SystemKey == roleKey)
+                ?? roles.FirstOrDefault(r => r.Name == name && r.SystemKey == null);
             if (role is null)
             {
                 role = new Role { Name = name, CanUseAdminSite = adminSite };
                 db.Roles.Add(role);
                 roles.Add(role);
             }
+            // Roles from before built-in keys existed get theirs here.
+            role.SystemKey ??= roleKey;
             foreach (var key in PermissionKeys.All)
             {
                 if (role.Permissions.Any(p => p.PermissionKey == key)) continue;
@@ -141,47 +144,58 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         await db.SaveChangesAsync(ct);
 
         var printers = await db.Printers.ToDictionaryAsync(p => p.Name, ct);
-        Printer AddPrinter(string name, string share, Terminal attachedTo)
+
+        // One printer per terminal. "Dispense A" / "Dispense B" are templates (headed "Counter A" /
+        // "Counter B"), shared by a counter and its pillar.
+        var plan = new (string Printer, string Terminal, string Share, string Template, string Header)[]
         {
-            if (printers.TryGetValue(name, out var existing))
+            ("Ticket Printer 1", "Counter A", @"\\COUNTER-A\TicketPrinter1", "Dispense A", "Counter A"),
+            ("Pillar 1", "Pillar 1", @"\\PILLAR-1\Pillar1", "Dispense A", "Counter A"),
+            ("Ticket Printer 2", "Counter B", @"\\COUNTER-B\TicketPrinter2", "Dispense B", "Counter B"),
+            ("Pillar 2", "Pillar 2", @"\\PILLAR-2\Pillar2", "Dispense B", "Counter B"),
+        };
+
+        foreach (var p in plan)
+        {
+            var terminal = terminals[p.Terminal];
+            if (!printers.TryGetValue(p.Printer, out var printer))
+            {
+                printer = new Printer
+                {
+                    Name = p.Printer,
+                    ConnectionMode = filePrinters ? PrinterConnection.File : PrinterConnection.WindowsShare,
+                    Address = filePrinters ? "" : p.Share,
+                    OwningTerminalId = terminal.Id,
+                    PaperWidthMm = 80,
+                };
+                db.Printers.Add(printer);
+                printers[p.Printer] = printer;
+            }
+            else if (filePrinters && printer.ConnectionMode == PrinterConnection.WindowsShare && printer.Address == p.Share)
             {
                 // A development database seeded before File printers existed: move the untouched
                 // placeholders over, so test prints land in print-output/.
-                if (filePrinters && existing.ConnectionMode == PrinterConnection.WindowsShare && existing.Address == share)
-                {
-                    existing.ConnectionMode = PrinterConnection.File;
-                    existing.Address = "";
-                }
-                return existing;
+                printer.ConnectionMode = PrinterConnection.File;
+                printer.Address = "";
             }
-            var printer = new Printer
-            {
-                Name = name,
-                ConnectionMode = filePrinters ? PrinterConnection.File : PrinterConnection.WindowsShare,
-                Address = filePrinters ? "" : share,
-                OwningTerminalId = attachedTo.Id,
-                PaperWidthMm = 80,
-            };
-            db.Printers.Add(printer);
-            printers[name] = printer;
-            return printer;
+            printer.DispenseTemplate ??= p.Template;
+            printer.DispenseHeader ??= p.Header;
         }
-
-        // Dispense A = Ticket Printer 1 at Counter A; Dispense B = Ticket Printer 2 at Counter B.
-        var dispenseA = AddPrinter("Ticket Printer 1", @"\\COUNTER-A\TicketPrinter1", terminals["Counter A"]);
-        var dispenseB = AddPrinter("Ticket Printer 2", @"\\COUNTER-B\TicketPrinter2", terminals["Counter B"]);
         await db.SaveChangesAsync(ct);
 
-        void Route(string terminal, Printer printer)
+        // Each terminal prints dispense slips and receipts on its own printer. A database from the
+        // two-printer setup had the pillars sharing their counter's printer: move only those
+        // untouched routes, and leave anything set by hand alone.
+        foreach (var p in plan)
         {
-            var t = terminals[terminal];
-            t.DispensePrinterId ??= printer.Id;
-            t.ReceiptPrinterId ??= printer.Id;
+            var terminal = terminals[p.Terminal];
+            var own = printers[p.Printer];
+            var counterPrinter = p.Template == "Dispense A" ? printers["Ticket Printer 1"] : printers["Ticket Printer 2"];
+            if (terminal.DispensePrinterId is null || (terminal.DispensePrinterId == counterPrinter.Id && own != counterPrinter))
+                terminal.DispensePrinterId = own.Id;
+            if (terminal.ReceiptPrinterId is null || (terminal.ReceiptPrinterId == counterPrinter.Id && own != counterPrinter))
+                terminal.ReceiptPrinterId = own.Id;
         }
-        Route("Counter A", dispenseA);
-        Route("Pillar 1", dispenseA);
-        Route("Counter B", dispenseB);
-        Route("Pillar 2", dispenseB);
     }
 
     /// <summary>

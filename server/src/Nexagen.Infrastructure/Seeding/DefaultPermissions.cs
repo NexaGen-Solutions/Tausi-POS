@@ -12,13 +12,13 @@ public static class DefaultPermissions
     public const string Supervisor = "Supervisor";
     public const string Admin = "Admin";
 
-    /// <summary>Role name, whether it may use the admin site.</summary>
-    public static readonly IReadOnlyList<(string Name, bool CanUseAdminSite)> Roles =
+    /// <summary>Role name, built-in key, whether it may use the admin site.</summary>
+    public static readonly IReadOnlyList<(string Name, string Key, bool CanUseAdminSite)> Roles =
     [
-        (Waiter, false),
-        (Cashier, false),
-        (Supervisor, true),
-        (Admin, true),
+        (Waiter, RoleKeys.Waiter, false),
+        (Cashier, RoleKeys.Cashier, false),
+        (Supervisor, RoleKeys.Supervisor, true),
+        (Admin, RoleKeys.Admin, true),
     ];
 
     private static readonly (string[] Keys, PermissionValue Waiter, PermissionValue Cashier, PermissionValue Supervisor, PermissionValue Admin)[] Rows =

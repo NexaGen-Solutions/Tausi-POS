@@ -17,6 +17,11 @@ public static class AuditActions
     public const string LogoChanged = "settings.logo_changed";
     public const string TestPrint = "printer.test";
     public const string DayOpened = "day.opened";
+    public const string StaffCreated = "staff.created";
+    public const string StaffUpdated = "staff.updated";
+    public const string StaffPinReset = "staff.pin_reset";
+    public const string StaffDeactivated = "staff.deactivated";
+    public const string StaffReactivated = "staff.reactivated";
     public const string DevVoidProbe = "dev.void_probe";
 }
 
