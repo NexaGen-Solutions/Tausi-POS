@@ -1,0 +1,136 @@
+import { deviceToken } from '../device/device';
+import { updateConnection } from '../connection/status';
+import { pinSession } from '../session/session';
+
+/** The problem-details body the server sends for errors. */
+export interface Problem {
+  status: number;
+  title?: string;
+  detail?: string;
+  approvalRequired?: boolean;
+  permission?: string;
+  attemptsLeft?: number | null;
+  retryAfterSeconds?: number;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly problem: Problem;
+
+  constructor(problem: Problem) {
+    super(problem.detail ?? problem.title ?? `Request failed (${problem.status})`);
+    this.status = problem.status;
+    this.problem = problem;
+  }
+}
+
+/** The server could not be reached at all. */
+export class OfflineError extends Error {
+  constructor() {
+    super('No connection to the server.');
+  }
+}
+
+/** Asks a supervisor for approval; resolves to an approval token, or null if it was not given. */
+export type ApprovalHandler = (permission: string) => Promise<string | null>;
+
+let approvalHandler: ApprovalHandler | null = null;
+let baseUrl = '';
+
+export function setApprovalHandler(handler: ApprovalHandler | null): void {
+  approvalHandler = handler;
+}
+
+/** Normally '' (same origin). The terminal app's setup screen talks to the server it was given. */
+export function setApiBase(url: string): void {
+  baseUrl = url.replace(/\/+$/, '');
+}
+
+export function apiUrl(path: string): string {
+  return baseUrl + path;
+}
+
+export interface RequestOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  body?: unknown;
+  signal?: AbortSignal;
+  /** Set when the caller retries a write itself, so the server sees the same request. */
+  idempotencyKey?: string;
+}
+
+/**
+ * Calls the API. Adds the device token, the PIN session and, on writes, an Idempotency-Key.
+ * When the server answers "approval required", opens the approval pad, then repeats the request
+ * once with the approval token (and the same Idempotency-Key).
+ */
+export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const method = options.method ?? 'GET';
+  const idempotencyKey =
+    method === 'GET' ? undefined : (options.idempotencyKey ?? crypto.randomUUID());
+
+  let response = await send(path, method, options, idempotencyKey);
+  if (response.status === 403) {
+    const problem = await readProblem(response);
+    if (problem.approvalRequired && problem.permission && approvalHandler) {
+      const token = await approvalHandler(problem.permission);
+      if (!token) throw new ApiError(problem);
+      response = await send(path, method, options, idempotencyKey, token);
+    } else {
+      throw new ApiError(problem);
+    }
+  }
+
+  if (!response.ok) throw new ApiError(await readProblem(response));
+  if (response.status === 204) return undefined as T;
+  const type = response.headers.get('content-type') ?? '';
+  return (type.includes('json') ? await response.json() : await response.text()) as T;
+}
+
+async function send(
+  path: string,
+  method: string,
+  options: RequestOptions,
+  idempotencyKey?: string,
+  approvalToken?: string,
+): Promise<Response> {
+  const headers = new Headers({ Accept: 'application/json' });
+  const device = deviceToken();
+  if (device) headers.set('X-Device-Token', device);
+  const session = pinSession();
+  if (session) headers.set('Authorization', `Bearer ${session.token}`);
+  if (idempotencyKey) headers.set('Idempotency-Key', idempotencyKey);
+  if (approvalToken) headers.set('X-Approval-Token', approvalToken);
+
+  let body: BodyInit | undefined;
+  if (options.body instanceof FormData) {
+    body = options.body;
+  } else if (options.body !== undefined) {
+    headers.set('Content-Type', 'application/json');
+    body = JSON.stringify(options.body);
+  }
+
+  try {
+    const response = await fetch(apiUrl(path), {
+      method,
+      headers,
+      body,
+      credentials: 'same-origin',
+      signal: options.signal,
+    });
+    updateConnection({ apiReachable: response.status !== 502 && response.status !== 503 });
+    return response;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    updateConnection({ apiReachable: false });
+    throw new OfflineError();
+  }
+}
+
+async function readProblem(response: Response): Promise<Problem> {
+  try {
+    const body = (await response.clone().json()) as Partial<Problem>;
+    return { ...body, status: response.status };
+  } catch {
+    return { status: response.status, title: response.statusText };
+  }
+}

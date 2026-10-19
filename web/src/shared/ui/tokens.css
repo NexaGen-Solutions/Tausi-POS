@@ -1,0 +1,35 @@
+/* Design tokens from AGENTS.md. Use these variables; never hard-code colours. */
+:root {
+  --color-ground: #f4f4f2;
+  --color-panel: #ffffff;
+  --color-border: #c9c9c4;
+  --color-text: #1c1c1c;
+  --color-text-secondary: #3d3d3a;
+  --color-text-muted: #5c5c58;
+  --color-topbar: #1c1c1c;
+  --color-topbar-text: #ffffff;
+  --color-topbar-muted: #b8b8b2;
+  --color-primary: #b34a0c;
+  --color-primary-text: #ffffff;
+  --color-selected: #1f5fa8;
+  --color-selected-tint: #e6eef8;
+  --color-warning-tint: #fbe7da;
+  --color-warning-text: #8a3708;
+  --color-ok: #4f9a5a;
+  --color-key: #f4f4f2;
+  --color-overlay: rgba(28, 28, 28, 0.55);
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius: 6px;
+  --radius-small: 4px;
+  --touch-min: 44px;
+  --touch-primary: 56px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}

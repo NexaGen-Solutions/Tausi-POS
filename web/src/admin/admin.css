@@ -1,0 +1,123 @@
+/* Admin site: left sidebar; works at 1280 wide and down to tablet width. */
+.admin {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+}
+.admin__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-3);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+.admin__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+}
+.admin__logo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.admin__logo img {
+  max-width: 100%;
+  max-height: 100%;
+}
+.admin__business {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.admin__subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.admin__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin__link {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  text-decoration: none;
+}
+.admin__link[aria-current='page'] {
+  background: var(--color-topbar);
+  color: var(--color-topbar-text);
+  font-weight: 600;
+}
+.admin__footer {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+.admin__main {
+  min-width: 0;
+}
+.admin__content {
+  padding: var(--space-6);
+}
+.admin__title {
+  font-size: 34px;
+}
+.admin__login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-5);
+}
+.admin__login-panel {
+  display: grid;
+  gap: var(--space-4);
+  width: min(100%, 420px);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-panel);
+}
+
+@media (max-width: 900px) {
+  .admin {
+    grid-template-columns: 1fr;
+  }
+  .admin__sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .admin__nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .admin__footer {
+    margin-top: 0;
+  }
+  .admin__content {
+    padding: var(--space-5);
+  }
+}

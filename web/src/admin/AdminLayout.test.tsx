@@ -1,0 +1,73 @@
+import { screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { routes } from '../app/routes';
+import { json, renderRoutes } from '../test/render';
+
+vi.mock('../shared/connection/hub', () => ({
+  startHub: vi.fn(),
+  stopHub: vi.fn(async () => {}),
+  onPosEvent: vi.fn(() => () => {}),
+}));
+
+describe('admin layout', () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => vi.stubGlobal('fetch', fetchMock));
+  afterEach(() => {
+    fetchMock.mockReset();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows the full sidebar with the business name and logo from settings', async () => {
+    fetchMock.mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.endsWith('/api/auth/me'))
+        return json(200, {
+          user: { id: '1', name: 'Administrator', role: 'Admin' },
+          permissions: {},
+        });
+      if (path.endsWith('/api/brand'))
+        return json(200, { name: "Mau's Village", logoFileId: 'logo-1', currency: 'KES' });
+      return json(200, { server: 'POSSERVER2' });
+    });
+
+    renderRoutes(routes, '/admin/settings');
+
+    expect(await screen.findByText("Mau's Village")).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Logo' })).toHaveAttribute('src', '/files/logo-1');
+    const nav = screen.getByRole('navigation', { name: 'Admin' });
+    const links = within(nav)
+      .getAllByRole('link')
+      .map((a) => a.textContent);
+    expect(links).toEqual([
+      'Menu and prices',
+      'Stock and recipes',
+      'Deliveries',
+      'Stock counts',
+      'Cash book',
+      'Staff and PINs',
+      'Permissions',
+      'Terminals and printers',
+      'Reports',
+      'Settings',
+      'ERPNext sync',
+    ]);
+    expect(within(nav).getByRole('link', { name: 'Settings' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByText('Coming in a later task.')).toBeInTheDocument();
+    expect(await screen.findByText('Signed in: Administrator')).toBeInTheDocument();
+  });
+
+  it('sends signed-out visitors to the sign-in page', async () => {
+    fetchMock.mockImplementation(async (url) =>
+      String(url).endsWith('/api/auth/me') ? json(401, { status: 401 }) : json(200, {}),
+    );
+
+    renderRoutes(routes, '/admin/menu');
+
+    expect(await screen.findByRole('heading', { name: 'Admin sign in' })).toBeInTheDocument();
+  });
+});
