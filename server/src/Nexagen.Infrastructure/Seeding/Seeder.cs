@@ -146,7 +146,7 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         var printers = await db.Printers.ToDictionaryAsync(p => p.Name, ct);
 
         // One printer per terminal. "Dispense A" / "Dispense B" are templates (headed "Counter A" /
-        // "Counter B"), shared by a counter and its pillar.
+        // "Counter B"), shared by a counter and its pillar. The counter printers also print receipts.
         var plan = new (string Printer, string Terminal, string Share, string Template, string Header)[]
         {
             ("Ticket Printer 1", "Counter A", @"\\COUNTER-A\TicketPrinter1", "Dispense A", "Counter A"),
@@ -183,9 +183,11 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         }
         await db.SaveChangesAsync(ct);
 
-        // Each terminal prints dispense slips and receipts on its own printer. A database from the
-        // two-printer setup had the pillars sharing their counter's printer: move only those
-        // untouched routes, and leave anything set by hand alone.
+        // Each terminal prints dispense slips on its own printer. Receipts print at the counter, as at
+        // Mau's: Counter A and Pillar 1 on Ticket Printer 1, Counter B and Pillar 2 on Ticket Printer 2.
+        // Only demo routes still as an earlier seed left them move (the two-printer setup shared the
+        // counter's printer for dispensing; the next one put pillar receipts on the pillar printer);
+        // anything set by hand stays.
         foreach (var p in plan)
         {
             var terminal = terminals[p.Terminal];
@@ -193,8 +195,8 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
             var counterPrinter = p.Template == "Dispense A" ? printers["Ticket Printer 1"] : printers["Ticket Printer 2"];
             if (terminal.DispensePrinterId is null || (terminal.DispensePrinterId == counterPrinter.Id && own != counterPrinter))
                 terminal.DispensePrinterId = own.Id;
-            if (terminal.ReceiptPrinterId is null || (terminal.ReceiptPrinterId == counterPrinter.Id && own != counterPrinter))
-                terminal.ReceiptPrinterId = own.Id;
+            if (terminal.ReceiptPrinterId is null || (terminal.ReceiptPrinterId == own.Id && own != counterPrinter))
+                terminal.ReceiptPrinterId = counterPrinter.Id;
         }
     }
 
