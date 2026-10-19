@@ -27,4 +27,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nexagen.Tests" />
+  </ItemGroup>
+
 </Project>
