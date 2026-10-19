@@ -7,8 +7,9 @@ namespace Nexagen.Api.Hubs;
 /// <summary>
 /// Live updates at /hubs/pos. Every client joins the group "business"; terminals also join their
 /// own group so the server can send them print jobs for a printer plugged into them.
+/// A paired terminal may connect before anyone logs in, so its login screen updates live.
 /// </summary>
-[Authorize]
+[Authorize(Policy = Nexagen.Api.Auth.NexagenClaims.DeviceOrSessionPolicy)]
 public sealed class PosHub(TerminalConnections terminals) : Hub
 {
     public const string Path = "/hubs/pos";

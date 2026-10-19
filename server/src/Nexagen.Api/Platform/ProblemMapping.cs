@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexagen.Api.Auth;
 using Nexagen.Application.Auth;
 using Nexagen.Application.Common;
 using Nexagen.Application.Security;
@@ -22,10 +23,13 @@ public sealed class ProblemMapping(IProblemDetailsService problems, ILogger<Prob
             PermissionDeniedException e => Problem(403, "Not allowed", e.Message, ("approvalRequired", false), ("permission", e.PermissionKey)),
             LoginLockedException e => Locked(http, e),
             LoginRejectedException e => Problem(401, "Login failed", e.Message, ("attemptsLeft", e.AttemptsLeft)),
+            UnauthenticatedException when AuthSetup.SessionExpired(http) =>
+                Problem(401, "Session expired", "You were logged out. Enter your PIN again.", ("code", NexagenClaims.SessionExpiredCode)),
             UnauthenticatedException e => Problem(401, "Not signed in", e.Message),
             NotFoundException e => Problem(404, "Not found", e.Message),
             ConflictException e => Problem(409, "Conflict", e.Message),
             DbUpdateConcurrencyException => Problem(409, "Conflict", "Someone else changed this at the same time. Reload and try again."),
+            DomainException { Code: { } code } e => Problem(400, "Invalid request", e.Message, ("code", code)),
             DomainException e => Problem(400, "Invalid request", e.Message),
             BadHttpRequestException e => Problem(400, "Invalid request", e.Message),
             _ => null,

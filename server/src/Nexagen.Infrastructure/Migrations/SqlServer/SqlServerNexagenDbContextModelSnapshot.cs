@@ -475,6 +475,9 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("PinLength")
+                        .HasColumnType("int");
+
                     b.Property<string>("PinLookup")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -504,6 +507,43 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .HasFilter("[UserName] IS NOT NULL");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.People.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TerminalId", "EndedAt");
+
+                    b.ToTable("UserSessions");
                 });
 
             modelBuilder.Entity("Nexagen.Domain.Platform.IdempotencyRecord", b =>
@@ -640,6 +680,48 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                     b.HasIndex("Status", "NextAttemptAt");
 
                     b.ToTable("PrintJobs");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Service.WorkPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ClosedTerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsOpen")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("OpenedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("OpenedTerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsOpen")
+                        .IsUnique()
+                        .HasFilter("[IsOpen] = 1");
+
+                    b.HasIndex("OpenedAt");
+
+                    b.ToTable("WorkPeriods");
                 });
 
             modelBuilder.Entity("Nexagen.Domain.Settings.BusinessSettings", b =>

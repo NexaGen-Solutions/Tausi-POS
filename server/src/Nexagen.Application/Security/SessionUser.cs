@@ -2,7 +2,8 @@ namespace Nexagen.Application.Security;
 
 /// <summary>
 /// Who is acting, taken from the authenticated session (never from a request body).
-/// <see cref="TerminalId"/> is set for PIN sessions on a terminal and null on the admin site.
+/// <see cref="TerminalId"/> and <see cref="SessionId"/> are set for PIN sessions on a terminal and
+/// null on the admin site.
 /// </summary>
 public sealed record SessionUser(
     Guid UserId,
@@ -10,7 +11,8 @@ public sealed record SessionUser(
     Guid RoleId,
     string RoleName,
     Guid? TerminalId,
-    string? TerminalName);
+    string? TerminalName,
+    Guid? SessionId = null);
 
 /// <summary>The terminal identified by the device token on this request, if any.</summary>
 public sealed record DeviceTerminal(Guid TerminalId, string Name);

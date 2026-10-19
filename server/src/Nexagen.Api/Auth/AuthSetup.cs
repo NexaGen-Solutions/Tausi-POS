@@ -1,8 +1,10 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Nexagen.Application.Auth;
 using Nexagen.Application.Security;
 using Nexagen.Infrastructure;
 
@@ -10,10 +12,13 @@ namespace Nexagen.Api.Auth;
 
 public static class AuthSetup
 {
+    private const string SessionExpiredItem = "nexagen.session_expired";
+
     /// <summary>
     /// Two kinds of session, one policy:
-    /// terminals send a PIN-login token (Bearer) that only works together with their device token;
-    /// the admin site uses a cookie from the user-name + password sign-in.
+    /// terminals send a PIN-login token (Bearer) that only works together with their device token
+    /// and while its server-side session is alive; the admin site uses a cookie from the
+    /// user-name + password sign-in.
     /// </summary>
     public static IServiceCollection AddNexagenAuth(this IServiceCollection services, IConfiguration config, IHostEnvironment env)
     {
@@ -47,14 +52,12 @@ public static class AuthSetup
                             ctx.Token ??= ctx.Request.Query["access_token"];
                         return Task.CompletedTask;
                     },
-                    // A PIN session is only valid on the terminal it was issued to.
-                    OnTokenValidated = ctx =>
+                    OnTokenValidated = ValidatePinSession,
+                    OnChallenge = async ctx =>
                     {
-                        var terminal = ctx.HttpContext.Features.Get<DeviceTerminal>();
-                        var claimed = ctx.Principal?.FindFirst(NexagenClaims.TerminalId)?.Value;
-                        if (terminal is null || claimed != terminal.TerminalId.ToString())
-                            ctx.Fail("This session belongs to another terminal.");
-                        return Task.CompletedTask;
+                        if (!ctx.HttpContext.Items.ContainsKey(SessionExpiredItem)) return;
+                        ctx.HandleResponse();
+                        await WriteSessionExpired(ctx.HttpContext);
                     },
                 };
             })
@@ -79,14 +82,67 @@ public static class AuthSetup
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorizationBuilder()
+            .AddPolicy(NexagenClaims.DeviceOrSessionPolicy, p => p.RequireAssertion(ctx =>
+                ctx.User.Identity?.IsAuthenticated == true
+                || (ctx.Resource as HttpContext)?.Features.Get<DeviceTerminal>() is not null));
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentSession, HttpCurrentSession>();
         services.AddScoped<IApprovalTokenSource, HeaderApprovalTokenSource>();
         return services;
     }
 
-    private sealed class ConfigurePinScheme(SessionTokens tokens) : IPostConfigureOptions<JwtBearerOptions>
+    /// <summary>True when this request carried a PIN session that has ended.</summary>
+    public static bool SessionExpired(HttpContext http) => http.Items.ContainsKey(SessionExpiredItem);
+
+    /// <summary>
+    /// A PIN token is valid only on the terminal it was issued to (checked against the device
+    /// token), and only while its server-side session is alive. Each request refreshes the idle
+    /// timer, except hub connections, which are not "use".
+    /// </summary>
+    private static async Task ValidatePinSession(TokenValidatedContext ctx)
+    {
+        var http = ctx.HttpContext;
+        var terminal = http.Features.Get<DeviceTerminal>();
+        var claims = ctx.Principal!;
+        if (terminal is null || claims.FindFirst(NexagenClaims.TerminalId)?.Value != terminal.TerminalId.ToString())
+        {
+            ctx.Fail("This session belongs to another terminal.");
+            return;
+        }
+        if (!Guid.TryParse(claims.FindFirst(NexagenClaims.SessionId)?.Value, out var sessionId)
+            || !Guid.TryParse(claims.FindFirst(NexagenClaims.UserId)?.Value, out var userId))
+        {
+            http.Items[SessionExpiredItem] = true;
+            ctx.Fail(NexagenClaims.SessionExpiredCode);
+            return;
+        }
+
+        var keeper = http.RequestServices.GetRequiredService<SessionKeeper>();
+        var refresh = !http.Request.Path.StartsWithSegments("/hubs");
+        var ended = await keeper.Check(sessionId, userId, terminal.TerminalId, refresh, http.RequestAborted);
+        if (ended is not null)
+        {
+            http.Items[SessionExpiredItem] = true;
+            ctx.Fail(NexagenClaims.SessionExpiredCode);
+        }
+    }
+
+    public static async Task WriteSessionExpired(HttpContext http)
+    {
+        http.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        var problem = new ProblemDetails
+        {
+            Status = 401,
+            Title = "Session expired",
+            Detail = "You were logged out. Enter your PIN again.",
+            Extensions = { ["code"] = NexagenClaims.SessionExpiredCode },
+        };
+        await http.RequestServices.GetRequiredService<IProblemDetailsService>()
+            .WriteAsync(new ProblemDetailsContext { HttpContext = http, ProblemDetails = problem });
+    }
+
+    private sealed class ConfigurePinScheme(SessionTokens tokens, TimeProvider clock) : IPostConfigureOptions<JwtBearerOptions>
     {
         public void PostConfigure(string? name, JwtBearerOptions o)
         {
@@ -96,8 +152,13 @@ public static class AuthSetup
                 ValidIssuer = SessionTokens.Issuer,
                 ValidAudience = SessionTokens.Issuer,
                 IssuerSigningKey = tokens.Key,
-                ClockSkew = TimeSpan.FromSeconds(30),
                 NameClaimType = NexagenClaims.Name,
+                // Use the server's clock (a fake one in tests), not DateTime.UtcNow.
+                LifetimeValidator = (notBefore, expires, _, _) =>
+                {
+                    var now = clock.GetUtcNow().UtcDateTime;
+                    return (notBefore is null || notBefore <= now.AddSeconds(30)) && expires is not null && now < expires;
+                },
             };
         }
     }

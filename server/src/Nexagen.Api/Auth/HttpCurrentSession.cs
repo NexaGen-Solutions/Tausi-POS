@@ -35,10 +35,12 @@ public sealed class HttpCurrentSession(IHttpContextAccessor accessor, NexagenDbC
             // admin-site sessions have none.
             var terminal = Terminal;
             var onTerminal = principal.FindFirst(NexagenClaims.TerminalId) is not null;
+            Guid? sessionId = Guid.TryParse(principal.FindFirst(NexagenClaims.SessionId)?.Value, out var sid) ? sid : null;
             _user = new SessionUser(
                 user.Id, user.Name, user.RoleId, user.RoleName,
                 onTerminal ? terminal?.TerminalId : null,
-                onTerminal ? terminal?.Name : null);
+                onTerminal ? terminal?.Name : null,
+                sessionId);
             return _user;
         }
     }

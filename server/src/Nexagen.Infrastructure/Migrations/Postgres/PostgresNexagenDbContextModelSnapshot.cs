@@ -474,6 +474,9 @@ namespace Nexagen.Infrastructure.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int>("PinLength")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PinLookup")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -502,6 +505,43 @@ namespace Nexagen.Infrastructure.Migrations.Postgres
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.People.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TerminalId", "EndedAt");
+
+                    b.ToTable("UserSessions");
                 });
 
             modelBuilder.Entity("Nexagen.Domain.Platform.IdempotencyRecord", b =>
@@ -638,6 +678,48 @@ namespace Nexagen.Infrastructure.Migrations.Postgres
                     b.HasIndex("Status", "NextAttemptAt");
 
                     b.ToTable("PrintJobs");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Service.WorkPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClosedTerminalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsOpen")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OpenedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OpenedTerminalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsOpen")
+                        .IsUnique()
+                        .HasFilter("\"IsOpen\"");
+
+                    b.HasIndex("OpenedAt");
+
+                    b.ToTable("WorkPeriods");
                 });
 
             modelBuilder.Entity("Nexagen.Domain.Settings.BusinessSettings", b =>

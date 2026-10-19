@@ -8,6 +8,7 @@ using Nexagen.Domain.Money;
 using Nexagen.Domain.People;
 using Nexagen.Domain.Platform;
 using Nexagen.Domain.Printing;
+using Nexagen.Domain.Service;
 using Nexagen.Domain.Settings;
 
 namespace Nexagen.Infrastructure.Persistence;
@@ -26,6 +27,8 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
     public DbSet<User> Users => Set<User>();
     public DbSet<ApprovalGrant> ApprovalGrants => Set<ApprovalGrant>();
     public DbSet<PinFailure> PinFailures => Set<PinFailure>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<WorkPeriod> WorkPeriods => Set<WorkPeriod>();
     public DbSet<Terminal> Terminals => Set<Terminal>();
     public DbSet<TerminalPairing> TerminalPairings => Set<TerminalPairing>();
     public DbSet<Printer> Printers => Set<Printer>();
@@ -39,6 +42,9 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
 
     /// <summary>Filter for the "active users have unique PINs" index; the SQL differs per provider.</summary>
     protected virtual string? ActiveUserFilter => null;
+
+    /// <summary>Filter for the "only one open work period" index; the SQL differs per provider.</summary>
+    protected virtual string? OpenWorkPeriodFilter => null;
 
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {
@@ -100,6 +106,20 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
         });
 
         m.Entity<PinFailure>(e => e.HasIndex(x => new { x.TerminalId, x.At }));
+
+        m.Entity<UserSession>(e =>
+        {
+            e.Property(x => x.EndReason).HasMaxLength(20);
+            e.HasIndex(x => new { x.TerminalId, x.EndedAt });
+            e.HasIndex(x => x.UserId);
+        });
+
+        m.Entity<WorkPeriod>(e =>
+        {
+            var openIndex = e.HasIndex(x => x.IsOpen).IsUnique();
+            if (OpenWorkPeriodFilter is not null) openIndex.HasFilter(OpenWorkPeriodFilter);
+            e.HasIndex(x => x.OpenedAt);
+        });
 
         m.Entity<Terminal>(e =>
         {

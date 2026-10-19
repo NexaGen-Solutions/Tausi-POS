@@ -8,12 +8,13 @@ namespace Nexagen.Infrastructure.Printing;
 
 /// <summary>
 /// Development only: writes each job as readable text into the print-output folder, so slip
-/// layouts can be checked without a printer. Chosen with Nexagen:Printing:Transport = File.
+/// layouts can be checked without a printer. Used for printers whose connection is File, and for
+/// every printer when Nexagen:Printing:Transport = File.
 /// </summary>
 public sealed class FilePrinterTransport(IOptions<NexagenOptions> options, IHostEnvironment env, TimeProvider clock)
     : IPrinterTransport
 {
-    public PrinterConnection? Mode => null;
+    public PrinterConnection? Mode => PrinterConnection.File;
 
     public string OutputDirectory { get; } =
         Path.GetFullPath(options.Value.Printing.OutputDirectory, env.ContentRootPath);

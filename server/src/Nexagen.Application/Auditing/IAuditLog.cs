@@ -5,6 +5,9 @@ public static class AuditActions
     public const string PinLogin = "auth.pin_login";
     public const string PinLoginFailed = "auth.pin_failed";
     public const string TerminalLocked = "auth.terminal_locked";
+    public const string Logout = "auth.logout";
+    public const string PinChanged = "auth.pin_changed";
+    public const string PinChangeRequired = "auth.pin_change_required";
     public const string AdminLogin = "auth.admin_login";
     public const string AdminLoginFailed = "auth.admin_failed";
     public const string ApprovalIssued = "auth.approval_issued";
@@ -13,6 +16,7 @@ public static class AuditActions
     public const string SettingsChanged = "settings.changed";
     public const string LogoChanged = "settings.logo_changed";
     public const string TestPrint = "printer.test";
+    public const string DayOpened = "day.opened";
     public const string DevVoidProbe = "dev.void_probe";
 }
 

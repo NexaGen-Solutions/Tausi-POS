@@ -17,6 +17,12 @@ public class User : VersionedEntity
     /// </summary>
     public string PinLookup { get; set; } = "";
 
+    /// <summary>
+    /// Number of digits in the PIN. Lets the PIN pad submit by itself at the longest length in use,
+    /// without revealing any PIN.
+    /// </summary>
+    public int PinLength { get; set; } = Pin.MaxLength;
+
     public bool Active { get; set; } = true;
     public bool MustChangePin { get; set; }
 

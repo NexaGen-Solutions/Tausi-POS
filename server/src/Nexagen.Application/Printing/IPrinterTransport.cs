@@ -6,7 +6,7 @@ namespace Nexagen.Application.Printing;
 /// <summary>Sends a print job's bytes to a printer. Throws <see cref="PrinterTransportException"/> on failure.</summary>
 public interface IPrinterTransport
 {
-    /// <summary>The connection mode this transport serves; null for a transport that serves every mode (the file transport).</summary>
+    /// <summary>The connection mode this transport serves.</summary>
     PrinterConnection? Mode { get; }
 
     Task Send(Printer printer, PrintJob job, CancellationToken ct);

@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
 using Nexagen.Api.Auth;
 using Nexagen.Application.Auth;
 using Nexagen.Application.Security;
+using Nexagen.Application.Settings;
 using Nexagen.Domain.People;
+using Nexagen.Infrastructure.Persistence;
 
 namespace Nexagen.Api.Endpoints;
 
@@ -12,9 +14,12 @@ public static class AuthEndpoints
 {
     public sealed record SessionDto(Guid Id, string Name, string Role, Guid? TerminalId, string? TerminalName);
 
-    public sealed record PinLoginResponse(string Token, DateTimeOffset ExpiresAt, SessionDto User, bool MustChangePin);
+    public sealed record PinLoginResponse(
+        string Token, DateTimeOffset ExpiresAt, int IdleLogoutMinutes, SessionDto User, bool MustChangePin);
 
     public sealed record MeResponse(SessionDto User, IReadOnlyDictionary<string, PermissionValue> Permissions);
+
+    public sealed record SessionStatus(int IdleLogoutMinutes);
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
@@ -23,18 +28,39 @@ public static class AuthEndpoints
         auth.MapPost("/pin", async (PinLoginRequest request, PinLogin login, SessionTokens tokens, CancellationToken ct) =>
         {
             var result = await login.Execute(request, ct);
-            var (token, expires) = tokens.Issue(result.User);
-            return new PinLoginResponse(token, expires, ToDto(result.User), result.MustChangePin);
+            var token = tokens.Issue(result.User, result.ExpiresAt);
+            return new PinLoginResponse(token, result.ExpiresAt, result.IdleLogoutMinutes, ToDto(result.User), result.MustChangePin);
         });
+
+        // The longest PIN in use, so the pad can submit by itself. Only a number.
+        auth.MapGet("/pin/max-length", (GetMaxPinLength get, CancellationToken ct) => get.Execute(ct));
+
+        auth.MapPost("/pin/change", async (ChangePinRequest request, ChangePin change, CancellationToken ct) =>
+        {
+            await change.Execute(request, ct);
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        auth.MapPost("/logout", async (Logout logout, CancellationToken ct) =>
+        {
+            await logout.Execute(ct);
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        // Keep-alive for the terminal: any authenticated request refreshes the idle timer.
+        auth.MapGet("/session", async (NexagenDbContext db, CancellationToken ct) =>
+            new SessionStatus((await PosSettings.Load(db, ct)).IdleLogoutMinutes)).RequireAuthorization();
 
         auth.MapPost("/approve", (IssueApprovalRequest request, IssueApproval approve, CancellationToken ct) =>
             approve.Execute(request, ct));
 
-        auth.MapGet("/me", async (ICurrentSession session, IPermissionService permissions, CancellationToken ct) =>
+        auth.MapGet("/me", async (ICurrentSession session, NexagenDbContext db, CancellationToken ct) =>
         {
             var user = session.RequireUser();
-            var grid = new Dictionary<string, PermissionValue>();
-            foreach (var key in PermissionKeys.All) grid[key] = await permissions.Check(user, key, ct);
+            var cells = await db.RolePermissions.AsNoTracking()
+                .Where(p => p.RoleId == user.RoleId)
+                .ToDictionaryAsync(p => p.PermissionKey, p => p.Value, ct);
+            var grid = PermissionKeys.All.ToDictionary(k => k, k => cells.GetValueOrDefault(k, PermissionValue.NotAllowed));
             return new MeResponse(ToDto(user), grid);
         }).RequireAuthorization();
 

@@ -82,7 +82,7 @@ public sealed class PrintJobProcessor(
 
     private IPrinterTransport TransportFor(Printer printer)
     {
-        var wanted = options.Value.Printing.Transport == PrintTransportMode.File ? null : (PrinterConnection?)printer.ConnectionMode;
+        var wanted = options.Value.Printing.Transport == PrintTransportMode.File ? PrinterConnection.File : printer.ConnectionMode;
         return transports.FirstOrDefault(t => t.Mode == wanted)
             ?? throw new PrinterTransportException($"No transport for {printer.ConnectionMode}.");
     }

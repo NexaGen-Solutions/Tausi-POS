@@ -7,6 +7,9 @@ public enum PrinterConnection
     Network9100,
     WindowsShare,
     ViaTerminal,
+
+    /// <summary>Development: the job is written as text to the print-output folder.</summary>
+    File,
 }
 
 public enum PrinterStatus

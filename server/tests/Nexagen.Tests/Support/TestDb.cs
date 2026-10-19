@@ -8,6 +8,9 @@ namespace Nexagen.Tests.Support;
 /// <summary>SQLite stores DateTimeOffset as text, which cannot be compared in queries; store it as a number instead.</summary>
 public sealed class SqliteTestDbContext(DbContextOptions options) : NexagenDbContext(options)
 {
+    protected override string? ActiveUserFilter => "\"Active\" = 1";
+    protected override string? OpenWorkPeriodFilter => "\"IsOpen\" = 1";
+
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {
         base.ConfigureConventions(b);

@@ -6,7 +6,8 @@ namespace Nexagen.Api.Platform;
 /// Command-line tasks instead of starting the server:
 /// <c>migrate</c> brings the database up to date;
 /// <c>seed</c> adds roles, default permissions and ledger accounts;
-/// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals and printers.
+/// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals and printers;
+/// <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their next login.
 /// </summary>
 public static class Commands
 {
@@ -20,6 +21,9 @@ public static class Commands
                 return true;
             case "seed":
                 await Seed(app, demo: args.Contains("--demo"));
+                return true;
+            case "require-pin-change":
+                await RequirePinChange(app, args.Skip(1).FirstOrDefault());
                 return true;
             default:
                 return false;
@@ -38,7 +42,8 @@ public static class Commands
 
         await using var scope = scopes.CreateAsyncScope();
         var created = await scope.ServiceProvider.GetRequiredService<Seeder>()
-            .SeedDemo(Environment.GetEnvironmentVariable(Seeder.AdminPasswordVariable), CancellationToken.None);
+            .SeedDemo(Environment.GetEnvironmentVariable(Seeder.AdminPasswordVariable), CancellationToken.None,
+                filePrinters: app.Environment.IsDevelopment());
 
         if (created.Count == 0)
         {
@@ -56,5 +61,23 @@ public static class Commands
             Console.WriteLine($"Set {Seeder.AdminPasswordVariable} and run the seed again to give Administrator (user name: admin) an admin-site password.");
         else
             Console.WriteLine("Admin site: user name 'admin' with the password from " + Seeder.AdminPasswordVariable + ".");
+    }
+
+    private static async Task RequirePinChange(WebApplication app, string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Console.WriteLine("Usage: require-pin-change <user name>, e.g. require-pin-change edna");
+            Environment.ExitCode = 2;
+            return;
+        }
+        await using var scope = app.Services.CreateAsyncScope();
+        if (await scope.ServiceProvider.GetRequiredService<Seeder>().RequirePinChange(name, CancellationToken.None))
+            Console.WriteLine($"{name} must choose a new PIN at their next login (they log in with their current PIN first).");
+        else
+        {
+            Console.WriteLine($"No active user called '{name}'.");
+            Environment.ExitCode = 1;
+        }
     }
 }

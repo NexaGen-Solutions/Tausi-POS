@@ -40,6 +40,7 @@ app.UseCors();
 app.UseMiddleware<DeviceTokenMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<PinChangeGate>();
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapSystemEndpoints();
@@ -47,6 +48,7 @@ app.MapAuthEndpoints();
 app.MapTerminalEndpoints();
 app.MapSettingsEndpoints();
 app.MapPrinterEndpoints();
+app.MapDayEndpoints();
 app.MapDevEndpoints();
 app.MapHub<PosHub>(PosHub.Path);
 app.MapNexagenWebFallback();

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexagen.Application.Abstractions;
 using Nexagen.Application.Security;
+using Nexagen.Application.Settings;
 using Nexagen.Domain.Devices;
 using Nexagen.Domain.Ledger;
 using Nexagen.Domain.Money;
@@ -53,7 +54,11 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct)
+    /// <param name="filePrinters">
+    /// Development: demo printers use the File connection, so prints land in print-output/.
+    /// Otherwise they are Windows-share placeholders to be set on site.
+    /// </param>
+    public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false)
     {
         await SeedBase(ct);
 
@@ -67,6 +72,7 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
                 Rounding = RoundingRule.NearestOne,
                 PrintMode = PrintMode.OneButton,
                 ReceiptFooter = "Thank you. Karibu tena!",
+                OtherJson = PosSettings.DefaultJson,
             });
         }
 
@@ -101,6 +107,7 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
                     RoleId = roles[role].Id,
                     PinHash = hasher.Hash(pin),
                     PinLookup = lookup,
+                    PinLength = pin.Length,
                     UserName = userName,
                 };
                 db.Users.Add(user);
@@ -115,12 +122,12 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
             }
         }
 
-        await SeedDevices(ct);
+        await SeedDevices(filePrinters, ct);
         await db.SaveChangesAsync(ct);
         return created;
     }
 
-    private async Task SeedDevices(CancellationToken ct)
+    private async Task SeedDevices(bool filePrinters, CancellationToken ct)
     {
         var terminals = await db.Terminals.ToDictionaryAsync(t => t.Name, ct);
         foreach (var name in new[] { "Counter A", "Counter B", "Pillar 1", "Pillar 2" })
@@ -136,12 +143,22 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         var printers = await db.Printers.ToDictionaryAsync(p => p.Name, ct);
         Printer AddPrinter(string name, string share, Terminal attachedTo)
         {
-            if (printers.TryGetValue(name, out var existing)) return existing;
+            if (printers.TryGetValue(name, out var existing))
+            {
+                // A development database seeded before File printers existed: move the untouched
+                // placeholders over, so test prints land in print-output/.
+                if (filePrinters && existing.ConnectionMode == PrinterConnection.WindowsShare && existing.Address == share)
+                {
+                    existing.ConnectionMode = PrinterConnection.File;
+                    existing.Address = "";
+                }
+                return existing;
+            }
             var printer = new Printer
             {
                 Name = name,
-                ConnectionMode = PrinterConnection.WindowsShare,
-                Address = share,
+                ConnectionMode = filePrinters ? PrinterConnection.File : PrinterConnection.WindowsShare,
+                Address = filePrinters ? "" : share,
                 OwningTerminalId = attachedTo.Id,
                 PaperWidthMm = 80,
             };
@@ -165,5 +182,26 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         Route("Pillar 1", dispenseA);
         Route("Counter B", dispenseB);
         Route("Pillar 2", dispenseB);
+    }
+
+    /// <summary>
+    /// Development: makes a user choose a new PIN at their next login (as after an admin reset).
+    /// Returns false when there is no active user with that name.
+    /// </summary>
+    public async Task<bool> RequirePinChange(string name, CancellationToken ct)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Name == name && u.Active, ct);
+        if (user is null) return false;
+        user.MustChangePin = true;
+        db.AuditEntries.Add(new Domain.Audit.AuditEntry
+        {
+            At = DateTimeOffset.UtcNow,
+            Action = Application.Auditing.AuditActions.PinChangeRequired,
+            EntityType = "User",
+            EntityId = user.Id.ToString(),
+            NewValueJson = "{\"mustChangePin\":true,\"by\":\"command line\"}",
+        });
+        await db.SaveChangesAsync(ct);
+        return true;
     }
 }

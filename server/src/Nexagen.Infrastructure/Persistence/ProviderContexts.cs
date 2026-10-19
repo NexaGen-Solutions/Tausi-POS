@@ -8,6 +8,7 @@ public sealed class PostgresNexagenDbContext(DbContextOptions<PostgresNexagenDbC
     : NexagenDbContext(options)
 {
     protected override string? ActiveUserFilter => "\"Active\"";
+    protected override string? OpenWorkPeriodFilter => "\"IsOpen\"";
 
     protected override void OnModelCreating(ModelBuilder m)
     {
@@ -21,4 +22,5 @@ public sealed class SqlServerNexagenDbContext(DbContextOptions<SqlServerNexagenD
     : NexagenDbContext(options)
 {
     protected override string? ActiveUserFilter => "[Active] = 1";
+    protected override string? OpenWorkPeriodFilter => "[IsOpen] = 1";
 }
