@@ -368,3 +368,27 @@
   left: 25px;
   border-color: var(--color-selected);
 }
+
+/* Link-style button (e.g. "Reset PIN" in admin tables): still a real button, 44 px high */
+.nx-btn--link {
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-selected);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.nx-btn--link:disabled {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* Select field */
+.nx-field__select {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid #8f8f8a;
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}

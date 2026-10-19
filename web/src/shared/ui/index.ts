@@ -1,6 +1,7 @@
 export { Banner } from './Banner';
 export { Button } from './Button';
 export { Field } from './Field';
+export { SelectField } from './SelectField';
 export { Keypad, PinDots } from './Keypad';
 export { PinPad } from './PinPad';
 export { Modal } from './Modal';

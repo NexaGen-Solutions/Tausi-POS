@@ -20,6 +20,8 @@ export const posEvents = [
   'menu.changed',
   'settings.changed',
   'day.opened',
+  'user.deactivated',
+  'user.pin_reset',
 ] as const;
 
 export type PosEventName = (typeof posEvents)[number] | 'reconnected';

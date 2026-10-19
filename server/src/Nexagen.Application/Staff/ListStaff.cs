@@ -21,7 +21,11 @@ public sealed class ListStaff(INexagenDb db, StaffAccess access, TimeProvider cl
             .ThenBy(u => u.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var roles = (await db.Roles.AsNoTracking().OrderBy(r => r.Name).ToListAsync(ct))
+        // Built-in roles in their natural order (Waiter first, the usual choice), then added roles.
+        string[] order = [RoleKeys.Waiter, RoleKeys.Cashier, RoleKeys.Supervisor, RoleKeys.Admin];
+        var roles = (await db.Roles.AsNoTracking().ToListAsync(ct))
+            .OrderBy(r => r.SystemKey is null ? order.Length : Array.IndexOf(order, r.SystemKey))
+            .ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .Where(r => StaffRules.CanAssign(actor.Tier, tiers.GetValueOrDefault(r.Id, StaffTier.Staff)))
             .Select(r => new StaffRoleDto(r.Id, r.Name, r.CanUseAdminSite))
             .ToList();
