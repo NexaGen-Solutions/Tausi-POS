@@ -115,6 +115,7 @@ describe('Staff and PINs', () => {
     serve(adminList);
     renderRoutes(routes, '/admin/staff');
     await screen.findByRole('button', { name: 'Edit CAROL' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }));
     const panel = screen.getByRole('complementary', { name: 'Add staff' });
     const save = within(panel).getByRole('button', { name: 'Save staff member' });
 
@@ -149,6 +150,7 @@ describe('Staff and PINs', () => {
     serve(adminList);
     renderRoutes(routes, '/admin/staff');
     await screen.findByRole('button', { name: 'Edit CAROL' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }));
     const panel = screen.getByRole('complementary', { name: 'Add staff' });
 
     await userEvent.type(within(panel).getByLabelText('Name'), 'Grace');
@@ -166,7 +168,10 @@ describe('Staff and PINs', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.queryByText('6284')).not.toBeInTheDocument();
-    expect(within(panel).getByLabelText('Starting PIN (4–6 digits)')).toHaveValue('');
+    // The panel closed with the form; adding again starts empty.
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }));
+    expect(screen.getByLabelText('Starting PIN (4–6 digits)')).toHaveValue('');
   });
 
   it('a supervisor sees only waiters and cashiers and can give only those roles', async () => {
@@ -179,6 +184,7 @@ describe('Staff and PINs', () => {
 
     expect(screen.queryByText('Administrator')).not.toBeInTheDocument();
     expect(screen.queryByText('MAU')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }));
     const panel = screen.getByRole('complementary', { name: 'Add staff' });
     const options = within(within(panel).getByLabelText('Role')).getAllByRole('option');
     expect(options.map((o) => o.textContent)).toEqual(['Waiter', 'Cashier']);
@@ -218,7 +224,7 @@ describe('Staff and PINs', () => {
     const before = gets;
     await userEvent.click(screen.getByRole('button', { name: 'Reload' }));
     await waitFor(() => expect(gets).toBeGreaterThan(before));
-    expect(screen.getByRole('complementary', { name: 'Add staff' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
   });
 
   it('cannot deactivate yourself; deactivating someone else asks first', async () => {

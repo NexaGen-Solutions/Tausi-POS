@@ -17,7 +17,10 @@ type Panel =
   | { kind: 'edit'; member: StaffMember }
   | { kind: 'pin'; member: StaffMember; reactivate: boolean };
 
-/** Wireframe 15: the staff list with a side panel to add, edit, reset PIN and reactivate. */
+/**
+ * Wireframe 15: the staff list with a right-side panel to add, edit, reset PIN and reactivate.
+ * The panel opens when needed, so the list (with its extra columns) has the full width otherwise.
+ */
 export function StaffPage() {
   const queries = useQueryClient();
   const staff = useQuery({
@@ -26,7 +29,7 @@ export function StaffPage() {
   });
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/api/auth/me') });
 
-  const [panel, setPanel] = useState<Panel>({ kind: 'add' });
+  const [panel, setPanel] = useState<Panel | null>(null);
   const [role, setRole] = useState('');
   const [status, setStatus] = useState<StatusFilter>('active');
   const [search, setSearch] = useState('');
@@ -55,12 +58,12 @@ export function StaffPage() {
     void refresh();
     setStale(false);
     if (result.temporaryPin) setShown({ name: result.member.name, pin: result.temporaryPin });
-    setPanel({ kind: 'add' });
+    setPanel(null);
   };
 
   const reload = async () => {
     setStale(false);
-    setPanel({ kind: 'add' });
+    setPanel(null);
     await refresh();
   };
 
@@ -104,9 +107,16 @@ export function StaffPage() {
       key: 'last',
       header: t('admin.staff.colLastLogin'),
       render: (m) =>
-        m.lastLogin
-          ? `${formatDayTime(m.lastLogin.at)}${m.lastLogin.terminalName ? ` · ${m.lastLogin.terminalName}` : ''}`
-          : t('admin.staff.never'),
+        m.lastLogin ? (
+          <>
+            <span className="staff__login">{formatDayTime(m.lastLogin.at)}</span>
+            {m.lastLogin.terminalName && (
+              <span className="staff__login-where">{m.lastLogin.terminalName}</span>
+            )}
+          </>
+        ) : (
+          t('admin.staff.never')
+        ),
     },
     {
       key: 'terminals',
@@ -160,8 +170,9 @@ export function StaffPage() {
   ];
 
   const roles = staff.data?.assignableRoles ?? [];
-  const panelTitle =
-    panel.kind === 'add'
+  const panelTitle = !panel
+    ? ''
+    : panel.kind === 'add'
       ? t('admin.staff.addStaff')
       : panel.kind === 'edit'
         ? t('admin.staff.editStaff', { name: panel.member.name })
@@ -170,9 +181,14 @@ export function StaffPage() {
           : t('admin.staff.resetPinTitle', { name: panel.member.name });
 
   return (
-    <main className="staff">
+    <main className={`staff${panel ? ' staff--panel' : ''}`}>
       <div className="staff__main">
-        <h1 className="admin__title">{t('admin.staff.title')}</h1>
+        <div className="staff__header">
+          <h1 className="admin__title">{t('admin.staff.title')}</h1>
+          <Button variant="primary" onClick={() => setPanel({ kind: 'add' })}>
+            {t('admin.staff.addStaff')}
+          </Button>
+        </div>
         {stale && (
           <Banner action={{ label: t('common.reload'), onClick: () => void reload() }}>
             {t('admin.staff.stale')}
@@ -216,38 +232,45 @@ export function StaffPage() {
         />
       </div>
 
-      <aside className="staff-panel" aria-label={panelTitle}>
-        <h2 className="staff-panel__title">{panelTitle}</h2>
-        {panel.kind === 'add' && (
-          <>
-            <StaffForm roles={roles} onSaved={saved} onStale={() => setStale(true)} />
-            {roles.every((r) => !r.canUseAdminSite) && (
-              <p className="staff-panel__note">{t('admin.staff.supervisorHint')}</p>
-            )}
-          </>
-        )}
-        {panel.kind === 'edit' && (
-          <StaffForm
-            key={panel.member.id}
-            roles={roles}
-            member={panel.member}
-            roleLocked={panel.member.id === myId}
-            onSaved={saved}
-            onStale={() => setStale(true)}
-            onCancel={() => setPanel({ kind: 'add' })}
-          />
-        )}
-        {panel.kind === 'pin' && (
-          <PinForm
-            key={`${panel.member.id}-${panel.reactivate}`}
-            member={panel.member}
-            reactivate={panel.reactivate}
-            onSaved={saved}
-            onStale={() => setStale(true)}
-            onCancel={() => setPanel({ kind: 'add' })}
-          />
-        )}
-      </aside>
+      {panel && (
+        <aside className="staff-panel" aria-label={panelTitle}>
+          <h2 className="staff-panel__title">{panelTitle}</h2>
+          {panel.kind === 'add' && (
+            <>
+              <StaffForm
+                roles={roles}
+                onSaved={saved}
+                onStale={() => setStale(true)}
+                onCancel={() => setPanel(null)}
+              />
+              {roles.every((r) => !r.canUseAdminSite) && (
+                <p className="staff-panel__note">{t('admin.staff.supervisorHint')}</p>
+              )}
+            </>
+          )}
+          {panel.kind === 'edit' && (
+            <StaffForm
+              key={panel.member.id}
+              roles={roles}
+              member={panel.member}
+              roleLocked={panel.member.id === myId}
+              onSaved={saved}
+              onStale={() => setStale(true)}
+              onCancel={() => setPanel(null)}
+            />
+          )}
+          {panel.kind === 'pin' && (
+            <PinForm
+              key={`${panel.member.id}-${panel.reactivate}`}
+              member={panel.member}
+              reactivate={panel.reactivate}
+              onSaved={saved}
+              onStale={() => setStale(true)}
+              onCancel={() => setPanel(null)}
+            />
+          )}
+        </aside>
+      )}
 
       {confirming && (
         <Modal
