@@ -80,6 +80,7 @@ export function ChangePinPage() {
           onSubmit={(value) => void submit(value)}
           disabled={busy}
           shakeKey={shake}
+          keepFocus
         />
         <p className="pin-login__message" role="alert">
           {message}

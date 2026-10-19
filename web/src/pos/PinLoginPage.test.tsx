@@ -91,6 +91,31 @@ describe('PIN login screen', () => {
     expect(screen.queryByText(/[0-9]{3,}/)).not.toBeInTheDocument();
   });
 
+  it('has the keyboard as soon as it opens, and keeps it after a tap on a blank area', async () => {
+    serve(() => json(401, {}), 6);
+    renderRoutes(routes, '/pos');
+    await screen.findByLabelText('0 of 6 digits entered');
+
+    // No click first: a cashier with a keyboard can type straight away.
+    await userEvent.keyboard('48');
+    expect(dots(2, 6)).toBeInTheDocument();
+
+    // A tap on the left panel would otherwise leave nothing focused.
+    await userEvent.click(screen.getByText('Counter A'));
+    await waitFor(() => expect(document.activeElement).toHaveClass('nx-pinpad'));
+    await userEvent.keyboard('2');
+    expect(dots(3, 6)).toBeInTheDocument();
+
+    // The terminal window being activated again.
+    act(() => {
+      (document.activeElement as HTMLElement).blur();
+      window.dispatchEvent(new Event('focus'));
+    });
+    await waitFor(() => expect(document.activeElement).toHaveClass('nx-pinpad'));
+    await userEvent.keyboard('1');
+    expect(dots(4, 6)).toBeInTheDocument();
+  });
+
   it('submits by itself at the longest PIN length and goes in', async () => {
     serve(() => json(200, sessionFor('edna', 'Waiter')), 4, { openedAt: '2026-10-20T08:14:00' });
     renderRoutes(routes, '/pos');
