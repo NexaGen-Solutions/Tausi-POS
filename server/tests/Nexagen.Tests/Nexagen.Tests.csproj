@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="FluentAssertions" Version="7.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -25,6 +26,7 @@
     <ProjectReference Include="..\..\src\Nexagen.Domain\Nexagen.Domain.csproj" />
     <ProjectReference Include="..\..\src\Nexagen.Application\Nexagen.Application.csproj" />
     <ProjectReference Include="..\..\src\Nexagen.Infrastructure\Nexagen.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Nexagen.Api\Nexagen.Api.csproj" />
   </ItemGroup>
 
 </Project>
