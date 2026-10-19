@@ -83,14 +83,23 @@ cd web && npm run dev     # http://localhost:5173, proxies /api, /hubs and /file
 
 The device token is kept in the browser's `localStorage` (`nexagen.device`). Clear it to pair again.
 
-### First login: choose a new PIN
+### Staff and PINs (admin site)
+
+Sign in to <http://localhost:5173/admin> as `admin` and open **Staff and PINs**:
+
+- **Add staff** with a starting PIN. The PIN is shown once; the person must choose their own at
+  first login (entered twice; 1234-style PINs and other people's PINs are refused).
+- **Reset PIN** (type one or press Generate): the person is logged out on every terminal at once.
+- **Deactivate / Reactivate**: nobody is ever deleted.
+- To sign in as a supervisor, edit MAU and set an admin-site password, then sign in as `mau`.
+  Supervisors see and manage only waiters and cashiers.
+
+From the command line (development), a user can also be made to choose a new PIN at their next
+login:
 
 ```bash
 dotnet run --project src/Nexagen.Api -- require-pin-change edna
 ```
-
-edna logs in with her current PIN and must then choose a new one (entered twice). 1234-style
-PINs, her current PIN and other users' PINs are refused.
 
 ### Idle logout
 
@@ -132,7 +141,9 @@ Any write with an `Idempotency-Key` header returns the original answer when repe
 
 ### Printing
 
-In development the demo printers use the **File** connection, so every slip is written as text
+The demo has four printers, one per terminal (Ticket Printer 1, Pillar 1, Ticket Printer 2,
+Pillar 2); a database seeded with the earlier two-printer setup is converted by running
+`seed --demo` again. In development the demo printers use the **File** connection, so every slip is written as text
 to `server/src/Nexagen.Api/print-output/`. (A database seeded before this change: run
 `seed --demo` again in Development and the untouched demo printers move to File.) Test print:
 
