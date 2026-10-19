@@ -62,4 +62,76 @@ public class SeederTests : IDisposable
         (await Seeder().RequirePinChange("nobody", CancellationToken.None)).Should().BeFalse();
         (await _db.NewContext().Users.SingleAsync(u => u.Name == "edna")).MustChangePin.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task One_printer_per_terminal_with_shared_dispense_templates()
+    {
+        await Seeder().SeedDemo("pw", CancellationToken.None, filePrinters: true);
+
+        var db = _db.NewContext();
+        var printers = await db.Printers.ToDictionaryAsync(p => p.Name);
+        printers.Keys.Should().BeEquivalentTo(["Ticket Printer 1", "Pillar 1", "Ticket Printer 2", "Pillar 2"]);
+        foreach (var t in await db.Terminals.ToListAsync())
+        {
+            var own = printers.Values.Single(p => p.OwningTerminalId == t.Id);
+            t.DispensePrinterId.Should().Be(own.Id, $"{t.Name} dispenses on its own printer");
+            t.ReceiptPrinterId.Should().Be(own.Id, $"{t.Name} prints receipts on its own printer");
+        }
+        printers["Ticket Printer 1"].DispenseTemplate.Should().Be("Dispense A");
+        printers["Pillar 1"].DispenseTemplate.Should().Be("Dispense A");
+        printers["Pillar 1"].DispenseHeader.Should().Be("Counter A");
+        printers["Ticket Printer 2"].DispenseTemplate.Should().Be("Dispense B");
+        printers["Pillar 2"].DispenseHeader.Should().Be("Counter B");
+    }
+
+    [Fact]
+    public async Task Seeding_again_converts_the_two_printer_setup_without_losing_anything()
+    {
+        // The old seed: two printers, the pillars sharing their counter's printer.
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+        var db = _db.Context;
+        foreach (var name in new[] { "Pillar 1", "Pillar 2" })
+            db.Printers.Remove(await db.Printers.SingleAsync(p => p.Name == name));
+        await db.SaveChangesAsync();
+        var tp1 = await db.Printers.SingleAsync(p => p.Name == "Ticket Printer 1");
+        var tp2 = await db.Printers.SingleAsync(p => p.Name == "Ticket Printer 2");
+        foreach (var (terminal, printer) in new[] { ("Pillar 1", tp1), ("Pillar 2", tp2) })
+        {
+            var t = await db.Terminals.SingleAsync(x => x.Name == terminal);
+            t.DispensePrinterId = printer.Id;
+            t.ReceiptPrinterId = printer.Id;
+        }
+        tp1.DispenseTemplate = null;
+        db.PrintJobs.Add(new Domain.Printing.PrintJob { PrinterId = tp1.Id, TextPreview = "old slip" });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+
+        var read = _db.NewContext();
+        (await read.Printers.CountAsync()).Should().Be(4);
+        var pillar1 = await read.Terminals.SingleAsync(t => t.Name == "Pillar 1");
+        var pillar1Printer = await read.Printers.SingleAsync(p => p.Name == "Pillar 1");
+        pillar1.DispensePrinterId.Should().Be(pillar1Printer.Id);
+        pillar1.ReceiptPrinterId.Should().Be(pillar1Printer.Id);
+        (await read.Printers.SingleAsync(p => p.Name == "Ticket Printer 1")).DispenseTemplate.Should().Be("Dispense A");
+        (await read.Terminals.SingleAsync(t => t.Name == "Counter A")).DispensePrinterId.Should().Be(tp1.Id);
+        (await read.PrintJobs.SingleAsync()).PrinterId.Should().Be(tp1.Id, "old jobs stay where they were");
+    }
+
+    [Fact]
+    public async Task Routes_set_by_hand_are_left_alone()
+    {
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+        var db = _db.Context;
+        var pillar2 = await db.Terminals.SingleAsync(t => t.Name == "Pillar 2");
+        var tp1 = await db.Printers.SingleAsync(p => p.Name == "Ticket Printer 1");
+        pillar2.ReceiptPrinterId = tp1.Id;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+
+        (await _db.NewContext().Terminals.SingleAsync(t => t.Name == "Pillar 2")).ReceiptPrinterId.Should().Be(tp1.Id);
+    }
 }

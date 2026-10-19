@@ -84,6 +84,14 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("DispenseHeader")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("DispenseTemplate")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -404,10 +412,18 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<string>("SystemKey")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("SystemKey")
+                        .IsUnique()
+                        .HasFilter("[SystemKey] IS NOT NULL");
 
                     b.ToTable("Roles");
                 });
@@ -466,6 +482,11 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -495,6 +516,9 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
 
                     b.HasIndex("PinLookup")
                         .IsUnique()

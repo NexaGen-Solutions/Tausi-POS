@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nexagen.Api.Auth;
@@ -103,7 +104,7 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFac
                 record.Completed = true;
                 record.ResponseStatus = http.Response.StatusCode;
                 record.ResponseContentType = http.Response.ContentType;
-                record.ResponseBody = Encoding.UTF8.GetString(buffer.ToArray());
+                record.ResponseBody = Redact(http, Encoding.UTF8.GetString(buffer.ToArray()));
                 await db.SaveChangesAsync(CancellationToken.None);
                 stored = true;
             }
@@ -116,6 +117,15 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFac
             buffer.Position = 0;
             await buffer.CopyToAsync(original, CancellationToken.None);
         }
+    }
+
+    private static string Redact(HttpContext http, string body)
+    {
+        var redact = http.GetEndpoint()?.Metadata.GetMetadata<IdempotencyRedact>();
+        if (redact is null || JsonNode.Parse(body) is not JsonObject json) return body;
+        foreach (var field in redact.Fields)
+            if (json.ContainsKey(field)) json[field] = null;
+        return json.ToJsonString();
     }
 
     private static async Task<string> HashBody(HttpRequest request)

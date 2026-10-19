@@ -78,6 +78,8 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
         m.Entity<Role>(e =>
         {
             e.HasIndex(x => x.Name).IsUnique();
+            e.Property(x => x.SystemKey).HasMaxLength(20);
+            e.HasIndex(x => x.SystemKey).IsUnique();
             e.HasMany(x => x.Permissions).WithOne(x => x.Role).HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -93,6 +95,8 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
             e.Property(x => x.PinLookup).HasMaxLength(64);
             e.Property(x => x.PinHash).HasMaxLength(200);
             e.Property(x => x.UserName).HasMaxLength(100);
+            e.Property(x => x.NormalizedName).HasMaxLength(200);
+            e.HasIndex(x => x.NormalizedName).IsUnique();
             e.HasIndex(x => x.UserName).IsUnique();
             var pinIndex = e.HasIndex(x => x.PinLookup).IsUnique();
             if (ActiveUserFilter is not null) pinIndex.HasFilter(ActiveUserFilter);
@@ -143,6 +147,8 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
         {
             e.HasIndex(x => x.Name).IsUnique();
             e.Property(x => x.LastError).HasMaxLength(1000);
+            e.Property(x => x.DispenseTemplate).HasMaxLength(40);
+            e.Property(x => x.DispenseHeader).HasMaxLength(40);
             e.HasOne(x => x.OwningTerminal).WithMany().HasForeignKey(x => x.OwningTerminalId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -227,6 +233,13 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
     /// </summary>
     private void BumpRowVersions()
     {
+        // Names are unique ignoring case (a unique index on NormalizedName); keep it in step.
+        foreach (var entry in ChangeTracker.Entries<User>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+                entry.Entity.NormalizedName = User.Normalize(entry.Entity.Name);
+        }
+
         foreach (var entry in ChangeTracker.Entries<VersionedEntity>())
         {
             if (entry.State == EntityState.Modified)

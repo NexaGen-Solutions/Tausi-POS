@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'dark' | 'ghost-dark';
+  variant?: 'primary' | 'secondary' | 'danger' | 'dark' | 'ghost-dark' | 'link';
   /** md is 44 px high (any touch target); lg is 56 px (primary actions). */
   size?: 'md' | 'lg';
   block?: boolean;

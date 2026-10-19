@@ -69,4 +69,15 @@ public sealed class SessionKeeper(INexagenDb db, TimeProvider clock)
                 .SetProperty(s => s.EndedAt, now)
                 .SetProperty(s => s.EndReason, reason), ct);
     }
+
+    /// <summary>Ends every open session of a user, on every terminal.</summary>
+    public async Task EndAllFor(Guid userId, string reason, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        await db.UserSessions
+            .Where(s => s.UserId == userId && s.EndedAt == null)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(s => s.EndedAt, now)
+                .SetProperty(s => s.EndReason, reason), ct);
+    }
 }

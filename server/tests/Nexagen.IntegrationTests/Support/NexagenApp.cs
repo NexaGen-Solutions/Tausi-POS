@@ -110,11 +110,11 @@ public class NexagenApp : WebApplicationFactory<Program>, IAsyncLifetime
         return read(scope.ServiceProvider.GetRequiredService<NexagenDbContext>());
     }
 
-    /// <summary>An HTTP client signed in to the admin site as Administrator.</summary>
-    public async Task<HttpClient> AdminClient()
+    /// <summary>An HTTP client signed in to the admin site (as Administrator unless told otherwise).</summary>
+    public async Task<HttpClient> AdminClient(string userName = "admin", string password = AdminPassword)
     {
         var client = CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
-        var response = await client.PostAsJsonAsync("/api/admin/login", new { userName = "admin", password = AdminPassword });
+        var response = await client.PostAsJsonAsync("/api/admin/login", new { userName, password });
         response.EnsureSuccessStatusCode();
         return client;
     }
@@ -180,6 +180,15 @@ public sealed class ClockedApp : NexagenApp
 public sealed class ClockCollection : ICollectionFixture<ClockedApp>
 {
     public const string Name = "clock";
+}
+
+/// <summary>Its own server and database, for tests that change staff.</summary>
+public sealed class StaffApp : NexagenApp;
+
+[CollectionDefinition(Name)]
+public sealed class StaffCollection : ICollectionFixture<StaffApp>
+{
+    public const string Name = "staff";
 }
 
 /// <summary>Its own server and database, so opening the day does not affect other tests.</summary>

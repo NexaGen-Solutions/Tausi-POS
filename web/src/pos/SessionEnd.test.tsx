@@ -7,10 +7,14 @@ import { setDeviceForTests } from '../shared/device/device';
 import { pinSession, setPinSession, touchSession } from '../shared/session/session';
 import { deviceInfo, fakeServer, json, renderRoutes, sessionFor } from '../test/render';
 
+const hubHandlers = new Map<string, (payload: unknown) => void>();
 vi.mock('../shared/connection/hub', () => ({
   startHub: vi.fn(),
   stopHub: vi.fn(async () => {}),
-  onPosEvent: vi.fn(() => () => {}),
+  onPosEvent: vi.fn((name: string, handler: (payload: unknown) => void) => {
+    hubHandlers.set(name, handler);
+    return () => hubHandlers.delete(name);
+  }),
 }));
 
 describe('end of a session', () => {
@@ -64,15 +68,16 @@ describe('end of a session', () => {
     renderRoutes(routes, '/pos/tables');
     await screen.findByText('Counter A · edna (Waiter)');
 
-    act(() => touchSession(Date.now() - 10 * 60_000 + 2000));
+    // 5 seconds before the deadline: still logged in; past it: logged out.
+    act(() => touchSession(Date.now() - 10 * 60_000 + 5000));
     act(() => vi.advanceTimersByTime(1100));
     expect(screen.getByText('Counter A · edna (Waiter)')).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(5000));
     expect(await screen.findByText('Logged out after 10 minutes without use')).toBeInTheDocument();
     expect(screen.queryByText(/edna/)).not.toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(5100));
+    act(() => vi.advanceTimersByTime(6000));
     await waitFor(() =>
       expect(screen.queryByText('Logged out after 10 minutes without use')).not.toBeInTheDocument(),
     );
@@ -88,4 +93,20 @@ describe('end of a session', () => {
     expect(logouts).toBe(1);
     expect(screen.queryByText(/edna/)).not.toBeInTheDocument();
   });
+
+  it.each(['user.deactivated', 'user.pin_reset'])(
+    '%s for the logged-in user returns this terminal to the PIN pad',
+    async (event) => {
+      setPinSession(sessionFor('edna', 'Waiter'));
+      renderRoutes(routes, '/pos/tables');
+      await screen.findByText('Counter A · edna (Waiter)');
+
+      act(() => hubHandlers.get(event)?.({ userId: 'id-someone-else' }));
+      expect(screen.getByText('Counter A · edna (Waiter)')).toBeInTheDocument();
+
+      act(() => hubHandlers.get(event)?.({ userId: 'id-edna' }));
+      expect(await screen.findByRole('heading', { name: 'Enter your PIN' })).toBeInTheDocument();
+      expect(screen.queryByText(/edna/)).not.toBeInTheDocument();
+    },
+  );
 });

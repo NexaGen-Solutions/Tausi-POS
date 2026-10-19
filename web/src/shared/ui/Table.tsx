@@ -15,10 +15,19 @@ export interface TableProps<Row> {
   rowKey: (row: Row) => string;
   caption?: string;
   empty?: ReactNode;
+  /** Extra class for a row, e.g. to grey out inactive people. */
+  rowClassName?: (row: Row) => string | undefined;
 }
 
 /** Admin list table. Wide tables scroll sideways inside their box, never the page. */
-export function Table<Row>({ columns, rows, rowKey, caption, empty }: TableProps<Row>) {
+export function Table<Row>({
+  columns,
+  rows,
+  rowKey,
+  caption,
+  empty,
+  rowClassName,
+}: TableProps<Row>) {
   const cellClass = (column: Column<Row>) =>
     [column.align === 'right' ? 'nx-table--right' : '', column.mono ? 'nx-table--mono' : '']
       .join(' ')
@@ -48,7 +57,7 @@ export function Table<Row>({ columns, rows, rowKey, caption, empty }: TableProps
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={rowKey(row)}>
+              <tr key={rowKey(row)} className={rowClassName?.(row)}>
                 {columns.map((column) => (
                   <td key={column.key} className={cellClass(column)}>
                     {column.render(row)}

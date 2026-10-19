@@ -44,6 +44,20 @@ Each entry: date, decision, reason.
 | 2026-10-19 | Permission errors: 403 problem details with `permission` and `approvalRequired` (true only for NeedsApproval). | The UI opens the approval pad only when it can help. |
 | 2026-10-19 | Terminal pairing: the app gets a 6-digit code (10 minutes) plus a secret only it knows; an admin enters the code at `POST /api/terminals/pair` (`devices.manage`); the app collects its device token once with the secret. Pairing again replaces the token. | Simple for staff; the token never appears on screen. |
 
+## Staff
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-20 | "Who may manage whom" uses tiers from data: built-in roles carry a stable `Role.SystemKey` (waiter, cashier, supervisor, admin); Admin = admin tier, Supervisor = manager tier, Waiter/Cashier = staff tier. **Added roles count as staff tier (Waiter-level) unless they have `staff.manage`** (then manager tier). Managers manage staff tier only; admins manage everyone except their own role and their own deactivation; the last active admin can't be deactivated. | Task 2, rule 5. The key, not the display name, decides, so renaming a role changes nothing and no code tests role names. |
+| 2026-10-20 | People a supervisor may not manage are left out of their list and answer 404 if addressed directly; a supervisor can't edit themselves either (not even their own password). | "Hidden in the UI, and the server rejects them" without confirming who exists. |
+| 2026-10-20 | When the only active admin tries to deactivate themselves, the answer is "There must be at least one active Admin."; with another admin present it is "You can't deactivate yourself". | The more useful reason first. |
+| 2026-10-20 | Names are unique ignoring case and surrounding spaces across **all** people, active or not (`User.NormalizedName`, unique index). | The task says names are unique among active users and that deactivating doesn't free a name; together, a name is never reused. |
+| 2026-10-20 | Temporary PINs appear only in the create, reset-PIN and reactivate answers. The idempotency store keeps a copy of those answers with `temporaryPin` blanked, so a replayed request gets `null` (the manager resets again if the first answer was lost). Audit entries never hold PINs, passwords or their hashes. | PINs are only ever stored hashed. |
+| 2026-10-20 | Reset PIN and Deactivate end the person's sessions on every terminal and publish `user.pin_reset` / `user.deactivated` (`{ userId }`); a terminal showing that person returns to the PIN pad at once. | Acceptance: back to the PIN screen within 2 seconds after a reset too. |
+| 2026-10-20 | Admin-site sign-in name: the person's name in lower case (spaces become dots, a number added if taken), set when a password is first given, e.g. MAU signs in as `mau`. A password is required when adding someone whose role uses the admin site; when editing it is optional ("set / reset"). | Simple for staff; existing names (e.g. `admin`) are kept. |
+| 2026-10-20 | The one-time PIN message is "Give this PIN to Grace. They must change it at first login." | The task's example said "She"; a name doesn't tell us anyone's pronouns, so the screen doesn't guess. |
+| 2026-10-20 | The staff screen's right-side panel opens when needed (Add staff button, Edit, Reset PIN, Reactivate) instead of always showing the add form. Roles are listed Waiter, Cashier, Supervisor, Admin, then added roles; the first is the default. | The task adds columns the wireframe doesn't have (last login, terminals, three actions); with the panel always open the actions were cut off at 1280 wide. The wireframe says "Waitress"; the role is called Waiter. |
+
 ## Idempotency
 
 | Date | Decision | Reason |
@@ -63,6 +77,7 @@ Each entry: date, decision, reason.
 | 2026-10-19 | Via terminal: the server calls the terminal's SignalR connection with a client result (`print.job`) and waits up to 15 s for `{ ok, error }`; the app calls the Tauri command `print_raw`. | The server learns whether it printed, so retries and failures work the same as other transports. |
 | 2026-10-19 | Demo printers are seeded as Windows-share printers (`\\COUNTER-A\TicketPrinter1`, `\\COUNTER-B\TicketPrinter2`) with their owning terminal set to show where they are plugged in. "Dispense A" is Ticket Printer 1, "Dispense B" is Ticket Printer 2. | Mau's server is Windows with USB printers on counter PCs; the real share names are set on site in the Terminals screen. |
 | 2026-10-20 | **Updated:** in the Development environment `seed --demo` creates the demo printers with the `File` connection, so test prints land in `print-output/`; running it again in Development also moves untouched Windows-share placeholders to `File`. Elsewhere they stay Windows-share placeholders. The foundation task's list describes two physical printers (Ticket Printer 1 = Dispense A, Ticket Printer 2 = Dispense B) used by four terminals, so two printers are seeded, not four. | Test prints work in development without editing printers. The Screen 1 task mentions "four demo printers"; the foundation list reads as two printers and four terminal routes, so that was kept (see follow-ups). |
+| 2026-10-20 | **Replaces the two-printer seed.** Four printers, one per terminal: Ticket Printer 1 (Counter A), Pillar 1, Ticket Printer 2 (Counter B), Pillar 2. Each terminal's dispense and receipt printer is its own printer. "Dispense A" / "Dispense B" are templates, stored on the printer as `DispenseTemplate` with the printed header in `DispenseHeader` ("Counter A" / "Counter B"); Pillar 1 uses Dispense A and Pillar 2 Dispense B. Re-running the seed adds the pillar printers and moves only routes still pointing at the counter's printer (anything set by hand stays); old print jobs keep their printer. | The owner's correction (task 2). Wireframe 17 shows Pillar 1's receipts on Ticket Printer 1; the task's table (own printer for receipts) was followed as the newer instruction. |
 
 ## Web and terminal
 
@@ -90,7 +105,7 @@ Each entry: date, decision, reason.
 - **Licence checks:** the `Licence` table exists; checking and the grace period come with the setup wizard.
 - **Backups:** nightly database backup plus the data directory (it holds the PIN pepper).
 - **Server installer:** a Windows installer for Nexagen Server (service + SQL Server Express) and a Linux package.
+- **Edit roles and permissions** (Permissions screen): until then, added roles can only be created in the database.
+- **Approvals on the admin site:** an action that needs approval can't be approved there yet (the approval pad needs a terminal).
 - **Close the day:** `WorkPeriod` has the closing fields; closing comes with cash-up.
-- **Demo printer count:** confirm whether the demo should have two printers (as seeded) or four.
-- **Admin "reset PIN":** the Staff and PINs screen should set `MustChangePin` (today: the `require-pin-change` command).
 - **Logout after settle:** `pos.logoutAfterSettle` exists but is not acted on until settle is built.
