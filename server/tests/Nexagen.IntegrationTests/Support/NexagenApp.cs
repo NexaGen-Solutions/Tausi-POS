@@ -4,7 +4,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Nexagen.Api.Platform;
 using Nexagen.Infrastructure.Persistence;
 using Nexagen.Infrastructure.Seeding;
@@ -18,7 +20,7 @@ namespace Nexagen.IntegrationTests.Support;
 /// service container), otherwise starts a throwaway container with Testcontainers.
 /// Each run gets its own fresh database, seeded with the demo data.
 /// </summary>
-public sealed class NexagenApp : WebApplicationFactory<Program>, IAsyncLifetime
+public class NexagenApp : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string AdminPassword = "integration-admin-pass";
 
@@ -73,6 +75,11 @@ public sealed class NexagenApp : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Nexagen:Printing:Transport", "File");
         builder.UseSetting("Nexagen:Printing:OutputDirectory", PrintOutput);
         builder.UseSetting("Web:Root", Path.Combine(_dataDir, "no-web"));
+        builder.ConfigureTestServices(ConfigureTestServices);
+    }
+
+    protected virtual void ConfigureTestServices(IServiceCollection services)
+    {
     }
 
     async Task IAsyncLifetime.DisposeAsync()
@@ -160,8 +167,36 @@ public sealed class AppCollection : ICollectionFixture<NexagenApp>
     public const string Name = "app";
 }
 
+/// <summary>Its own server and database, on a clock the tests move by hand.</summary>
+public sealed class ClockedApp : NexagenApp
+{
+    public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+
+    protected override void ConfigureTestServices(IServiceCollection services) =>
+        services.AddSingleton<TimeProvider>(Clock);
+}
+
+[CollectionDefinition(Name)]
+public sealed class ClockCollection : ICollectionFixture<ClockedApp>
+{
+    public const string Name = "clock";
+}
+
+/// <summary>Its own server and database, so opening the day does not affect other tests.</summary>
+public sealed class DayApp : NexagenApp;
+
+[CollectionDefinition(Name)]
+public sealed class DayCollection : ICollectionFixture<DayApp>
+{
+    public const string Name = "day";
+}
+
 public static class HttpExtensions
 {
-    public static async Task<JsonElement> Json(this HttpResponseMessage response) =>
-        await response.Content.ReadFromJsonAsync<JsonElement>(NexagenApp.Json);
+    /// <summary>Reads the body as JSON. Safe to call more than once on the same response.</summary>
+    public static async Task<JsonElement> Json(this HttpResponseMessage response)
+    {
+        await response.Content.LoadIntoBufferAsync();
+        return JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync(), NexagenApp.Json);
+    }
 }
