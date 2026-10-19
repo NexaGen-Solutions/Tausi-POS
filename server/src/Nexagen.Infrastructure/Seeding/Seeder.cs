@@ -99,7 +99,7 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
                 {
                     pin = SecureTokens.Digits(4);
                     lookup = hasher.Lookup(pin);
-                } while (!usedLookups.Add(lookup));
+                } while (Pin.IsTooSimple(pin) || !usedLookups.Add(lookup));
 
                 user = new User
                 {

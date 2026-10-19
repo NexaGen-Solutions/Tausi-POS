@@ -76,9 +76,33 @@ cd web && npm run dev     # http://localhost:5173, proxies /api, /hubs and /file
    ```
 
 3. Within two seconds the browser moves on to the PIN pad for **Counter A**. Log in with a PIN
-   from the seed and you see "Logged in as edna on Counter A".
+   from the seed (tap the keypad or type it; it submits by itself at 4 digits).
+4. If no day is open, MAU (Supervisor) or Administrator gets **Open the day**; a waiter is told to
+   ask a supervisor. Once the day is open you reach the table map placeholder. Other terminals'
+   PIN screens show "Work period open since …" straight away.
 
 The device token is kept in the browser's `localStorage` (`nexagen.device`). Clear it to pair again.
+
+### First login: choose a new PIN
+
+```bash
+dotnet run --project src/Nexagen.Api -- require-pin-change edna
+```
+
+edna logs in with her current PIN and must then choose a new one (entered twice). 1234-style
+PINs, her current PIN and other users' PINs are refused.
+
+### Idle logout
+
+Terminals log out after 10 minutes without use. To try it quickly, set it to 1 minute (admin
+cookie from the pairing step):
+
+```bash
+curl -s -b /tmp/nx.cookies http://localhost:5080/api/settings/business > /tmp/settings.json
+# edit otherJson in /tmp/settings.json to {"pos":{"idleLogoutMinutes":1,"logoutAfterSettle":false}}
+curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/settings.json \
+  http://localhost:5080/api/settings/business
+```
 
 ### Admin site
 
@@ -108,8 +132,9 @@ Any write with an `Idempotency-Key` header returns the original answer when repe
 
 ### Printing
 
-In development every print job is written as text to `server/src/Nexagen.Api/print-output/`
-(`Nexagen:Printing:Transport = File` in `appsettings.Development.json`). Test print:
+In development the demo printers use the **File** connection, so every slip is written as text
+to `server/src/Nexagen.Api/print-output/`. (A database seeded before this change: run
+`seed --demo` again in Development and the untouched demo printers move to File.) Test print:
 
 ```bash
 curl -s http://localhost:5080/api/health      # printer ids
@@ -117,7 +142,7 @@ curl -b /tmp/nx.cookies -X POST http://localhost:5080/api/printers/<printer id>/
 ls server/src/Nexagen.Api/print-output/
 ```
 
-Set `Nexagen__Printing__Transport=Real` to send to real printers by each printer's connection mode.
+`Nexagen__Printing__Transport=File` sends every printer's jobs to files, whatever its connection.
 
 ### Terminal app (Tauri)
 
