@@ -1,0 +1,26 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Node
+node_modules/
+web/dist/
+coverage/
+
+# Tauri / Rust
+terminal/src-tauri/target/
+terminal/src-tauri/gen/schemas/
+
+# Runtime data (dev)
+server/src/Nexagen.Api/data/
+server/src/Nexagen.Api/wwwroot/
+print-output/
+
+# Editors / OS
+.idea/
+.DS_Store
+*.swp
+.env
