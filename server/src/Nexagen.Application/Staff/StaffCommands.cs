@@ -114,7 +114,12 @@ public sealed class DeactivateStaff(
     {
         var actor = await access.RequireActor(ct);
         if (id == actor.User.UserId)
+        {
+            // The last admin hears why first; anyone else is told to ask another admin.
+            var self = await db.Users.AsNoTracking().FirstAsync(u => u.Id == id, ct);
+            await access.EnsureNotLastAdmin(self, ct);
             throw new ForbiddenException("You can't deactivate yourself. Ask another admin.", StaffCodes.SelfDeactivate);
+        }
         var user = await access.LoadManageable(actor, id, request.RowVersion, ct);
         if (!user.Active) return (await StaffQueries.Rows(db, [user], clock.GetUtcNow(), ct))[0];
         await access.EnsureNotLastAdmin(user, ct);
