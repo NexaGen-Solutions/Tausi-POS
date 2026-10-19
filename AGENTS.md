@@ -97,5 +97,6 @@ The hub is `/hubs/pos`, and clients join the group `business`. Events are named 
 - **Tests are required** for every business rule you add. Money, permissions, printing order, idempotency and ledger balance must have unit tests. API endpoints need an integration test.
 - **Definition of done:** `dotnet test` passes, `npm test` passes, `npm run lint` passes, the app starts with `docs/RUNNING.md` steps, and the screen matches its wireframe.
 - **Commits:** small and in conventional style (`feat(order): print new items only`). One task per branch, named `screen/<number>-<name>` or `foundation/<part>`.
+- **Never merge into main or create release tags.** Finish on your task branch, push it, and stop. The owner reviews and merges.
 - **Never commit secrets.** Dev settings go in `appsettings.Development.json` with fake values; real secrets come from environment variables.
 - **At the end of a task, reply with:** what you built, how to try it (exact commands and the seed PINs to use), the tests added, and anything left as a follow-up.

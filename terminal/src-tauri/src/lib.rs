@@ -106,12 +106,15 @@ pub fn run() {
             // Counter PCs: full screen, no title bar. In development a normal 1280x800 window
             // is easier to work with; set NEXAGEN_FULLSCREEN=1 to see the real thing.
             let full_screen = !cfg!(debug_assertions) || std::env::var("NEXAGEN_FULLSCREEN").is_ok();
-            WebviewWindowBuilder::new(app, MAIN_WINDOW, start_url(&config)?)
+            let window = WebviewWindowBuilder::new(app, MAIN_WINDOW, start_url(&config)?)
                 .title("Nexagen Terminal")
                 .inner_size(1280.0, 800.0)
                 .fullscreen(full_screen)
                 .decorations(!full_screen)
+                .focused(true)
                 .build()?;
+            // Take keyboard focus on start, so a cashier can type a PIN without touching the screen.
+            let _ = window.set_focus();
 
             if !cfg!(debug_assertions) {
                 // Start with Windows. Failing to register is not worth stopping the app for.

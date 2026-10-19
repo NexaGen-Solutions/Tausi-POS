@@ -152,6 +152,7 @@ export function PinLoginPage() {
             slots={maxLength.data ?? 4}
             disabled={busy || locked || offline}
             shakeKey={shake}
+            keepFocus
           />
           <p className="pin-login__message" role="alert">
             {message}

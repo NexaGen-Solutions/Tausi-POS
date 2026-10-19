@@ -16,6 +16,11 @@ export interface PinPadProps {
   /** Increase to shake the dots once (wrong PIN). */
   shakeKey?: number;
   enterLabel?: string;
+  /**
+   * Keep the keyboard on this pad: take focus back when it is lost to nothing (a tap on a blank
+   * part of the screen, or the window being activated again). Use on full-screen PIN screens.
+   */
+  keepFocus?: boolean;
 }
 
 /**
@@ -31,6 +36,7 @@ export function PinPad({
   disabled = false,
   shakeKey = 0,
   enterLabel,
+  keepFocus = false,
 }: PinPadProps) {
   const pad = useRef<HTMLDivElement>(null);
 
@@ -38,6 +44,22 @@ export function PinPad({
   useEffect(() => {
     if (!disabled) pad.current?.focus();
   }, [disabled]);
+
+  // Only takes focus back when nothing else has it, so other fields and dialogs keep theirs.
+  useEffect(() => {
+    if (!keepFocus) return;
+    const reclaim = () => {
+      const active = document.activeElement;
+      if (!active || active === document.body) pad.current?.focus();
+    };
+    const later = () => window.setTimeout(reclaim, 0);
+    document.addEventListener('pointerup', later);
+    window.addEventListener('focus', later);
+    return () => {
+      document.removeEventListener('pointerup', later);
+      window.removeEventListener('focus', later);
+    };
+  }, [keepFocus]);
 
   const add = (digit: string) => {
     if (disabled || value.length >= pinMaxLength) return;
