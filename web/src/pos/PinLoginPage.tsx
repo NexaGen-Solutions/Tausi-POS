@@ -1,76 +1,70 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
-import { ApiError, api, apiUrl } from '../shared/api/client';
+import { ApiError, OfflineError, api, apiUrl } from '../shared/api/client';
 import type { DeviceInfo } from '../shared/api/types';
-import { OfflineBanner } from '../shared/connection/OfflineBanner';
 import { isOffline } from '../shared/connection/status';
 import { useConnection } from '../shared/connection/useConnection';
 import { deviceToken, saveDevice, serverUrl } from '../shared/device/device';
 import { t } from '../shared/i18n/i18n';
-import { setPinSession, type PinSession } from '../shared/session/session';
-import { Keypad, PinDots } from '../shared/ui';
-import './pos.css';
+import { setPinSession, takeLogoutNotice, type PinSession } from '../shared/session/session';
+import { PinPad } from '../shared/ui';
 
-const maxPin = 6;
+const wrongPinFor = 3000;
+const noticeFor = 5000;
 
-/** Wireframe 1. The full screen (work period, styling details) is finished in the Screen 1 task. */
+function formatCountdown(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Wireframe 1: the PIN pad every terminal shows when nobody is logged in. */
 export function PinLoginPage() {
   const navigate = useNavigate();
   const connection = useConnection();
   const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [lockedFor, setLockedFor] = useState(0);
+  const [shake, setShake] = useState(0);
+  const [wrongUntil, setWrongUntil] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const [notice, setNotice] = useState(() => {
+    const ended = takeLogoutNotice();
+    return ended?.reason === 'idle'
+      ? t('pos.loggedOutIdle', { minutes: ended.idleLogoutMinutes })
+      : null;
+  });
 
+  const paired = !!deviceToken();
   const device = useQuery({
     queryKey: ['device'],
     queryFn: () => api<DeviceInfo>('/api/device'),
-    enabled: !!deviceToken(),
+    enabled: paired,
+  });
+  const maxLength = useQuery({
+    queryKey: ['pin-max-length'],
+    queryFn: () => api<number>('/api/auth/pin/max-length'),
+    enabled: paired,
   });
 
+  // One clock for the countdown and the timed messages.
+  const ticking = lockedUntil > now || wrongUntil > now;
   useEffect(() => {
-    if (lockedFor <= 0) return;
-    const timer = window.setTimeout(() => setLockedFor((s) => s - 1), 1000);
+    if (!ticking) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [ticking]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), noticeFor);
     return () => window.clearTimeout(timer);
-  }, [lockedFor]);
+  }, [notice]);
 
-  const submit = useCallback(async () => {
-    if (pin.length < 4 || busy || lockedFor > 0) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const session = await api<PinSession>('/api/auth/pin', { method: 'POST', body: { pin } });
-      setPinSession(session);
-      navigate('/pos/home', { replace: true });
-    } catch (e) {
-      setPin('');
-      if (e instanceof ApiError && e.status === 429) {
-        setLockedFor(e.problem.retryAfterSeconds ?? 60);
-      } else if (e instanceof ApiError && e.status === 401) {
-        const left = e.problem.attemptsLeft;
-        setError(left ? t('pos.wrongPinLeft', { count: left }) : t('pos.wrongPin'));
-      } else {
-        setError(t('common.somethingWrong'));
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, lockedFor, navigate, pin]);
-
-  // Physical keyboards work too.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (/^\d$/.test(event.key)) setPin((p) => (p.length < maxPin ? p + event.key : p));
-      else if (event.key === 'Backspace') setPin((p) => p.slice(0, -1));
-      else if (event.key === 'Escape') setPin('');
-      else if (event.key === 'Enter') void submit();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [submit]);
-
-  if (!deviceToken()) return <Navigate to="/setup" replace />;
+  if (!paired) return <Navigate to="/setup" replace />;
   if (device.error instanceof ApiError && device.error.status === 401) {
     // The server no longer knows this device token (re-paired elsewhere): pair again.
     void saveDevice({ serverUrl: serverUrl(), deviceToken: null });
@@ -78,11 +72,44 @@ export function PinLoginPage() {
   }
 
   const offline = isOffline(connection);
-  const message = lockedFor > 0 ? t('pos.locked', { seconds: lockedFor }) : error;
+  const lockSeconds = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
+  const locked = lockSeconds > 0;
+
+  const submit = async (value: string) => {
+    if (busy || locked || offline) return;
+    setBusy(true);
+    try {
+      const session = await api<PinSession>('/api/auth/pin', {
+        method: 'POST',
+        body: { pin: value },
+      });
+      setPinSession(session);
+      navigate(session.mustChangePin ? '/pos/change-pin' : '/pos/day', { replace: true });
+    } catch (error) {
+      setPin('');
+      const at = Date.now();
+      setNow(at);
+      if (error instanceof ApiError && error.status === 429) {
+        setLockedUntil(at + (error.problem.retryAfterSeconds ?? 60) * 1000);
+      } else if (!(error instanceof OfflineError)) {
+        setShake((n) => n + 1);
+        setWrongUntil(at + wrongPinFor);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  let message: string | null;
+  if (offline) message = t('pos.offline');
+  else if (locked) message = t('pos.locked', { time: formatCountdown(lockSeconds) });
+  else if (wrongUntil > now) message = t('pos.pinNotRecognised');
+  else message = notice;
+
+  const period = device.data?.workPeriod;
 
   return (
     <div className="pos-screen">
-      <OfflineBanner />
       <div className="pin-login">
         <aside className="pin-login__side">
           <p className="pin-login__label">{t('pos.terminalLabel')}</p>
@@ -97,6 +124,13 @@ export function PinLoginPage() {
             )}
             <p className="pin-login__label">{t('common.appName')}</p>
             <p className="pin-login__business">{device.data?.businessName ?? ''}</p>
+            {device.data && (
+              <p className="pin-login__day">
+                {period
+                  ? t('pos.dayOpenSince', { time: formatTime(period.openedAt) })
+                  : t('pos.dayNotOpen')}
+              </p>
+            )}
           </div>
           <p className="pin-login__status">
             <span
@@ -104,20 +138,22 @@ export function PinLoginPage() {
               aria-hidden="true"
             />
             {offline
-              ? t('connection.offline')
-              : t('connection.connectedTo', { server: connection.serverName ?? '' })}
+              ? t('pos.reconnecting')
+              : t('pos.connectedTo', { server: connection.serverName ?? serverUrl() ?? '' })}
           </p>
         </aside>
         <main className="pin-login__pad">
           <h1 className="pin-login__title">{t('pos.enterPin')}</h1>
-          <PinDots length={pin.length} />
-          <Keypad
-            onDigit={(d) => setPin((p) => (p.length < maxPin ? p + d : p))}
-            onClear={() => setPin('')}
-            onEnter={() => void submit()}
-            enterDisabled={pin.length < 4 || busy || lockedFor > 0}
+          <PinPad
+            value={pin}
+            onChange={setPin}
+            onSubmit={(value) => void submit(value)}
+            autoSubmitLength={maxLength.data}
+            slots={maxLength.data ?? 4}
+            disabled={busy || locked || offline}
+            shakeKey={shake}
           />
-          <p className="pin-login__error" role="alert">
+          <p className="pin-login__message" role="alert">
             {message}
           </p>
           <p className="pin-login__help">{t('pos.pinHelp')}</p>

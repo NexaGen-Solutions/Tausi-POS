@@ -1,6 +1,6 @@
 import { deviceToken } from '../device/device';
 import { updateConnection } from '../connection/status';
-import { pinSession } from '../session/session';
+import { endPinSession, pinSession, touchSession } from '../session/session';
 
 /** The problem-details body the server sends for errors. */
 export interface Problem {
@@ -8,6 +8,8 @@ export interface Problem {
   title?: string;
   detail?: string;
   approvalRequired?: boolean;
+  /** A stable reason, e.g. "session_expired", "pin_taken". */
+  code?: string;
   permission?: string;
   attemptsLeft?: number | null;
   retryAfterSeconds?: number;
@@ -80,7 +82,12 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     }
   }
 
-  if (!response.ok) throw new ApiError(await readProblem(response));
+  if (!response.ok) {
+    const problem = await readProblem(response);
+    // The server ended this PIN session (idle, logged out elsewhere, too old): back to the PIN pad.
+    if (problem.status === 401 && problem.code === 'session_expired') endPinSession('expired');
+    throw new ApiError(problem);
+  }
   if (response.status === 204) return undefined as T;
   const type = response.headers.get('content-type') ?? '';
   return (type.includes('json') ? await response.json() : await response.text()) as T;
@@ -97,7 +104,10 @@ async function send(
   const device = deviceToken();
   if (device) headers.set('X-Device-Token', device);
   const session = pinSession();
-  if (session) headers.set('Authorization', `Bearer ${session.token}`);
+  if (session) {
+    headers.set('Authorization', `Bearer ${session.token}`);
+    touchSession();
+  }
   if (idempotencyKey) headers.set('Idempotency-Key', idempotencyKey);
   if (approvalToken) headers.set('X-Approval-Token', approvalToken);
 

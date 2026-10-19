@@ -26,6 +26,8 @@ describe('api client', () => {
     setPinSession({
       token: 'session-abc',
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      idleLogoutMinutes: 10,
+      mustChangePin: false,
       user: { id: 'u1', name: 'edna', role: 'Waiter', terminalId: 't1', terminalName: 'Counter A' },
     });
   });

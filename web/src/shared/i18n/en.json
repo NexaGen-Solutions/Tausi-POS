@@ -9,7 +9,8 @@
     "signOut": "Sign out",
     "clear": "Clear",
     "enter": "Enter",
-    "somethingWrong": "Something went wrong. Try again."
+    "somethingWrong": "Something went wrong. Try again.",
+    "back": "Back"
   },
   "connection": {
     "offline": "No connection to the server. Reconnecting…",
@@ -32,16 +33,36 @@
   },
   "pos": {
     "terminalLabel": "Terminal",
-    "notPaired": "Not paired",
     "enterPin": "Enter your PIN",
     "pinHelp": "Each person has their own PIN, so every order and void is recorded under their name.",
     "pinDigits": "{count} of {max} digits entered",
-    "wrongPin": "That PIN is not right.",
-    "wrongPinLeft": "That PIN is not right. {count} tries left before this terminal locks.",
-    "locked": "Too many wrong PINs. Try again in {seconds} seconds.",
-    "loggedInAs": "Logged in as {name} on {terminal}",
+    "pinNotRecognised": "PIN not recognised",
+    "locked": "Too many attempts. Try again in {time}",
+    "offline": "Can't reach the server. Retrying…",
+    "connectedTo": "Connected to {server}",
+    "reconnecting": "Reconnecting…",
+    "dayOpenSince": "Work period open since {time}",
+    "dayNotOpen": "Day not open",
+    "loggedOutIdle": "Logged out after {minutes} minutes without use",
     "whoWhere": "{terminal} · {name} ({role})",
-    "placeholder": "The POS screens arrive in the next tasks."
+    "tablesPlaceholder": "Table map: coming in Screen 2",
+    "changePin": {
+      "choose": "Choose a new PIN",
+      "confirm": "Enter it again",
+      "help": "Hello {name}. Choose a PIN of 4 to 6 digits that only you know.",
+      "confirmHelp": "Type the same PIN once more.",
+      "mismatch": "The PINs don't match. Choose your new PIN again.",
+      "pin_taken": "Choose a different PIN.",
+      "pin_too_simple": "That PIN is too easy to guess. Choose another.",
+      "pin_unchanged": "Choose a PIN different from your current one.",
+      "pin_invalid": "A PIN must be 4 to 6 digits."
+    },
+    "day": {
+      "notOpen": "The day isn't open yet",
+      "askSupervisor": "The day isn't open yet. Ask a supervisor to open it.",
+      "openTheDay": "Open the day",
+      "help": "Opening the day starts a new work period. Sales, cash-ups and reports belong to it."
+    }
   },
   "approval": {
     "title": "Supervisor approval",

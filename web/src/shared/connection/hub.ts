@@ -19,6 +19,7 @@ export const posEvents = [
   'printer.status',
   'menu.changed',
   'settings.changed',
+  'day.opened',
 ] as const;
 
 export type PosEventName = (typeof posEvents)[number] | 'reconnected';

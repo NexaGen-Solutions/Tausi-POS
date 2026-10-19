@@ -3,8 +3,8 @@ import { permissionLabel, t } from './i18n';
 
 describe('t', () => {
   it('finds nested texts and fills placeholders', () => {
-    expect(t('pos.loggedInAs', { name: 'edna', terminal: 'Counter A' })).toBe(
-      'Logged in as edna on Counter A',
+    expect(t('pos.whoWhere', { terminal: 'Counter A', name: 'edna', role: 'Waiter' })).toBe(
+      'Counter A · edna (Waiter)',
     );
   });
 

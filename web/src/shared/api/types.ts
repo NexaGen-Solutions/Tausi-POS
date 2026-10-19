@@ -4,11 +4,18 @@ export interface Brand {
   currency: string;
 }
 
+export interface WorkPeriod {
+  id: string;
+  openedAt: string;
+  openedByUserId: string;
+}
+
 export interface DeviceInfo {
   terminalId: string;
   terminalName: string;
   businessName: string;
   logoFileId: string | null;
+  workPeriod: WorkPeriod | null;
 }
 
 export interface Me {
