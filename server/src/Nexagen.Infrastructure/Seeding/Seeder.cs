@@ -130,6 +130,8 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
             db.Terminals.Add(terminal);
             terminals[name] = terminal;
         }
+        // Terminals and printers point at each other, so they are saved in steps.
+        await db.SaveChangesAsync(ct);
 
         var printers = await db.Printers.ToDictionaryAsync(p => p.Name, ct);
         Printer AddPrinter(string name, string share, Terminal attachedTo)
@@ -151,6 +153,7 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
         // Dispense A = Ticket Printer 1 at Counter A; Dispense B = Ticket Printer 2 at Counter B.
         var dispenseA = AddPrinter("Ticket Printer 1", @"\\COUNTER-A\TicketPrinter1", terminals["Counter A"]);
         var dispenseB = AddPrinter("Ticket Printer 2", @"\\COUNTER-B\TicketPrinter2", terminals["Counter B"]);
+        await db.SaveChangesAsync(ct);
 
         void Route(string terminal, Printer printer)
         {
