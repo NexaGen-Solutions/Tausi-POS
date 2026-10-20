@@ -122,6 +122,56 @@ public class DevicesApiTests(DevicesApp app)
     }
 
     [Fact]
+    public async Task The_powered_by_setting_shows_on_the_test_print_sample_bill()
+    {
+        var admin = await app.AdminClient();
+        async Task SetPoweredBy(bool on)
+        {
+            var s = await (await admin.GetAsync("/api/settings/business")).Json();
+            var other = System.Text.Json.Nodes.JsonNode.Parse(s.GetProperty("otherJson").GetString() ?? "{}")!.AsObject();
+            other["print"] ??= new System.Text.Json.Nodes.JsonObject();
+            other["print"]!["poweredByFooter"] = on;
+            (await admin.PutAsJsonAsync("/api/settings/business", new
+            {
+                name = s.GetProperty("name").GetString(),
+                address = s.GetProperty("address").GetString(),
+                phone = s.GetProperty("phone").GetString(),
+                vatRate = s.GetProperty("vatRate").GetDecimal(),
+                currency = s.GetProperty("currency").GetString(),
+                rounding = s.GetProperty("rounding").GetString(),
+                receiptFooter = s.GetProperty("receiptFooter").GetString(),
+                printMode = s.GetProperty("printMode").GetString(),
+                otherJson = other.ToJsonString(),
+                rowVersion = s.GetProperty("rowVersion").GetInt64(),
+            })).EnsureSuccessStatusCode();
+        }
+
+        var printer = (await (await admin.PostAsJsonAsync("/api/admin/printers", new
+        {
+            name = "Footer File", connectionMode = "File", address = "", owningTerminalId = (Guid?)null,
+            paperWidthMm = 80, cutAfterSlip = true, openDrawerOnReceipt = false, active = true,
+        })).Json()).GetProperty("id").GetGuid();
+        await SetPoweredBy(true);
+        try
+        {
+            var job = (await (await admin.PostAsync($"/api/admin/printers/{printer}/test", null)).Json()).GetProperty("printJobId").GetGuid();
+            string? slip = null;
+            for (var i = 0; i < 50 && slip is null; i++)
+            {
+                await Task.Delay(200);
+                if (Directory.Exists(app.PrintOutput))
+                    slip = Directory.GetFiles(app.PrintOutput, $"*{job.ToString("N")[^8..]}.txt").FirstOrDefault();
+            }
+            slip.Should().NotBeNull();
+            (await File.ReadAllTextAsync(slip!)).Should().Contain("Powered by Tausi POS");
+        }
+        finally
+        {
+            await SetPoweredBy(false);
+        }
+    }
+
+    [Fact]
     public async Task Printers_used_by_terminals_cannot_be_deactivated()
     {
         var admin = await app.AdminClient();

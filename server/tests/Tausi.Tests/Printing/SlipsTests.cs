@@ -102,6 +102,46 @@ public class SlipsTests
     }
 
     [Fact]
+    public void The_powered_by_line_ends_bills_and_receipts_only_when_switched_on()
+    {
+        var bill = new BillSlip("B", null, "Table 7", "1042", 1, "edna", Slips.SampleLines, 770m, 16m, 106.21m, "Karibu tena", At);
+        var off = new SlipStyle(42, true, null);
+        var on = off with { PoweredBy = true };
+        static string LastText(PrintDocument d) => d.Text.Split(Environment.NewLine).Last(l => l.Trim() is not ("" or "[cut]"));
+
+        Slips.Bill(bill, off).Text.Should().NotContain(Slips.PoweredByText);
+        LastText(Slips.Bill(bill, on)).Trim().Should().Be(Slips.PoweredByText, "it is the last line, after the business's own footer");
+        LastText(Slips.Receipt(new ReceiptSlip(bill, [("Cash", null, 800m)], 30m, "CAROL"), on)).Trim()
+            .Should().Be(Slips.PoweredByText);
+        Lines(Slips.Bill(bill, on with { Columns = 32 })).Should().Contain("      Powered by Tausi POS", "centred on 58 mm paper");
+    }
+
+    [Fact]
+    public void Kitchen_and_staff_slips_never_carry_the_powered_by_line()
+    {
+        var on = new SlipStyle(42, true, null, PoweredBy: true);
+
+        Slips.Dispense(new DispenseSlip("Counter A", "Table 7", "1042", "edna", Slips.SampleLines, At), on).Text
+            .Should().NotContain(Slips.PoweredByText);
+        Slips.Void(new VoidSlip("Counter A", "Table 7", "1042", [new(1, "Guiness", null, 300m)], "Wrong item", "edna", null, At), on).Text
+            .Should().NotContain(Slips.PoweredByText);
+        Slips.CashUp(new CashUpSlip("B", "CAROL", At.AddHours(-8), At, [("Cash settled", 100m)], 100m, 100m), on).Text
+            .Should().NotContain(Slips.PoweredByText);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void The_test_print_shows_the_powered_by_line_on_its_sample_bill_as_set(bool poweredBy)
+    {
+        var doc = Slips.Test(
+            new TestSlip("Mau's Village", "Ticket Printer 1", "File (dev)", 80, 16m, At),
+            new SlipStyle(42, true, null, PoweredBy: poweredBy));
+
+        Lines(doc).Count(l => l.Trim() == Slips.PoweredByText).Should().Be(poweredBy ? 1 : 0);
+    }
+
+    [Fact]
     public void Routing_preview_reads_in_print_order()
     {
         PrintRouting.Preview("Pillar 1", "Ticket Printer 1", "Counter A", "Pillar 1")

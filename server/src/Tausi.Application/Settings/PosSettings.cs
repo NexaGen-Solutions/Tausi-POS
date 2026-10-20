@@ -58,6 +58,6 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle)
         JsonSerializer.Serialize(new
         {
             pos = new { idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false },
-            print = new { logoOnBill = true },
+            print = new { logoOnBill = true, poweredByFooter = false },
         });
 }

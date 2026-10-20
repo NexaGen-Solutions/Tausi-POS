@@ -4,11 +4,14 @@ using Tausi.Domain.Money;
 
 namespace Tausi.Application.Printing;
 
-/// <summary>How a slip is printed on a given printer.</summary>
-public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string Currency = "KES")
+/// <summary>
+/// How a slip is printed on a given printer. <paramref name="PoweredBy"/> adds the "Powered by Tausi POS"
+/// line to customer slips (bills and receipts), from the <c>print.poweredByFooter</c> setting.
+/// </summary>
+public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string Currency = "KES", bool PoweredBy = false)
 {
-    public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency = "KES") =>
-        new(printer.Columns, printer.CutAfterSlip, logo, currency);
+    public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency = "KES", bool poweredBy = false) =>
+        new(printer.Columns, printer.CutAfterSlip, logo, currency, poweredBy);
 }
 
 /// <summary>One line on a slip: "2 x Tusker Lager (Cold)   500".</summary>
@@ -56,7 +59,14 @@ public static class Slips
 
     private static string LineText(SlipLine l) => $"{Qty(l.Quantity)} x {l.Name}" + (l.Options is { Length: > 0 } o ? $" ({o})" : "");
 
-    public static PrintDocument Bill(BillSlip d, SlipStyle style) => WriteBill(new ReceiptBuilder(style.Columns, style.Cut), d, style).Cut().Build();
+    public const string PoweredByText = "Powered by Tausi POS";
+
+    public static PrintDocument Bill(BillSlip d, SlipStyle style) =>
+        PoweredBy(WriteBill(new ReceiptBuilder(style.Columns, style.Cut), d, style), style).Cut().Build();
+
+    /// <summary>The optional last line of a customer slip.</summary>
+    private static ReceiptBuilder PoweredBy(ReceiptBuilder b, SlipStyle style) =>
+        style.PoweredBy ? b.Feed().Text(PoweredByText, TextStyle.Center) : b;
 
     private static ReceiptBuilder WriteBill(ReceiptBuilder b, BillSlip d, SlipStyle style)
     {
@@ -70,8 +80,7 @@ public static class Slips
             .Separator();
         foreach (var line in d.Lines) b.Columns2(LineText(line), Amount(line.Amount));
         b.Separator()
-            .Columns2("Total", Money(d.Total, style.Currency), TextStyle.Bold | TextStyle.DoubleHeight)
-;
+            .Columns2("Total", Money(d.Total, style.Currency), TextStyle.Bold | TextStyle.DoubleHeight);
         // The VAT amount is never split over two lines: on narrow paper the label is shortened.
         var vatLine = $"Total includes VAT {Qty(d.VatRate)}%: {Money(d.Vat, style.Currency)}";
         if (vatLine.Length <= style.Columns) b.Text(vatLine);
@@ -118,7 +127,7 @@ public static class Slips
             b.Columns2(reference is null ? method : $"{method} {reference}", Money(amount, style.Currency));
         if (d.Change > 0) b.Columns2("Change", Money(d.Change, style.Currency), TextStyle.Bold);
         b.Text($"Served by {d.Cashier}");
-        return b.Cut().Build();
+        return PoweredBy(b, style).Cut().Build();
     }
 
     public static PrintDocument CashUp(CashUpSlip d, SlipStyle style)
@@ -166,8 +175,8 @@ public static class Slips
         var lines = SampleLines;
         var total = lines.Sum(l => l.Amount);
         var vat = VatCalculator.Sum(lines.Select(l => VatCalculator.ForLine(l.Amount, 1, d.VatRate))).Vat;
-        WriteBill(b, new BillSlip(d.Business, null, "Table 7", "1042", 1, "edna", lines, total, d.VatRate, vat, null, d.At), style with { Logo = null })
-            .Cut();
+        var sample = WriteBill(b, new BillSlip(d.Business, null, "Table 7", "1042", 1, "edna", lines, total, d.VatRate, vat, null, d.At), style with { Logo = null });
+        PoweredBy(sample, style).Cut();
         WriteDispense(b, new DispenseSlip("Counter A", "Table 7", "1042", "edna", lines, d.At))
             .Separator()
             .Columns2("Date", d.At.ToString("dd MMM yyyy", CultureInfo.InvariantCulture))

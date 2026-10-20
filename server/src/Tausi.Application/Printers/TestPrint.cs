@@ -4,6 +4,7 @@ using Tausi.Application.Auditing;
 using Tausi.Application.Common;
 using Tausi.Application.Printing;
 using Tausi.Application.Security;
+using Tausi.Application.Settings;
 using Tausi.Domain.Common;
 using Tausi.Domain.People;
 using Tausi.Domain.Printing;
@@ -30,10 +31,11 @@ public sealed class TestPrint(
         var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
 
         var logo = await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct);
+        var settings = PrintSettings.From(business?.OtherJson);
         var document = Slips.Test(
             new TestSlip(business?.Name ?? "", printer.Name, printer.ConnectionText(printer.OwningTerminal?.Name),
                 printer.PaperWidthMm, business?.VatRate ?? 16m, clock.GetLocalNow()),
-            SlipStyle.For(printer, logo, business?.Currency ?? "KES"));
+            SlipStyle.For(printer, logo, business?.Currency ?? "KES", settings.PoweredByFooter));
 
         var job = queue.Enqueue(printer, PrintJobKind.Test, document);
         audit.Write(new AuditRecord(
