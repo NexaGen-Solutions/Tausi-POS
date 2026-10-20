@@ -73,11 +73,14 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Database:Provider", "Postgres");
         builder.UseSetting("Database:MigrateOnStartup", "false");
         builder.UseSetting("Tausi:DataDirectory", _dataDir);
-        builder.UseSetting("Tausi:Printing:Transport", "File");
+        builder.UseSetting("Tausi:Printing:Transport", PrintTransport);
         builder.UseSetting("Tausi:Printing:OutputDirectory", PrintOutput);
         builder.UseSetting("Web:Root", Path.Combine(_dataDir, "no-web"));
         builder.ConfigureTestServices(ConfigureTestServices);
     }
+
+    /// <summary>"File" sends every printer's jobs to files; "Real" uses each printer's connection.</summary>
+    protected virtual string PrintTransport => "File";
 
     protected virtual void ConfigureTestServices(IServiceCollection services)
     {
@@ -127,7 +130,7 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         var anon = CreateClient();
         var start = await (await anon.PostAsync("/api/terminals/pairing", null)).Json();
         var admin = await AdminClient();
-        (await admin.PostAsJsonAsync("/api/terminals/pair", new { code = start.GetProperty("code").GetString(), terminalName = name }))
+        (await admin.PostAsJsonAsync("/api/admin/terminals/pair", new { code = start.GetProperty("code").GetString(), newTerminalName = name }))
             .EnsureSuccessStatusCode();
         var claim = await (await anon.PostAsJsonAsync("/api/terminals/pairing/claim", new
         {
@@ -199,6 +202,18 @@ public sealed class MenuApp : TausiApp;
 public sealed class MenuCollection : ICollectionFixture<MenuApp>
 {
     public const string Name = "menu";
+}
+
+/// <summary>Its own server and database, for tests that change terminals and printers.</summary>
+public sealed class DevicesApp : TausiApp
+{
+    protected override string PrintTransport => "Real";
+}
+
+[CollectionDefinition(Name)]
+public sealed class DevicesCollection : ICollectionFixture<DevicesApp>
+{
+    public const string Name = "devices";
 }
 
 /// <summary>Its own server and database, so opening the day does not affect other tests.</summary>

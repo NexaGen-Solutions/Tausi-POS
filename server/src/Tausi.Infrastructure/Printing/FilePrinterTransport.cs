@@ -24,7 +24,7 @@ public sealed class FilePrinterTransport(IOptions<TausiOptions> options, IHostEn
         Directory.CreateDirectory(OutputDirectory);
         var safeName = string.Concat(printer.Name.Select(c => char.IsLetterOrDigit(c) ? c : '-'));
         var stamp = clock.GetLocalNow().ToString("yyyyMMdd-HHmmss");
-        var path = Path.Combine(OutputDirectory, $"{stamp}-{safeName}-{job.Kind}-{job.Id.ToString("N")[..8]}.txt");
+        var path = Path.Combine(OutputDirectory, $"{stamp}-{safeName}-{job.Kind}-{job.Id.ToString("N")[^8..]}.txt");
         var header = $"# {printer.Name} ({printer.ConnectionMode}, {printer.PaperWidthMm} mm) · {job.Kind} · job {job.Id}{Environment.NewLine}";
         await File.WriteAllTextAsync(path, header + job.TextPreview, ct);
     }

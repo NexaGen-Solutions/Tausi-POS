@@ -20,9 +20,13 @@ public sealed class RecordingEvents : IPosEvents
 {
     public List<(string Name, object Payload)> Published { get; } = [];
 
+    /// <summary>Runs as each event is published, e.g. to check what the database holds at that moment.</summary>
+    public Action<string>? OnPublish { get; set; }
+
     public Task Publish(string eventName, object payload, CancellationToken ct = default)
     {
         Published.Add((eventName, payload));
+        OnPublish?.Invoke(eventName);
         return Task.CompletedTask;
     }
 }

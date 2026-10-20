@@ -55,5 +55,9 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle)
 
     /// <summary>The OtherJson a new business starts with, so the settings are easy to find.</summary>
     public static string DefaultJson =>
-        JsonSerializer.Serialize(new { pos = new { idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false } });
+        JsonSerializer.Serialize(new
+        {
+            pos = new { idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false },
+            print = new { logoOnBill = true, poweredByFooter = false },
+        });
 }

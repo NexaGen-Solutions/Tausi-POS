@@ -55,3 +55,42 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
+
+  terminal-windows:
+    # The Windows terminal app (Tauri) with real printing through the Windows spooler.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            terminal/print -> target
+            terminal/src-tauri -> target
+      - name: Build the web app (bundled for the setup screen)
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Test the print crate
+        run: cargo test
+        working-directory: terminal/print
+      - name: Test the terminal app
+        run: cargo test
+        working-directory: terminal/src-tauri
+      - name: Build the installer
+        run: npm ci && npm run tauri build
+        working-directory: terminal
+      - name: Name the installer TausiPOS-Setup.exe
+        shell: pwsh
+        run: Copy-Item (Get-ChildItem terminal/src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1) TausiPOS-Setup.exe
+      # Lets the owner install a branch build on a real counter PC without a release tag.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tausi-terminal-windows
+          path: TausiPOS-Setup.exe
+          if-no-files-found: error
+          retention-days: 14

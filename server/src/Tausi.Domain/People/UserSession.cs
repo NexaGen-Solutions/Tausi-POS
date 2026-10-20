@@ -10,6 +10,7 @@ public static class SessionEndReasons
     public const string Replaced = "replaced";
     public const string PinReset = "pin_reset";
     public const string Deactivated = "deactivated";
+    public const string Revoked = "revoked";
 }
 
 /// <summary>

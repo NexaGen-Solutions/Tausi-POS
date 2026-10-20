@@ -5,7 +5,7 @@ import {
   type HubConnection,
 } from '@microsoft/signalr';
 import { apiUrl } from '../api/client';
-import { deviceToken, isTauri, printRaw } from '../device/device';
+import { checkPrinter, deviceToken, isTauri, listPrinters, printRaw } from '../device/device';
 import { pinSession } from '../session/session';
 import { updateConnection } from './status';
 
@@ -22,6 +22,8 @@ export const posEvents = [
   'day.opened',
   'user.deactivated',
   'user.pin_reset',
+  'terminal.status',
+  'terminal.revoked',
 ] as const;
 
 export type PosEventName = (typeof posEvents)[number] | 'reconnected';
@@ -67,10 +69,22 @@ function build(): HubConnection {
     }
   });
 
+  // The admin asks "Check connection" for a printer plugged into this PC.
+  hub.on('printer.check', async (job: { printer: string }) => {
+    if (!isTauri()) return { ok: false, error: 'This is not a Tausi Terminal app.' };
+    try {
+      await checkPrinter(job.printer);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  });
+
   hub.onreconnecting(() => updateConnection({ hub: 'reconnecting' }));
   hub.onreconnected(() => {
     updateConnection({ hub: 'connected' });
     emit('reconnected', null);
+    void reportPrinters(hub);
   });
   hub.onclose(() => {
     if (wanted) {
@@ -81,6 +95,16 @@ function build(): HubConnection {
     }
   });
   return hub;
+}
+
+/** Tells the server which printers this PC has, so an admin can pick one for "via terminal". */
+async function reportPrinters(hub: HubConnection) {
+  if (!isTauri() || !deviceToken()) return;
+  try {
+    await hub.invoke('ReportPrinters', await listPrinters());
+  } catch {
+    // Not important enough to bother anyone: the admin can type the name instead.
+  }
 }
 
 function scheduleRestart() {
@@ -97,6 +121,7 @@ async function start() {
     await connection.start();
     updateConnection({ hub: 'connected' });
     emit('reconnected', null);
+    void reportPrinters(connection);
   } catch {
     updateConnection({ hub: 'reconnecting' });
     scheduleRestart();

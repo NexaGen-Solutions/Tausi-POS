@@ -21,14 +21,6 @@ public static partial class ReceiptTemplate
         string template,
         IReadOnlyDictionary<string, string> data,
         int columns,
-        MonoBitmap? logo = null) =>
-        Builder(template, data, columns, logo).Build();
-
-    /// <summary>The template written into a builder, for slips that add more after it.</summary>
-    public static ReceiptBuilder Builder(
-        string template,
-        IReadOnlyDictionary<string, string> data,
-        int columns,
         MonoBitmap? logo = null)
     {
         var builder = new ReceiptBuilder(columns);
@@ -77,7 +69,7 @@ public static partial class ReceiptTemplate
             else
                 builder.Text(Fill(line, data), style);
         }
-        return builder;
+        return builder.Build();
     }
 
     private static string Fill(string text, IReadOnlyDictionary<string, string> data) =>

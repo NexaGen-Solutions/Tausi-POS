@@ -70,6 +70,21 @@ export async function printRaw(printer: string, dataBase64: string): Promise<voi
   await invoke('print_raw', { printer, dataBase64 });
 }
 
+/** In the terminal app: the printers installed on this PC. */
+export async function listPrinters(): Promise<string[]> {
+  return invoke<string[]>('list_printers');
+}
+
+/** In the terminal app: is there a printer by this name on this PC? Rejects with the reason. */
+export async function checkPrinter(printer: string): Promise<void> {
+  await invoke('check_printer', { printer });
+}
+
+/** In the terminal app: change the server address (drops pairing; the app restarts). */
+export async function setServerUrl(serverUrl: string): Promise<void> {
+  await invoke('set_server_url', { serverUrl });
+}
+
 /** For tests. */
 export function setDeviceForTests(config: DeviceConfig): void {
   current = config;

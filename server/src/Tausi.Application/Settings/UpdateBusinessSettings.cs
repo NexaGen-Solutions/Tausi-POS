@@ -72,7 +72,7 @@ public sealed class UpdateBusinessSettings(
                 using var doc = JsonDocument.Parse(r.OtherJson);
                 if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new JsonException();
                 PosSettings.Validate(doc.RootElement);
-                PoweredByFooter.Validate(doc.RootElement);
+                PrintSettings.Validate(doc.RootElement);
             }
             catch (JsonException)
             {

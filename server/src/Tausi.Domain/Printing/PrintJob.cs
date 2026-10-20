@@ -18,6 +18,9 @@ public enum PrintJobStatus
     Queued,
     Sent,
     Failed,
+
+    /// <summary>Given up on by an admin, with a reason.</summary>
+    Discarded,
 }
 
 public class PrintJob : Entity
@@ -42,6 +45,20 @@ public class PrintJob : Entity
     public DateTimeOffset NextAttemptAt { get; set; }
     public DateTimeOffset? SentAt { get; set; }
     public Guid? TicketId { get; set; }
+
+    /// <summary>Why an admin discarded it.</summary>
+    public string? DiscardReason { get; set; }
+
+    /// <summary>
+    /// Queues a failed job again. It keeps its place (its creation time), so a bill still prints
+    /// before the dispense slip that came after it.
+    /// </summary>
+    public void Requeue(DateTimeOffset now)
+    {
+        Status = PrintJobStatus.Queued;
+        Attempts = 0;
+        NextAttemptAt = now;
+    }
 
     /// <summary>Wait before the next try: 2 s, 4 s, 8 s.</summary>
     public static TimeSpan Backoff(int attemptsSoFar) => TimeSpan.FromSeconds(Math.Pow(2, attemptsSoFar));

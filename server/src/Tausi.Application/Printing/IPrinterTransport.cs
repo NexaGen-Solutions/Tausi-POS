@@ -18,4 +18,13 @@ public class PrinterTransportException(string message, Exception? inner = null) 
 public interface ITerminalPrintChannel
 {
     Task Print(Guid terminalId, string printerName, byte[] content, CancellationToken ct);
+
+    /// <summary>Asks the terminal app whether the named local printer exists. Throws <see cref="PrinterTransportException"/>.</summary>
+    Task Check(Guid terminalId, string printerName, CancellationToken ct);
+}
+
+/// <summary>"Check connection": can this printer be reached? Throws <see cref="PrinterTransportException"/> with a plain message.</summary>
+public interface IPrinterChecker
+{
+    Task Check(Domain.Devices.PrinterConnection mode, string address, Guid? owningTerminalId, CancellationToken ct);
 }

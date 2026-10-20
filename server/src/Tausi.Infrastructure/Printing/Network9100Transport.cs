@@ -16,24 +16,20 @@ public sealed class Network9100Transport(IOptions<TausiOptions> options) : IPrin
     public async Task Send(Printer printer, PrintJob job, CancellationToken ct)
     {
         var (host, port) = ParseAddress(printer.Address);
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(options.Value.Printing.NetworkTimeoutSeconds));
+        var timeout = TimeSpan.FromSeconds(options.Value.Printing.NetworkTimeoutSeconds);
+        using var client = await NetworkPrinter.Connect(host, port, timeout, ct);
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(timeout);
         try
         {
-            using var client = new TcpClient { NoDelay = true };
-            await client.ConnectAsync(host, port, timeout.Token);
             await using var stream = client.GetStream();
-            await stream.WriteAsync(job.Content, timeout.Token);
-            await stream.FlushAsync(timeout.Token);
+            await stream.WriteAsync(job.Content, limit.Token);
+            await stream.FlushAsync(limit.Token);
             client.Client.Shutdown(SocketShutdown.Send);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            throw new PrinterTransportException($"The printer at {host}:{port} did not answer in time.");
-        }
-        catch (SocketException ex)
-        {
-            throw new PrinterTransportException($"Cannot reach the printer at {host}:{port} ({ex.SocketErrorCode}).", ex);
+            throw new PrinterTransportException($"{host}:{port} stopped answering while printing — is it out of paper?");
         }
         catch (IOException ex)
         {

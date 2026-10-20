@@ -51,7 +51,9 @@ public static class DependencyInjection
         services.AddScoped<IPrinterTransport, FilePrinterTransport>();
         services.AddScoped<PrintJobProcessor>();
         services.AddScoped<ILogoProvider, SkiaLogoProvider>();
+        services.AddScoped<IPrinterChecker, PrinterChecker>();
         services.AddHostedService<PrintDispatcher>();
+        services.AddHostedService<PrinterHealthMonitor>();
         services.AddHostedService<HousekeepingService>();
         return services;
     }

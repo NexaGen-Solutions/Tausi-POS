@@ -20,6 +20,8 @@ public sealed class PinAuthenticator(ITausiDb db, IPinHasher hasher, IAuditLog a
             ?? throw new UnauthenticatedException("This device is not a registered terminal.");
         if (terminal.PinLockedUntil > now)
             throw new LoginLockedException(terminal.PinLockedUntil.Value);
+        if (!terminal.Active)
+            throw new LoginRejectedException("This terminal is switched off in the admin site.");
 
         var user = await FindUser(pin, ct);
         if (user is not null)

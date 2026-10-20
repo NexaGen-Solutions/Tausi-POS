@@ -80,4 +80,15 @@ public sealed class SessionKeeper(ITausiDb db, TimeProvider clock)
                 .SetProperty(s => s.EndedAt, now)
                 .SetProperty(s => s.EndReason, reason), ct);
     }
+
+    /// <summary>Ends every open session on a terminal (it was revoked or re-paired).</summary>
+    public async Task EndAllForTerminal(Guid terminalId, string reason, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        await db.UserSessions
+            .Where(s => s.TerminalId == terminalId && s.EndedAt == null)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(s => s.EndedAt, now)
+                .SetProperty(s => s.EndReason, reason), ct);
+    }
 }

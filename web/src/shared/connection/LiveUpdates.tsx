@@ -25,7 +25,14 @@ export function LiveUpdates() {
         void queries.invalidateQueries({ queryKey: ['brand'] });
         void queries.invalidateQueries({ queryKey: ['settings'] });
       }),
-      onPosEvent('printer.status', () => void queries.invalidateQueries({ queryKey: ['health'] })),
+      onPosEvent('printer.status', () => {
+        void queries.invalidateQueries({ queryKey: ['health'] });
+        void queries.invalidateQueries({ queryKey: ['printers'] });
+      }),
+      onPosEvent(
+        'terminal.status',
+        () => void queries.invalidateQueries({ queryKey: ['terminals'] }),
+      ),
       onPosEvent('day.opened', () => void queries.invalidateQueries({ queryKey: ['device'] })),
       onPosEvent('menu.changed', () => void queries.invalidateQueries({ queryKey: ['pos-menu'] })),
       onPosEvent('print.failed', (payload) =>

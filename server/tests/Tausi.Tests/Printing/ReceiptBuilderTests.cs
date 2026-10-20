@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Tausi.Application.Printers;
 using Tausi.Application.Printing;
 
 namespace Tausi.Tests.Printing;
@@ -123,22 +122,5 @@ public class ReceiptTemplateTests
 
         doc.Text.Trim().Should().Be("@cut");
         doc.EscPos.AsSpan().IndexOf([(byte)0x1D, (byte)0x56]).Should().Be(-1);
-    }
-
-    [Fact]
-    public void Test_slip_has_business_printer_date_time_and_test_ok()
-    {
-        var doc = ReceiptTemplate.Render(TestPrint.Template, new Dictionary<string, string>
-        {
-            ["business"] = "Mau's Village",
-            ["printer"] = "Ticket Printer 1",
-            ["connection"] = "Network9100",
-            ["paper"] = "80",
-            ["date"] = "19 Oct 2026",
-            ["time"] = "19:42:00",
-        }, 42);
-
-        doc.Text.Should().Contain("Mau's Village").And.Contain("Ticket Printer 1")
-            .And.Contain("19 Oct 2026").And.Contain("19:42:00").And.Contain("Test OK");
     }
 }
