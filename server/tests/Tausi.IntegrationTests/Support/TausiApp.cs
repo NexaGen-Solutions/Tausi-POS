@@ -127,7 +127,7 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         var anon = CreateClient();
         var start = await (await anon.PostAsync("/api/terminals/pairing", null)).Json();
         var admin = await AdminClient();
-        (await admin.PostAsJsonAsync("/api/terminals/pair", new { code = start.GetProperty("code").GetString(), terminalName = name }))
+        (await admin.PostAsJsonAsync("/api/admin/terminals/pair", new { code = start.GetProperty("code").GetString(), newTerminalName = name }))
             .EnsureSuccessStatusCode();
         var claim = await (await anon.PostAsJsonAsync("/api/terminals/pairing/claim", new
         {

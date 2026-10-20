@@ -210,6 +210,8 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log)
                 terminal.DispensePrinterId = own.Id;
             if (terminal.ReceiptPrinterId is null || (terminal.ReceiptPrinterId == own.Id && own != counterPrinter))
                 terminal.ReceiptPrinterId = counterPrinter.Id;
+            // Pillars' dispense slips say which counter they belong to.
+            terminal.DispenseHeader ??= p.Header;
         }
     }
 

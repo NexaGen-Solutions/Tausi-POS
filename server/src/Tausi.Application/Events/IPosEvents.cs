@@ -14,6 +14,8 @@ public static class PosEventNames
     public const string DayOpened = "day.opened";
     public const string UserDeactivated = "user.deactivated";
     public const string UserPinReset = "user.pin_reset";
+    public const string TerminalStatus = "terminal.status";
+    public const string TerminalRevoked = "terminal.revoked";
 }
 
 public interface IPosEvents

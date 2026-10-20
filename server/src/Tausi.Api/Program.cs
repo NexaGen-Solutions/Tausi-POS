@@ -30,7 +30,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ProblemMapping>();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR().AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddSingleton<TerminalConnections>();
+builder.Services.AddHostedService<TerminalPresenceMonitor>();
 builder.Services.AddSingleton<IPosEvents, SignalRPosEvents>();
 builder.Services.AddSingleton<ITerminalPrintChannel, HubTerminalPrintChannel>();
 builder.Services.AddHostedService<DatabaseStartup>();
@@ -42,6 +42,7 @@ if (args.Length > 0 && await Commands.TryRun(app, args))
     return;
 
 app.UseExceptionHandler();
+app.UseMiddleware<ContentSecurityPolicy>();
 app.UseTausiStaticFiles();
 app.UseRouting();
 app.UseCors();

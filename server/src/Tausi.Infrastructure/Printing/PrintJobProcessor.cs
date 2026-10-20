@@ -21,7 +21,11 @@ public sealed class PrintJobProcessor(
     TimeProvider clock,
     ILogger<PrintJobProcessor> log)
 {
-    /// <summary>Sends at most one job per printer. Returns how many jobs were tried.</summary>
+    /// <summary>
+    /// Sends at most one job per printer. A ticket's slips also keep their order across printers:
+    /// a job waits while an earlier job of the same ticket has failed or is waiting to retry, so a
+    /// bill always prints before its dispense slip, even after a retry. Returns how many were tried.
+    /// </summary>
     public async Task<int> ProcessDue(CancellationToken ct)
     {
         var now = clock.GetUtcNow();
@@ -31,11 +35,27 @@ public sealed class PrintJobProcessor(
             .Where(j => j.Status == PrintJobStatus.Queued)
             .OrderBy(j => j.CreatedAt).ThenBy(j => j.Id)
             .ToListAsync(ct);
-        var jobs = queued.GroupBy(j => j.PrinterId).Select(g => g.First()).ToList();
+        if (queued.Count == 0) return 0;
 
+        var tickets = queued.Where(j => j.TicketId != null).Select(j => j.TicketId).Distinct().ToList();
+        var failed = tickets.Count == 0
+            ? []
+            : await db.PrintJobs.AsNoTracking()
+                .Where(j => j.Status == PrintJobStatus.Failed && tickets.Contains(j.TicketId))
+                .Select(j => new { j.TicketId, j.CreatedAt })
+                .ToListAsync(ct);
+
+        bool WaitsForEarlier(PrintJob job) =>
+            job.TicketId is { } ticket
+            && (failed.Any(f => f.TicketId == ticket && f.CreatedAt < job.CreatedAt)
+                || queued.Any(q => q.TicketId == ticket && q.Id != job.Id && q.Status == PrintJobStatus.Queued
+                    && (q.CreatedAt < job.CreatedAt || (q.CreatedAt == job.CreatedAt && q.Id.CompareTo(job.Id) < 0))));
+
+        var heads = queued.GroupBy(j => j.PrinterId).Select(g => g.First()).OrderBy(j => j.CreatedAt).ThenBy(j => j.Id).ToList();
         var tried = 0;
-        foreach (var job in jobs.Where(j => j.NextAttemptAt <= now).OrderBy(j => j.CreatedAt))
+        foreach (var job in heads)
         {
+            if (job.NextAttemptAt > now || WaitsForEarlier(job)) continue;
             tried++;
             await Send(job, ct);
         }
@@ -48,10 +68,11 @@ public sealed class PrintJobProcessor(
         var oldStatus = printer.Status;
         try
         {
-            await TransportFor(printer).Send(printer, job, ct);
+            await TransportFor(printer).Send(printer, WithDrawerPulse(printer, job), ct);
             job.MarkSent(clock.GetUtcNow());
             printer.Status = PrinterStatus.Online;
             printer.LastError = null;
+            printer.LastPrintedAt = job.SentAt;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
@@ -78,6 +99,21 @@ public sealed class PrintJobProcessor(
         await db.SaveChangesAsync(ct);
         if (printer.Status != oldStatus)
             await events.Publish(PosEventNames.PrinterStatus, new { printerId = printer.Id, status = printer.Status.ToString() }, ct);
+    }
+
+    /// <summary>
+    /// A final receipt on a printer set to open the cash drawer gets the drawer pulse at the end.
+    /// Nothing else ever opens the drawer.
+    /// </summary>
+    public static PrintJob WithDrawerPulse(Printer printer, PrintJob job)
+    {
+        if (job.Kind != PrintJobKind.Receipt || !printer.OpenDrawerOnReceipt) return job;
+        return new PrintJob
+        {
+            Id = job.Id, PrinterId = job.PrinterId, Kind = job.Kind, TicketId = job.TicketId,
+            Content = [.. job.Content, .. ReceiptBuilder.DrawerPulse],
+            TextPreview = job.TextPreview + "[open cash drawer]" + Environment.NewLine,
+        };
     }
 
     private IPrinterTransport TransportFor(Printer printer)
