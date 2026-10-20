@@ -5,6 +5,7 @@ using Tausi.Application.Auditing;
 using Tausi.Application.Common;
 using Tausi.Application.Printing;
 using Tausi.Application.Security;
+using Tausi.Application.Settings;
 using Tausi.Domain.People;
 using Tausi.Domain.Printing;
 
@@ -29,8 +30,6 @@ public sealed class TestPrint(
         Time || {{time}}
         ---
         [center][bold][big]Test OK
-        @feed 2
-        @cut
         """;
 
     public async Task<TestPrintQueued> Execute(Guid printerId, CancellationToken ct)
@@ -51,7 +50,12 @@ public sealed class TestPrint(
             ["time"] = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
         };
         var logo = await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct);
-        var document = ReceiptTemplate.Render(Template, data, printer.Columns, logo);
+        // The footer shows here too when it is switched on, so the setting can be checked on paper.
+        var document = PoweredByFooter
+            .AddTo(ReceiptTemplate.Builder(Template, data, printer.Columns, logo), PoweredByFooter.IsOn(business?.OtherJson))
+            .Feed(2)
+            .Cut()
+            .Build();
 
         var job = queue.Enqueue(printer, PrintJobKind.Test, document);
         audit.Write(new AuditRecord(

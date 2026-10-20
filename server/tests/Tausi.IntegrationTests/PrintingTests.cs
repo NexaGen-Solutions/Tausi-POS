@@ -25,7 +25,8 @@ public class PrintingTests(TausiApp app)
         }
         slip.Should().NotBeNull("the dispatcher sends queued jobs within a second or so");
         var text = await File.ReadAllTextAsync(slip!);
-        text.Should().Contain("Ticket Printer 2").And.Contain("Test OK");
+        text.Should().Contain("Ticket Printer 2").And.Contain("Test OK")
+            .And.NotContain("Powered by Tausi POS", "the footer is off by default");
     }
 
     [Fact]

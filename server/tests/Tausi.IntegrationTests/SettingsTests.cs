@@ -63,6 +63,21 @@ public class SettingsTests(TausiApp app)
     }
 
     [Fact]
+    public async Task The_powered_by_footer_setting_must_be_true_or_false()
+    {
+        var admin = await app.AdminClient();
+        var settings = await (await admin.GetAsync("/api/settings/business")).Json();
+        var update = Update(settings, settings.GetProperty("name").GetString()!);
+        var bad = JsonSerializer.SerializeToElement(update).Deserialize<Dictionary<string, object?>>()!;
+        bad["otherJson"] = """{"print":{"poweredByFooter":"yes"}}""";
+
+        var response = await admin.PutAsJsonAsync("/api/settings/business", bad);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("print.poweredByFooter must be true or false.");
+    }
+
+    [Fact]
     public async Task Logo_upload_is_served_and_shows_in_the_brand()
     {
         var admin = await app.AdminClient();
