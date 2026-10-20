@@ -84,7 +84,7 @@ export function PinLoginPage() {
         body: { pin: value },
       });
       setPinSession(session);
-      navigate(session.mustChangePin ? '/pos/change-pin' : '/pos/day', { replace: true });
+      navigate(session.mustChangePin ? '/pos/change-pin' : '/pos/tables', { replace: true });
     } catch (error) {
       setPin('');
       const at = Date.now();

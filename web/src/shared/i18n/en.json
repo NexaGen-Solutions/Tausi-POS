@@ -135,14 +135,7 @@
       "new": "New",
       "total": "Total",
       "notOpen": "This ticket is no longer open."
-    },
-    "day": {
-      "notOpen": "The day isn't open yet",
-      "askSupervisor": "The day isn't open yet. Ask a supervisor to open it.",
-      "openTheDay": "Open the day",
-      "help": "Opening the day starts a new work period. Sales, cash-ups and reports belong to it."
-    },
-    "tablesPlaceholder": "Table map: coming in Screen 2"
+    }
   },
   "approval": {
     "title": "Supervisor approval",

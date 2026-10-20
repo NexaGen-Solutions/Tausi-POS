@@ -50,7 +50,7 @@ export function ChangePinPage() {
       await api('/api/auth/pin/change', { method: 'POST', body: { newPin: value } });
       const current = pinSession();
       if (current) setPinSession({ ...current, mustChangePin: false });
-      navigate('/pos/day', { replace: true });
+      navigate('/pos/tables', { replace: true });
     } catch (error) {
       startOver(
         error instanceof ApiError ? messageFor(error.problem.code) : t('common.somethingWrong'),

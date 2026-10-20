@@ -6,14 +6,15 @@ import { adminNav } from '../admin/nav';
 import { DevicesPage } from '../admin/devices/DevicesPage';
 import { MenuPage } from '../admin/menu/MenuPage';
 import { StaffPage } from '../admin/staff/StaffPage';
-import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
-import { OpenDayPage } from '../pos/OpenDayPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
 import { RequireSession } from '../pos/RequireSession';
 import { SetupPage } from '../pos/SetupPage';
-import { TablesPage } from '../pos/TablesPage';
+import { MySalesPage } from '../pos/MySalesPage';
+import { TablesPage } from '../pos/tables/TablesPage';
+import { TicketPage } from '../pos/ticket/TicketPage';
+import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { t } from '../shared/i18n/i18n';
 import { RootRedirect } from './RootRedirect';
 
@@ -33,19 +34,29 @@ export const routes: RouteObject[] = [
           </RequireSession>
         ),
       },
-      {
-        path: 'day',
-        element: (
-          <RequireSession>
-            <OpenDayPage />
-          </RequireSession>
-        ),
-      },
+      // The table map shows "The day isn't open yet" itself now.
+      { path: 'day', element: <Navigate to="/pos/tables" replace /> },
       {
         path: 'tables',
         element: (
           <RequireSession>
             <TablesPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'ticket/:id',
+        element: (
+          <RequireSession>
+            <TicketPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'my-sales',
+        element: (
+          <RequireSession>
+            <MySalesPage />
           </RequireSession>
         ),
       },

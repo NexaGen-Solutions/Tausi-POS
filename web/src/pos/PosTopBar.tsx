@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { api } from '../shared/api/client';
 import type { Brand } from '../shared/api/types';
 import { t } from '../shared/i18n/i18n';
@@ -6,8 +7,8 @@ import { Button, TopBar } from '../shared/ui';
 import { useLogout } from './useLogout';
 import { usePinSession } from './usePinSession';
 
-/** Business name, "<terminal> · <user> (<role>)" and Log out. */
-export function PosTopBar() {
+/** Business name, "<terminal> · <user> (<role>)", optional buttons (e.g. My sales) and Log out. */
+export function PosTopBar({ extra }: { extra?: ReactNode } = {}) {
   const session = usePinSession();
   const logout = useLogout();
   const brand = useQuery({ queryKey: ['brand'], queryFn: () => api<Brand>('/api/brand') });
@@ -21,9 +22,12 @@ export function PosTopBar() {
         t('pos.whoWhere', { terminal: user.terminalName ?? '', name: user.name, role: user.role })
       }
       end={
-        <Button variant="ghost-dark" onClick={() => void logout()}>
-          {t('common.logOut')}
-        </Button>
+        <>
+          {extra}
+          <Button variant="ghost-dark" onClick={() => void logout()}>
+            {t('common.logOut')}
+          </Button>
+        </>
       }
     />
   );
