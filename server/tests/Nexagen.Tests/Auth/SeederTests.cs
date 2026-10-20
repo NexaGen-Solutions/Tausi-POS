@@ -71,11 +71,16 @@ public class SeederTests : IDisposable
         var db = _db.NewContext();
         var printers = await db.Printers.ToDictionaryAsync(p => p.Name);
         printers.Keys.Should().BeEquivalentTo(["Ticket Printer 1", "Pillar 1", "Ticket Printer 2", "Pillar 2"]);
+        var receiptsAt = new Dictionary<string, string>
+        {
+            ["Counter A"] = "Ticket Printer 1", ["Pillar 1"] = "Ticket Printer 1",
+            ["Counter B"] = "Ticket Printer 2", ["Pillar 2"] = "Ticket Printer 2",
+        };
         foreach (var t in await db.Terminals.ToListAsync())
         {
             var own = printers.Values.Single(p => p.OwningTerminalId == t.Id);
             t.DispensePrinterId.Should().Be(own.Id, $"{t.Name} dispenses on its own printer");
-            t.ReceiptPrinterId.Should().Be(own.Id, $"{t.Name} prints receipts on its own printer");
+            t.ReceiptPrinterId.Should().Be(printers[receiptsAt[t.Name]].Id, $"{t.Name}'s receipts print at its counter");
         }
         printers["Ticket Printer 1"].DispenseTemplate.Should().Be("Dispense A");
         printers["Pillar 1"].DispenseTemplate.Should().Be("Dispense A");
@@ -113,7 +118,7 @@ public class SeederTests : IDisposable
         var pillar1 = await read.Terminals.SingleAsync(t => t.Name == "Pillar 1");
         var pillar1Printer = await read.Printers.SingleAsync(p => p.Name == "Pillar 1");
         pillar1.DispensePrinterId.Should().Be(pillar1Printer.Id);
-        pillar1.ReceiptPrinterId.Should().Be(pillar1Printer.Id);
+        pillar1.ReceiptPrinterId.Should().Be(tp1.Id, "receipts stay at the counter");
         (await read.Printers.SingleAsync(p => p.Name == "Ticket Printer 1")).DispenseTemplate.Should().Be("Dispense A");
         (await read.Terminals.SingleAsync(t => t.Name == "Counter A")).DispensePrinterId.Should().Be(tp1.Id);
         (await read.PrintJobs.SingleAsync()).PrinterId.Should().Be(tp1.Id, "old jobs stay where they were");
@@ -133,5 +138,26 @@ public class SeederTests : IDisposable
         await Seeder().SeedDemo("pw", CancellationToken.None);
 
         (await _db.NewContext().Terminals.SingleAsync(t => t.Name == "Pillar 2")).ReceiptPrinterId.Should().Be(tp1.Id);
+    }
+
+    [Fact]
+    public async Task Seeding_again_moves_pillar_receipts_from_the_pillar_printer_back_to_the_counter()
+    {
+        // As the previous seed left it: each pillar printing its own receipts.
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+        var db = _db.Context;
+        foreach (var name in new[] { "Pillar 1", "Pillar 2" })
+        {
+            var terminal = await db.Terminals.SingleAsync(t => t.Name == name);
+            terminal.ReceiptPrinterId = (await db.Printers.SingleAsync(p => p.Name == name)).Id;
+        }
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+
+        var read = _db.NewContext();
+        var tp2 = await read.Printers.SingleAsync(p => p.Name == "Ticket Printer 2");
+        (await read.Terminals.SingleAsync(t => t.Name == "Pillar 2")).ReceiptPrinterId.Should().Be(tp2.Id);
     }
 }

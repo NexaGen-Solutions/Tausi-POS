@@ -163,8 +163,9 @@ Any write with an `Idempotency-Key` header returns the original answer when repe
 ### Printing
 
 The demo has four printers, one per terminal (Ticket Printer 1, Pillar 1, Ticket Printer 2,
-Pillar 2); a database seeded with the earlier two-printer setup is converted by running
-`seed --demo` again. In development the demo printers use the **File** connection, so every slip is written as text
+Pillar 2). Each terminal dispenses on its own printer; receipts print at the counter (Counter A
+and Pillar 1 on Ticket Printer 1, Counter B and Pillar 2 on Ticket Printer 2). Running
+`seed --demo` again converts a database seeded with an earlier printer setup. In development the demo printers use the **File** connection, so every slip is written as text
 to `server/src/Nexagen.Api/print-output/`. (A database seeded before this change: run
 `seed --demo` again in Development and the untouched demo printers move to File.) Test print:
 
