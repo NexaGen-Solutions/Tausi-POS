@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn file_printers_write_the_bytes() {
-        let path = std::env::temp_dir().join(format!("nexagen-print-test-{}.bin", std::process::id()));
+        let path = std::env::temp_dir().join(format!("tausi-print-test-{}.bin", std::process::id()));
         let req = PrintRequest { printer: format!("file:{}", path.display()), data: vec![1, 2, 3] };
         print_raw(&req).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), vec![1, 2, 3]);

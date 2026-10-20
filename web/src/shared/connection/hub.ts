@@ -71,7 +71,7 @@ function build(): HubConnection {
 
   // The admin asks "Check connection" for a printer plugged into this PC.
   hub.on('printer.check', async (job: { printer: string }) => {
-    if (!isTauri()) return { ok: false, error: 'This is not a Nexagen Terminal app.' };
+    if (!isTauri()) return { ok: false, error: 'This is not a Tausi Terminal app.' };
     try {
       await checkPrinter(job.printer);
       return { ok: true };
