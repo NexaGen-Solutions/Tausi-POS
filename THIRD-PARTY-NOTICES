@@ -36,6 +36,8 @@ NOTES ON PARTICULAR LICENCES
   Mozilla Public License 2.0. They are used unmodified; their source code is
   available at the addresses listed.
 - Unicode data in the icu_* and related crates: Unicode License v3.
+- windows and the other windows-* crates (Microsoft, MIT OR Apache-2.0): used by the
+  terminal app's print library to send slips to Windows printers.
 
 
 NOT DISTRIBUTED WITH TAUSI POS
@@ -78,6 +80,11 @@ Terminal app (Rust crates)
   tauri-plugin-store 2.5.0      Apache-2.0 OR MIT  https://github.com/tauri-apps/plugins-workspace
   tauri-plugin-updater 2.14.0   Apache-2.0 OR MIT  https://github.com/tauri-apps/plugins-workspace
   url 2.5.8                     MIT OR Apache-2.0  https://github.com/servo/rust-url
+
+Terminal print library (terminal/print, part of Tausi POS; the windows crate only in the
+Windows build)
+  base64 0.22.1   MIT OR Apache-2.0  https://github.com/marshallpierce/rust-base64
+  windows 0.62.2  MIT OR Apache-2.0  https://github.com/microsoft/windows-rs
 
 
 ALL DISTRIBUTED COMPONENTS
@@ -154,7 +161,7 @@ Web app (npm, production dependencies): 32 packages
   whatwg-url 5.0.0                 MIT                jsdom/whatwg-url
   ws 7.5.13                        MIT                https://github.com/websockets/ws
 
-Terminal app (Rust crates in the Windows build): 233 crates
+Terminal app with its print library (Rust crates in the Windows build): 233 crates
   adler2 2.0.1                    0BSD OR MIT OR Apache-2.0            https://github.com/oyvindln/adler2
   aho-corasick 1.1.5              Unlicense OR MIT                     https://github.com/BurntSushi/aho-corasick
   alloc-no-stdlib 3.0.0           BSD-3-Clause                         https://github.com/dropbox/rust-alloc-no-stdlib
