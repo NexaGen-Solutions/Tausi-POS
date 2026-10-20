@@ -7,11 +7,11 @@ TestResults/
 
 # Node
 node_modules/
-web/dist/
+dist/
 coverage/
 
-# Tauri / Rust
-terminal/src-tauri/target/
+# Tauri / Rust (any crate's build folder)
+target/
 terminal/src-tauri/gen/schemas/
 
 # Runtime data (dev)
