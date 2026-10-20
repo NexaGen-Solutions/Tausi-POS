@@ -63,6 +63,15 @@ Each entry: date, decision, reason.
 | Date | Decision | Reason |
 | --- | --- | --- |
 | 2026-10-20 | **Order lines copy their price.** When an item is ordered, its price (and option add-ons, VAT rate and the gross/net/VAT split) is copied onto the order line. Changing a menu price afterwards never changes a line already on a ticket. The order line itself comes with the order screen. | Tickets and receipts must not change under people's feet; the price log explains the menu, the lines explain the sale. |
+| 2026-10-20 | Price fields are accepted only by the price endpoints (`PUT /api/admin/menu/items/{id}/prices`, `PUT /api/admin/menu/groups/{id}/prices`), which need `menu.edit_prices`. The structure requests refuse unknown JSON members, so a price sent to them is a 400 even if unchanged. The UI's one Save button makes two calls. | Task 3: clean permissions; a user with `menu.edit` alone can never change a price. |
+| 2026-10-20 | The menu admin opens for anyone whose role has `menu.edit` or `menu.edit_prices` set to anything but Not allowed; each change then applies its own permission (with the approval token when it is Needs approval). | Viewing is not an action worth an approval. |
+| 2026-10-20 | A new item can be created without prices (by someone with `menu.edit` only); it is not sold on terminals until it has a price on the default list, and the admin list shows "No price". The default-list price can't be removed, and a list can't become the default while active items lack a price on it. | Keeps "details" and "prices" permissions separate without blocking menu building. |
+| 2026-10-20 | Price-log rows cover item prices and option add-ons (old, new, who, approver, terminal or admin site, time, source `admin` or `import`). A price of 0 needs `allowZero` (the screen asks first); the import refuses 0 and asks for the admin screen instead. | A free item is usually a mistake. |
+| 2026-10-20 | `menuVersion` is a hash of the terminal's menu (its price list and everything sold), so it changes exactly when what the terminal shows changes. Terminals refetch on `menu.changed`, after reconnecting, and every minute as a fallback. | No counter to keep in step; per-terminal by nature. |
+| 2026-10-20 | Option groups given to a category apply to all its items; items can add their own. The export's `option_groups` column holds only an item's own groups, so export → import changes nothing. Option add-ons are prices (see above); options removed from a group are deactivated, never deleted. | Round trip stable; history intact. |
+| 2026-10-20 | CSV import: auto-maps headers (`price` = default list, `price2` = "Price 2", any price-list name; `category`, `name`, `short_name`, `vat_rate`, `active`, `option_groups`, `erpnext_item_code` and common SambaPOS variants), else asks for a mapping. Comma or semicolon separated; UTF-8 if valid, else Windows-1252. Empty price cells leave prices alone. Rows with errors stop the apply unless "Skip rows with errors" is on; the apply is one transaction. Changing any price by import needs `menu.edit_prices`. | Task 3, Part F. |
+| 2026-10-20 | API-only for now: `PUT /api/admin/terminals/{id}/price-list` (`devices.manage`) and `PUT /api/admin/roles/{id}/permissions` (`permissions.manage`, audited). | The acceptance steps need them before the Terminals and Permissions screens exist. |
+| 2026-10-20 | The POS tables placeholder shows a read-only "Menu (for testing)" list (`web/src/pos/TestMenu.tsx`). **Remove it in the order-screen task.** | Task 3, Part E: check terminal prices before the order screen. |
 
 ## Idempotency
 
@@ -113,5 +122,7 @@ Each entry: date, decision, reason.
 - **Server installer:** a Windows installer for Nexagen Server (service + SQL Server Express) and a Linux package.
 - **Edit roles and permissions** (Permissions screen): until then, added roles can only be created in the database.
 - **Approvals on the admin site:** an action that needs approval can't be approved there yet (the approval pad needs a terminal).
+- **Remove the test menu list** (`web/src/pos/TestMenu.tsx`) with the order-screen task.
+- **CI runner image:** GitHub notes that `ubuntu-latest` moves to Ubuntu 26 from 19 Oct 2026; pin `ubuntu-24.04` if that causes trouble.
 - **Close the day:** `WorkPeriod` has the closing fields; closing comes with cash-up.
 - **Logout after settle:** `pos.logoutAfterSettle` exists but is not acted on until settle is built.
