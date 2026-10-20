@@ -21,13 +21,20 @@ public sealed class ReceiptBuilder
     private static readonly byte[] Init = [0x1B, 0x40];
     private static readonly byte[] CutPaper = [0x1D, 0x56, 0x42, 0x00];
 
+    /// <summary>ESC p 0 25 250: pulse the cash-drawer pin (connector pin 2), 50 ms on, 500 ms off.</summary>
+    public static readonly byte[] DrawerPulse = [0x1B, 0x70, 0x00, 0x19, 0xFA];
+
+    private readonly bool _cut;
+
     private readonly MemoryStream _bytes = new();
     private readonly StringBuilder _text = new();
 
-    public ReceiptBuilder(int columns)
+    /// <param name="cut">False for printers without a cutter: <see cref="Cut"/> only feeds paper.</param>
+    public ReceiptBuilder(int columns, bool cut = true)
     {
         if (columns < 16) throw new ArgumentOutOfRangeException(nameof(columns));
         Columns = columns;
+        _cut = cut;
         Write(Init);
     }
 
@@ -93,9 +100,24 @@ public sealed class ReceiptBuilder
 
     public ReceiptBuilder Cut()
     {
-        Write(CutPaper);
-        _text.AppendLine(CenterPad("[cut]"));
+        if (_cut)
+        {
+            Write(CutPaper);
+            _text.AppendLine(CenterPad("[cut]"));
+        }
+        else
+        {
+            Feed(4);
+            _text.AppendLine(new string('.', Columns));
+        }
         return this;
+    }
+
+    /// <summary>"1234567890123…" exactly the paper width, to check the width is set right.</summary>
+    public ReceiptBuilder Ruler()
+    {
+        var ruler = string.Concat(Enumerable.Range(0, Columns).Select(i => (char)('0' + (i + 1) % 10)));
+        return Text(ruler);
     }
 
     /// <summary>Prints the logo as a raster image, centred. Does nothing when there is no logo.</summary>
