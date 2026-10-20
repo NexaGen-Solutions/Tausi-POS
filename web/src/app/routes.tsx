@@ -3,6 +3,7 @@ import { AdminLayout } from '../admin/AdminLayout';
 import { AdminLoginPage } from '../admin/AdminLoginPage';
 import { ComingSoonPage } from '../admin/ComingSoonPage';
 import { adminNav } from '../admin/nav';
+import { DevicesPage } from '../admin/devices/DevicesPage';
 import { MenuPage } from '../admin/menu/MenuPage';
 import { StaffPage } from '../admin/staff/StaffPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
@@ -57,9 +58,10 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="menu" replace /> },
       { path: 'menu', element: <MenuPage /> },
+      { path: 'terminals', element: <DevicesPage /> },
       { path: 'staff', element: <StaffPage /> },
       ...adminNav
-        .filter((item) => item.path !== 'staff' && item.path !== 'menu')
+        .filter((item) => !['staff', 'menu', 'terminals'].includes(item.path))
         .map((item) => ({
           path: item.path,
           element: <ComingSoonPage title={t(item.label)} />,
