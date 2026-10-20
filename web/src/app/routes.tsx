@@ -6,6 +6,7 @@ import { adminNav } from '../admin/nav';
 import { DevicesPage } from '../admin/devices/DevicesPage';
 import { MenuPage } from '../admin/menu/MenuPage';
 import { StaffPage } from '../admin/staff/StaffPage';
+import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { OpenDayPage } from '../pos/OpenDayPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
@@ -60,8 +61,9 @@ export const routes: RouteObject[] = [
       { path: 'menu', element: <MenuPage /> },
       { path: 'terminals', element: <DevicesPage /> },
       { path: 'staff', element: <StaffPage /> },
+      { path: 'tables', element: <TablesAdminPage /> },
       ...adminNav
-        .filter((item) => !['staff', 'menu', 'terminals'].includes(item.path))
+        .filter((item) => !['staff', 'menu', 'terminals', 'tables'].includes(item.path))
         .map((item) => ({
           path: item.path,
           element: <ComingSoonPage title={t(item.label)} />,

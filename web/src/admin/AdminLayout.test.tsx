@@ -52,6 +52,7 @@ describe('admin layout', () => {
       'Staff and PINs',
       'Permissions',
       'Terminals and printers',
+      'Tables',
       'Reports',
       'Settings',
       'ERPNext sync',

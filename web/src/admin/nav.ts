@@ -8,6 +8,7 @@ export const adminNav = [
   { path: 'staff', label: 'admin.nav.staff' },
   { path: 'permissions', label: 'admin.nav.permissions' },
   { path: 'terminals', label: 'admin.nav.terminals' },
+  { path: 'tables', label: 'admin.nav.tables' },
   { path: 'reports', label: 'admin.nav.reports' },
   { path: 'settings', label: 'admin.nav.settings' },
   { path: 'erp', label: 'admin.nav.erp' },
