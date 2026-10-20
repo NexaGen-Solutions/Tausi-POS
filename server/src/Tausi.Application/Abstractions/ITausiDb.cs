@@ -42,6 +42,10 @@ public interface ITausiDb
     DbSet<ModifierOption> ModifierOptions { get; }
     DbSet<ModifierGroupAssignment> ModifierGroupAssignments { get; }
     DbSet<PriceChangeLog> PriceChangeLogs { get; }
+    DbSet<Area> Areas { get; }
+    DbSet<DiningTable> Tables { get; }
+    DbSet<Ticket> Tickets { get; }
+    DbSet<OrderLine> OrderLines { get; }
 
     DatabaseFacade Database { get; }
 
