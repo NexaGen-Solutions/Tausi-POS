@@ -36,7 +36,7 @@ public class SlipsTests
         doc.Text.Should().Contain("Mau's Village").And.Contain("Ticket Printer 1").And.Contain("192.168.1.50:9100")
             .And.Contain($"{paper} mm · {columns} columns").And.Contain("Bold line").And.Contain("Double-height line")
             .And.Contain("Centred line").And.Contain("Bill and dispense slips")
-            .And.Contain("2 x Tusker Lager (Cold)").And.Contain("Total includes VAT 16%")
+            .And.Contain("2 x Tusker Lager (Cold)").And.Contain("VAT 16%")
             .And.Contain("Counter A").And.Contain("20 Oct 2026").And.Contain("19:42:05").And.Contain("Test OK");
         Lines(doc).Should().OnlyContain(l => l.Length <= columns);
         Lines(doc).Count(l => l.Trim() == "[cut]").Should().Be(2, "one cut after the sample bill, one at the end");
@@ -50,6 +50,16 @@ public class SlipsTests
 
         foreach (var line in Lines(bill).Where(l => l.Trim() is not ("" or "[cut]")))
             Test(80).Text.Should().Contain(line);
+    }
+
+    [Theory]
+    [InlineData(42, "Total includes VAT 16%: KSh 106.21")]
+    [InlineData(32, "Includes VAT 16%      KSh 106.21")]
+    public void The_VAT_line_keeps_its_amount_on_one_line(int columns, string expected)
+    {
+        var bill = Slips.Bill(new BillSlip("B", null, "Table 7", "1042", 1, "edna", Slips.SampleLines, 770m, 16m, 106.21m, null, At), new SlipStyle(columns, true, null));
+
+        Lines(bill).Should().Contain(expected);
     }
 
     [Fact]

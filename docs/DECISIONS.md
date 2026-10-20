@@ -140,6 +140,7 @@ Each entry: date, decision, reason.
 - **Remove `/api/dev/void-probe`** and `DevVoidProbe` when the real void task lands.
 - **"Not printed · Retry":** the retry endpoints exist (`/api/admin/print-jobs/{id}/retry`); the POS banner should use them with the order screen. Waiters lack `devices.manage`, so decide which permission the POS retry needs.
 - **Real-hardware check:** `print_raw` on the Windows spooler and server-side Windows share printing compile in CI but are untested against a real printer until the owner runs RUNNING.md "Testing on real hardware".
+- **Redirect across paper widths:** a job stores its printed bytes, so a slip sent from a 58 mm printer to an 80 mm one keeps the 58 mm layout (and the other way, an 80 mm slip wraps on 58 mm paper). Rebuilding the slip for the new printer needs the slip data stored with the job; consider it with the order screen.
 - **Updater address in the lock-down:** add the update server's origin to the terminal's allowed origins once the updater has an endpoint.
 - **Approvals on the admin site:** `POST /api/auth/approve` needs a terminal. Supervisors on the admin site rarely need it, but decide whether to support it.
 - **Licence checks:** the `Licence` table exists; checking and the grace period come with the setup wizard.

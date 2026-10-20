@@ -71,7 +71,11 @@ public static class Slips
         foreach (var line in d.Lines) b.Columns2(LineText(line), Amount(line.Amount));
         b.Separator()
             .Columns2("Total", Money(d.Total, style.Currency), TextStyle.Bold | TextStyle.DoubleHeight)
-            .Text($"Total includes VAT {Qty(d.VatRate)}%: {Money(d.Vat, style.Currency)}");
+;
+        // The VAT amount is never split over two lines: on narrow paper the label is shortened.
+        var vatLine = $"Total includes VAT {Qty(d.VatRate)}%: {Money(d.Vat, style.Currency)}";
+        if (vatLine.Length <= style.Columns) b.Text(vatLine);
+        else b.Columns2($"Includes VAT {Qty(d.VatRate)}%", Money(d.Vat, style.Currency));
         if (!string.IsNullOrWhiteSpace(d.Footer)) b.Separator().Text(d.Footer, TextStyle.Center);
         return b;
     }
