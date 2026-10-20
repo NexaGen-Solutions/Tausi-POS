@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Nexagen.Application.Auditing;
 using Nexagen.Application.Auth;
 using Nexagen.Application.Day;
+using Nexagen.Application.Menu;
+using Nexagen.Application.Roles;
 using Nexagen.Application.Dev;
 using Nexagen.Application.Printers;
 using Nexagen.Application.Printing;
@@ -24,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<SessionKeeper>();
         services.AddScoped<PinRules>();
         services.AddScoped<StaffAccess>();
+        services.AddScoped<MenuAccess>();
 
         // Use cases: one class per action.
         services.AddScoped<PinLogin>();
@@ -38,6 +41,22 @@ public static class DependencyInjection
         services.AddScoped<ResetStaffPin>();
         services.AddScoped<DeactivateStaff>();
         services.AddScoped<ReactivateStaff>();
+        services.AddScoped<GetAdminMenu>();
+        services.AddScoped<GetPriceLog>();
+        services.AddScoped<GetPosMenu>();
+        services.AddScoped<SaveCategory>();
+        services.AddScoped<ReorderCategories>();
+        services.AddScoped<DeactivateCategory>();
+        services.AddScoped<SaveItem>();
+        services.AddScoped<SetItemPrices>();
+        services.AddScoped<SaveGroup>();
+        services.AddScoped<SetOptionPrices>();
+        services.AddScoped<SavePriceList>();
+        services.AddScoped<MakeDefaultPriceList>();
+        services.AddScoped<ExportMenu>();
+        services.AddScoped<MenuImport>();
+        services.AddScoped<SetTerminalPriceList>();
+        services.AddScoped<SetRolePermission>();
         services.AddScoped<AdminLogin>();
         services.AddScoped<IssueApproval>();
         services.AddScoped<StartPairing>();

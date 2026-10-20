@@ -5,6 +5,7 @@ using Nexagen.Application.Security;
 using Nexagen.Application.Settings;
 using Nexagen.Domain.Devices;
 using Nexagen.Domain.Ledger;
+using Nexagen.Domain.Menu;
 using Nexagen.Domain.Money;
 using Nexagen.Domain.People;
 using Nexagen.Domain.Settings;
@@ -48,6 +49,12 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
                     Value = DefaultPermissions.For(name, key),
                 });
             }
+        }
+
+        if (!await db.PriceLists.AnyAsync(ct))
+        {
+            db.PriceLists.Add(new PriceList { Name = PriceList.StandardName, IsDefault = true });
+            db.PriceLists.Add(new PriceList { Name = PriceList.Price2Name });
         }
 
         var codes = await db.LedgerAccounts.Select(a => a.Code).ToListAsync(ct);
@@ -127,6 +134,7 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
 
         await SeedDevices(filePrinters, ct);
         await db.SaveChangesAsync(ct);
+        await SeedDemoMenu(ct);
         return created;
     }
 
@@ -215,6 +223,60 @@ public sealed class Seeder(INexagenDb db, IPinHasher hasher, ILogger<Seeder> log
             EntityId = user.Id.ToString(),
             NewValueJson = "{\"mustChangePin\":true,\"by\":\"command line\"}",
         });
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    /// <summary>
+    /// The demo menu (Mau's Village items and Standard prices), only when the menu is empty.
+    /// Returns false when there was already a menu.
+    /// </summary>
+    public async Task<bool> SeedDemoMenu(CancellationToken ct)
+    {
+        await SeedBase(ct);
+        if (await db.Categories.AnyAsync(ct) || await db.MenuItems.AnyAsync(ct)) return false;
+
+        var standard = await db.PriceLists.FirstAsync(l => l.IsDefault, ct);
+        var categories = new Dictionary<string, Category>();
+        var order = 0;
+        foreach (var name in new[] { "Beers", "Spirits", "Soft drinks", "Water & juice", "Pool", "Food" })
+        {
+            var category = new Category { Name = name, SortOrder = order += 10 };
+            categories[name] = category;
+            db.Categories.Add(category);
+        }
+
+        var items = new (string Name, string Category, decimal Price)[]
+        {
+            ("Tusker Lager", "Beers", 250), ("Guiness", "Beers", 300), ("White Cap Lager", "Beers", 280),
+            ("Balozi Lager", "Beers", 250), ("Heineken", "Beers", 300), ("Faxe Can", "Beers", 175),
+            ("Viceroy 375ml", "Spirits", 900), ("Gilbeys 350ml", "Spirits", 900),
+            ("Sodas 300ml", "Soft drinks", 100),
+            ("Mau's Water 1L", "Water & juice", 100), ("Pineapple Punch", "Water & juice", 270), ("Delmonte", "Water & juice", 400),
+            ("Pool Table", "Pool", 40),
+        };
+        var sort = new Dictionary<string, int>();
+        foreach (var (name, category, price) in items)
+        {
+            sort[category] = sort.GetValueOrDefault(category) + 10;
+            var item = new MenuItem
+            {
+                Name = name,
+                ShortName = MenuItem.DefaultShortName(name),
+                CategoryId = categories[category].Id,
+                SortOrder = sort[category],
+            };
+            item.Prices.Add(new MenuItemPrice { MenuItemId = item.Id, PriceListId = standard.Id, Price = price });
+            db.MenuItems.Add(item);
+        }
+
+        var temperature = new ModifierGroup { Name = "Temperature", MinSelect = 1, MaxSelect = 1, SortOrder = 10 };
+        temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Cold", SortOrder = 10 });
+        temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Warm", SortOrder = 20 });
+        db.ModifierGroups.Add(temperature);
+        foreach (var category in new[] { "Beers", "Soft drinks" })
+            db.ModifierGroupAssignments.Add(new ModifierGroupAssignment { GroupId = temperature.Id, CategoryId = categories[category].Id });
+
         await db.SaveChangesAsync(ct);
         return true;
     }
