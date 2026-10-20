@@ -59,6 +59,8 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
     queryKey: ['price-log', item?.id],
     queryFn: () => api<PriceLogEntry[]>(`/api/admin/menu/price-log?itemId=${item!.id}&take=10`),
     enabled: !!item,
+    // Always fresh: it is opened right after prices are saved.
+    staleTime: 0,
   });
 
   const shownShort = shortName || name.trim().slice(0, 18);

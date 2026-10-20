@@ -141,6 +141,7 @@ export function MenuPage() {
     setStale(false);
     setPanel(null);
     void refresh();
+    void queries.invalidateQueries({ queryKey: ['price-log'] });
   };
   const changed = () => void refresh();
 
