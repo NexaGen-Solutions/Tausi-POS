@@ -64,24 +64,28 @@ cd web && npm run dev     # http://localhost:5173, proxies /api, /hubs and /file
 
 1. Open <http://localhost:5173/pos> (or `:5080/pos`). A browser that is not paired shows a
    6-digit **pairing code**.
-2. An admin enters the code. The admin screen for this comes in a later task; for now use the API:
-
-   ```bash
-   curl -c /tmp/nx.cookies -H 'content-type: application/json' \
-     -d "{\"userName\":\"admin\",\"password\":\"$TAUSI_ADMIN_PASSWORD\"}" \
-     http://localhost:5080/api/admin/login
-   curl -b /tmp/nx.cookies -H 'content-type: application/json' \
-     -d '{"code":"123456","terminalName":"Counter A"}' \
-     http://localhost:5080/api/terminals/pair
-   ```
-
-3. Within two seconds the browser moves on to the PIN pad for **Counter A**. Log in with a PIN
+2. Sign in to <http://localhost:5173/admin> as `admin` and open **Terminals and printers**.
+   Press **Pair a terminal**, type the code, choose the terminal (for example **Counter A**, or
+   **A new terminal** with a name) and press **Pair**. Codes last 10 minutes and work once; five
+   wrong codes in 5 minutes block that admin from pairing for 5 minutes. Pairing a terminal that
+   is already paired asks first and logs the old device out.
+3. Within two seconds the browser shows "Paired as Counter A" and moves on to the PIN pad. Log in with a PIN
    from the seed (tap the keypad or type it; it submits by itself at 4 digits).
 4. If no day is open, MAU (Supervisor) or Administrator gets **Open the day**; a waiter is told to
    ask a supervisor. Once the day is open you reach the table map placeholder. Other terminals'
    PIN screens show "Work period open since …" straight away.
 
-The device token is kept in the browser's `localStorage` (`tausi.device`). Clear it to pair again.
+The device token is kept in the browser's `localStorage` (`tausi.device`). Clear it, or press
+**Edit → Revoke** for the terminal on the admin site, to pair again: a revoked terminal that is
+running goes back to its pairing screen within two seconds.
+
+For the curl examples below, sign in to the admin API once:
+
+```bash
+curl -c /tmp/nx.cookies -H 'content-type: application/json' \
+  -d "{\"userName\":\"admin\",\"password\":\"$TAUSI_ADMIN_PASSWORD\"}" \
+  http://localhost:5080/api/admin/login
+```
 
 ### Staff and PINs (admin site)
 
@@ -104,7 +108,7 @@ dotnet run --project src/Tausi.Api -- require-pin-change edna
 ### Idle logout
 
 Terminals log out after 10 minutes without use. To try it quickly, set it to 1 minute (admin
-cookie from the pairing step):
+cookie from the sign-in above):
 
 ```bash
 curl -s -b /tmp/nx.cookies http://localhost:5080/api/settings/business > /tmp/settings.json
@@ -120,7 +124,7 @@ Open **Menu and prices** on the admin site to edit items, prices (with the price
 groups and price lists, and to import or export CSV. A logged-in terminal shows a temporary
 "Menu (for testing)" list under the table-map placeholder; it refreshes when the menu changes.
 
-For now these are API only (admin cookie from the pairing step):
+For now these are API only (admin cookie from the sign-in above):
 
 ```bash
 # A terminal sells from another price list (null: back to the default)
@@ -131,8 +135,7 @@ curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
   -d '{"permissionKey":"menu.edit","value":"Allowed"}' http://localhost:5080/api/admin/roles/<role id>/permissions
 ```
 
-Ids: price lists in `GET /api/admin/menu`, terminals in `GET /api/admin/terminals`, roles in
-`GET /api/admin/staff` (`roleId`, `assignableRoles`).
+Role ids are in `GET /api/admin/staff` (`roleId`, `assignableRoles`).
 
 ### Admin site
 
@@ -160,20 +163,30 @@ curl -X POST -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H "X-Approva
 Any write with an `Idempotency-Key` header returns the original answer when repeated
 (header `Idempotency-Replayed: true`), and 422 if the same key comes with a different body.
 
-### Printing
+### Terminals and printers (admin site)
 
 The demo has four printers, one per terminal (Ticket Printer 1, Pillar 1, Ticket Printer 2,
 Pillar 2). Each terminal dispenses on its own printer; receipts print at the counter (Counter A
 and Pillar 1 on Ticket Printer 1, Counter B and Pillar 2 on Ticket Printer 2). Running
-`seed --demo` again converts a database seeded with an earlier printer setup. In development the demo printers use the **File** connection, so every slip is written as text
-to `server/src/Tausi.Api/print-output/`. (A database seeded before this change: run
-`seed --demo` again in Development and the untouched demo printers move to File.) Test print:
+`seed --demo` again converts a database seeded with an earlier printer setup. In development the
+demo printers use the **File** connection, so every slip is written as text to
+`server/src/Tausi.Api/print-output/`.
 
-```bash
-curl -s http://localhost:5080/api/health      # printer ids
-curl -b /tmp/nx.cookies -X POST http://localhost:5080/api/printers/<printer id>/test
-ls server/src/Tausi.Api/print-output/
-```
+Open **Terminals and printers** on the admin site:
+
+- The terminals table shows each terminal live: Online, Offline ("last seen 3 min ago", 30 s after
+  it disconnects) or Revoked, with who is logged in. **Edit** sets the name, price list, dispense
+  printer and header, receipt printer and active, with a routing preview.
+- **Add printer** / **Edit**: Network (IP and port), Windows share (`\\PC\Share`), Via terminal
+  (the terminal it is plugged into; the Windows printer name comes from a list the terminal app
+  reports) or File. **Check connection** says "Reachable" or what is wrong. Network printers are
+  checked every 60 s.
+- **Test print** prints a column ruler, text styles and a sample bill and dispense slip.
+- **Failed jobs (n)**: Retry, Send to another printer, Discard (with a reason) and Retry all.
+
+To see a failure: add a Network printer at `127.0.0.1:9` (nothing listens there), press Check
+connection, then Test print. After about 15 s the job is in Failed jobs; send it to Ticket
+Printer 1 and it appears in `print-output/`.
 
 `Tausi__Printing__Transport=File` sends every printer's jobs to files, whatever its connection.
 
@@ -186,6 +199,8 @@ npm run tauri dev
 
 This starts the Vite dev server and opens the terminal window at 1280×800 (set
 `TAUSI_FULLSCREEN=1` for full screen without a title bar, as on the counters). Pair it as above.
+The app only talks to the server it was paired with. To change the server address, press
+**Change server address** on its setup screen and sign in with an admin-site login first.
 In development the window always loads the Vite dev server; the device token is kept in the
 app's store (`tausi.json` in the app data folder).
 
@@ -220,6 +235,31 @@ working:
   `com.nexagensolutions.tausipos`). On first start the new app copies the old app's settings, so
   the terminal stays paired. Uninstall the old "Nexagen Terminal" app afterwards so only one
   starts with Windows.
+
+### Testing on real hardware
+
+1. **Build the installer.** Every CI run of a branch builds it: open the run on GitHub and
+   download the **tausi-terminal-windows** artifact (kept 14 days), which holds
+   `TausiPOS-Setup.exe`. A `terminal-v*` tag runs the release workflow, which attaches it to a
+   release. Or build it on a Windows PC with Rust, Node
+   and the WebView2 runtime: `cd web && npm ci && npm run build`, then
+   `cd ../terminal && npm ci && npm run tauri build`. The installer is in
+   `terminal/src-tauri/target/release/bundle/nsis/`.
+2. **Install and pair.** Install it on a Windows 10/11 counter PC on the same network as the dev
+   server. At first start enter the server address (e.g. `http://<dev PC IP>:5080`; open port
+   5080 in the dev PC's firewall and run the server with `--urls http://0.0.0.0:5080`). The app
+   shows a code; pair it from `/admin/terminals`.
+3. **Set up the printer.**
+   - **USB:** install the printer's Windows driver, then **Add printer → Via terminal (USB)**,
+     choose the counter PC and pick the Windows printer name from the list. Check connection.
+   - **Network:** **Add printer → Network**, type its IP (port 9100), then **Check connection**.
+
+   Then set it as the terminal's receipt or dispense printer in **Edit**.
+4. **Test print.** The column ruler must fit exactly on one line (42 characters on 80 mm, 32 on
+   58 mm). If it wraps or stops short, the paper width is wrong. Check the cut, the bold and
+   double-height lines, and the logo if one is set.
+5. **Failure and retry.** Unplug the printer (or switch it off) and test print: the job shows in
+   **Failed jobs**. Plug it back in, press **Retry**, and it prints.
 
 ## 4. Tests
 
