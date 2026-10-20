@@ -31,7 +31,7 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                 table: "Terminals",
                 type: "text",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "[]");
 
             migrationBuilder.AddColumn<DateTimeOffset>(
                 name: "RevokedAt",

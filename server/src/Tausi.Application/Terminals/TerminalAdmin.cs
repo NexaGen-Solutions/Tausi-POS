@@ -59,6 +59,14 @@ public sealed class TerminalAdmin(
     public Task<PermissionGrant> Require(CancellationToken ct) =>
         permissions.Require(session.RequireUser(), PermissionKeys.DevicesManage, approval.ApprovalToken, ct);
 
+    /// <summary>The printer names the terminal reported; blank or unreadable means none reported yet.</summary>
+    public static IReadOnlyList<string> LocalPrinters(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try { return JsonSerializer.Deserialize<List<string>>(json) ?? []; }
+        catch (JsonException) { return []; }
+    }
+
     public async Task<IReadOnlyList<TerminalRow>> Rows(Guid? onlyId, CancellationToken ct)
     {
         var terminals = await db.Terminals.AsNoTracking()
@@ -91,7 +99,7 @@ public sealed class TerminalAdmin(
                 t.DispensePrinterId, t.DispensePrinter?.Name, t.DispenseHeader, t.EffectiveDispenseHeader,
                 t.ReceiptPrinterId, t.ReceiptPrinter?.Name,
                 t.Active, t.IsPaired,
-                JsonSerializer.Deserialize<List<string>>(t.LocalPrintersJson) ?? [],
+                LocalPrinters(t.LocalPrintersJson),
                 PrintRouting.Preview(t.Name, t.ReceiptPrinter?.Name, t.EffectiveDispenseHeader, t.DispensePrinter?.Name),
                 t.RowVersion);
         }).ToList();
@@ -170,19 +178,22 @@ public sealed class RevokeTerminal(ITausiDb db, TerminalAdmin admin, SessionKeep
         var grant = await admin.Require(ct);
         var terminal = await db.Terminals.FirstOrDefaultAsync(t => t.Id == id, ct)
             ?? throw new NotFoundException("Terminal not found.");
-        await Revoke(db, sessions, events, terminal, clock.GetUtcNow(), ct);
+        await Revoke(db, sessions, terminal, clock.GetUtcNow(), ct);
         audit.Write(new AuditRecord("terminal.revoked", "Terminal", id.ToString(),
             new { paired = true }, new { paired = false }, grant.ApprovedByUserId));
         await db.SaveChangesAsync(ct);
+        await events.Publish(PosEventNames.TerminalRevoked, new { terminalId = id }, ct);
         await events.Publish(PosEventNames.TerminalStatus, new { terminalId = id }, ct);
     }
 
-    /// <summary>Invalidates the token, ends sessions there, and tells the app (it returns to pairing).</summary>
-    public static async Task Revoke(ITausiDb db, SessionKeeper sessions, IPosEvents events, Terminal terminal, DateTimeOffset now, CancellationToken ct)
+    /// <summary>
+    /// Invalidates the token and ends sessions there. The caller saves, then publishes
+    /// <c>terminal.revoked</c>: the app checks its token when the event arrives, so it must be gone by then.
+    /// </summary>
+    public static async Task Revoke(ITausiDb db, SessionKeeper sessions, Terminal terminal, DateTimeOffset now, CancellationToken ct)
     {
         terminal.DeviceTokenHash = null;
         terminal.RevokedAt = now;
         await sessions.EndAllForTerminal(terminal.Id, SessionEndReasons.Revoked, ct);
-        await events.Publish(PosEventNames.TerminalRevoked, new { terminalId = terminal.Id }, ct);
     }
 }

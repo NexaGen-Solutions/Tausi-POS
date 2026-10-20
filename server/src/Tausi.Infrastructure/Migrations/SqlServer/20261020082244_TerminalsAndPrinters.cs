@@ -31,7 +31,7 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                 table: "Terminals",
                 type: "nvarchar(max)",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "[]");
 
             migrationBuilder.AddColumn<DateTimeOffset>(
                 name: "RevokedAt",

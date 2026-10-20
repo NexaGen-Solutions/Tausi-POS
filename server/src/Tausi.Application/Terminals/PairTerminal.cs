@@ -113,7 +113,7 @@ public sealed class PairTerminal(
                 throw new DomainException($"Your licence allows {licence.TerminalLimit} terminals.", PairingCodes.LicenceLimit);
         }
 
-        if (replacing) await RevokeTerminal.Revoke(db, sessions, events, terminal, now, ct);
+        if (replacing) await RevokeTerminal.Revoke(db, sessions, terminal, now, ct);
 
         var deviceToken = SecureTokens.New();
         terminal.DeviceTokenHash = SecureTokens.Hash(deviceToken);
@@ -126,6 +126,7 @@ public sealed class PairTerminal(
             OldValue: new { paired = replacing }, NewValue: new { paired = true, terminal.Name, replacedDevice = replacing },
             ApprovedByUserId: grant.ApprovedByUserId));
         await db.SaveChangesAsync(ct);
+        if (replacing) await events.Publish(PosEventNames.TerminalRevoked, new { terminalId = terminal.Id }, ct);
         await events.Publish(PosEventNames.TerminalStatus, new { terminalId = terminal.Id }, ct);
         return new PairingCompleted(terminal.Id, terminal.Name);
     }

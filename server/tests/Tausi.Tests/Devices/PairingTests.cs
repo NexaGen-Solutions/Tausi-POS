@@ -96,7 +96,14 @@ public class PairingTests : IAsyncLifetime
         var (second, s2) = await NewCode();
         (await CodeOf(() => Pair(second, terminal.Id))).Should().Be(PairingCodes.AlreadyPaired);
 
+        string? hashAtEvent = null;
+        _f.Events.OnPublish = name =>
+        {
+            if (name == PosEventNames.TerminalRevoked)
+                hashAtEvent = _f.Db.Terminals.AsNoTracking().Single(t => t.Id == terminal.Id).DeviceTokenHash;
+        };
         await Pair(second, terminal.Id, confirm: true);
+        hashAtEvent.Should().NotBe(SecureTokens.Hash(oldToken), "the old device checks its token when the event arrives");
         var newToken = (await Claim(s2)).DeviceToken!;
 
         _f.Terminal("Pillar 3").DeviceTokenHash.Should().Be(SecureTokens.Hash(newToken)).And.NotBe(SecureTokens.Hash(oldToken));
@@ -113,7 +120,15 @@ public class PairingTests : IAsyncLifetime
         var session = await _f.Get<SessionKeeper>().Start(_f.Admin.Id, counterA.Id, CancellationToken.None);
         await _f.Db.SaveChangesAsync();
 
+        // The app checks its token when terminal.revoked arrives, so the token must already be gone from the database.
+        string? hashInDatabaseAtEvent = "not published";
+        _f.Events.OnPublish = name =>
+        {
+            if (name == PosEventNames.TerminalRevoked)
+                hashInDatabaseAtEvent = _f.Db.Terminals.AsNoTracking().Single(t => t.Id == counterA.Id).DeviceTokenHash;
+        };
         await _f.Get<RevokeTerminal>().Execute(counterA.Id, CancellationToken.None);
+        hashInDatabaseAtEvent.Should().BeNull();
 
         var revoked = _f.Terminal("Counter A");
         revoked.DeviceTokenHash.Should().BeNull();
@@ -123,6 +138,23 @@ public class PairingTests : IAsyncLifetime
         _f.Events.Published.Should().Contain(e => e.Name == PosEventNames.TerminalRevoked);
         (await _f.Get<ListTerminals>().Execute(CancellationToken.None)).Single(t => t.Name == "Counter A").Status
             .Should().Be(TerminalStatus.Revoked);
+    }
+
+    [Theory]
+    [InlineData("", new string[0])]
+    [InlineData("not json", new string[0])]
+    [InlineData("[\"EPSON TM-T20III\"]", new[] { "EPSON TM-T20III" })]
+    public void The_reported_printer_list_reads_blank_or_broken_values_as_none(string json, string[] expected) =>
+        TerminalAdmin.LocalPrinters(json).Should().Equal(expected);
+
+    [Fact]
+    public async Task Terminals_migrated_with_an_empty_printer_list_still_list()
+    {
+        _f.Db.Terminals.Single(t => t.Name == "Counter A").LocalPrintersJson = "";
+        await _f.Db.SaveChangesAsync();
+
+        (await _f.Get<ListTerminals>().Execute(CancellationToken.None)).Single(t => t.Name == "Counter A").LocalPrinters
+            .Should().BeEmpty();
     }
 
     [Fact]
