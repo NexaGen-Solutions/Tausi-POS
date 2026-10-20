@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Nexagen Terminal",
+  "productName": "Tausi POS",
   "version": "0.1.0",
-  "identifier": "com.nexagen.terminal",
+  "identifier": "com.nexagensolutions.tausipos",
   "build": {
     "beforeDevCommand": "npm --prefix ../web run dev",
     "devUrl": "http://localhost:5173",
@@ -17,7 +17,14 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "publisher": "NexaGen Solutions",
+    "copyright": "© NexaGen Solutions",
+    "category": "Business",
+    "shortDescription": "Tausi POS terminal for counter PCs",
+    "longDescription": "Tausi POS by NexaGen Solutions: the full-screen point-of-sale terminal for bars and restaurants. It shows the POS screens served by Tausi Server on the local network.",
+    "targets": [
+      "nsis"
+    ],
     "createUpdaterArtifacts": false,
     "icon": [
       "icons/32x32.png",

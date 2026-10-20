@@ -1,11 +1,11 @@
 [package]
-name = "nexagen-terminal"
+name = "tausi-terminal"
 version = "0.1.0"
-description = "Nexagen Terminal: the full-screen POS app for counter PCs"
+description = "Tausi POS terminal: the full-screen POS app for counter PCs, by NexaGen Solutions"
 edition = "2021"
 
 [lib]
-name = "nexagen_terminal_lib"
+name = "tausi_terminal_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

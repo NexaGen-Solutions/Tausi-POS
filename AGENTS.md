@@ -1,13 +1,15 @@
-# AGENTS.md — Nexagen POS
+# AGENTS.md — Tausi POS
+
+**Tausi POS** is a product of **NexaGen Solutions** (nexagensolutions.com). Use "Tausi POS" for the product everywhere a user can see it, and "NexaGen Solutions" as the publisher and company (installers, About screen, licence, copyright). Code names use the prefix `Tausi`.
 
 Read this file before every task. It holds the rules that apply to **every** change in this repo. Task prompts describe *what* to build; this file describes *how*.
 
-## What Nexagen POS is
+## What Tausi POS is
 
 A touch POS **product** for bars and restaurants. Each business runs its own install:
 
-- **Nexagen Server**: a .NET service on the business's own server PC (Windows or Linux). It holds all data, business rules and printing.
-- **Nexagen Terminal**: a full-screen Tauri app on each counter PC (Windows 10/11) that shows the POS screens.
+- **Tausi Server**: a .NET service on the business's own server PC (Windows or Linux). It holds all data, business rules and printing.
+- **Tausi Terminal**: a full-screen Tauri app on each counter PC (Windows 10/11) that shows the POS screens.
 - **Admin site**: the same web UI, opened in a browser on the LAN, for back-office work.
 
 The first customer is **Mau's Village**, a bar in Kenya. Nothing in the code may hard-code that name. The business name, logo, address, VAT rate and receipt footer come from `BusinessSettings`.
@@ -31,13 +33,13 @@ Development happens on **Ubuntu**. Everything except the Windows installer must 
 
 ```
 server/
-  Nexagen.sln
-  src/Nexagen.Domain/          entities, value objects, business rules (no EF, no ASP.NET)
-  src/Nexagen.Application/     use cases (one class per action), permission checks, DTOs
-  src/Nexagen.Infrastructure/  EF Core DbContext + migrations, printing transports, ledger posting, file storage
-  src/Nexagen.Api/             HTTP endpoints, SignalR hubs, auth, startup, static web files
-  tests/Nexagen.Tests/         unit tests (Domain + Application)
-  tests/Nexagen.IntegrationTests/  API + database tests (Testcontainers)
+  Tausi.sln
+  src/Tausi.Domain/          entities, value objects, business rules (no EF, no ASP.NET)
+  src/Tausi.Application/     use cases (one class per action), permission checks, DTOs
+  src/Tausi.Infrastructure/  EF Core DbContext + migrations, printing transports, ledger posting, file storage
+  src/Tausi.Api/             HTTP endpoints, SignalR hubs, auth, startup, static web files
+  tests/Tausi.Tests/         unit tests (Domain + Application)
+  tests/Tausi.IntegrationTests/  API + database tests (Testcontainers)
 web/
   src/shared/   api client, auth/session, ui components, design tokens, formatting (money, dates)
   src/pos/      terminal screens
@@ -97,6 +99,7 @@ The hub is `/hubs/pos`, and clients join the group `business`. Events are named 
 - **Tests are required** for every business rule you add. Money, permissions, printing order, idempotency and ledger balance must have unit tests. API endpoints need an integration test.
 - **Definition of done:** `dotnet test` passes, `npm test` passes, `npm run lint` passes, the app starts with `docs/RUNNING.md` steps, and the screen matches its wireframe.
 - **Commits:** small and in conventional style (`feat(order): print new items only`). One task per branch, named `screen/<number>-<name>` or `foundation/<part>`.
-- **Never merge into main or create release tags.** Finish on your task branch, push it, and stop. The owner reviews and merges.
+- **Never merge into `main` or create release tags.** Finish on your task branch, push it, and stop. The owner reviews and merges.
+- **Never commit build output.** `target/`, `bin/`, `obj/`, `node_modules/` and `dist/` must be in `.gitignore`; check `git status` before every commit.
 - **Never commit secrets.** Dev settings go in `appsettings.Development.json` with fake values; real secrets come from environment variables.
 - **At the end of a task, reply with:** what you built, how to try it (exact commands and the seed PINs to use), the tests added, and anything left as a follow-up.

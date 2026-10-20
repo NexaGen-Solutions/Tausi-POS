@@ -58,7 +58,7 @@ function build(): HubConnection {
 
   // A "via terminal" printer is plugged into this PC: print here and tell the server how it went.
   hub.on('print.job', async (job: { printer: string; dataBase64: string }) => {
-    if (!isTauri()) return { ok: false, error: 'This is not a Nexagen Terminal app.' };
+    if (!isTauri()) return { ok: false, error: 'This is not a Tausi Terminal app.' };
     try {
       await printRaw(job.printer, job.dataBase64);
       return { ok: true };

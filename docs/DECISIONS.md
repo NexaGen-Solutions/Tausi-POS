@@ -109,8 +109,24 @@ Each entry: date, decision, reason.
 | 2026-10-20 | After login the terminal goes to `/pos/day`, which moves straight on to `/pos/tables` when the day is open, or offers Open the day (users with `day.open_close`) or "Ask a supervisor" with Back (others; Back logs out). | One place decides what comes after login. |
 | 2026-10-19 | `/api/dev/void-probe` (guarded by `order.void`) exists only in Development and Testing. | The task asks for a temporary test-only endpoint to prove the approval flow. |
 
+## Rename to Tausi POS (R1)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-20 | Renamed product to Tausi POS (publisher NexaGen Solutions). Code prefix Tausi. Old env vars accepted as fallback; terminal store migrated from the old app identifier. | The owner's rebrand (task R1). |
+| 2026-10-20 | Old names keep working with a one-time warning each: `NEXAGEN_*` variables (`LegacyNames.Environment`), the `Nexagen` settings section and `ConnectionStrings:Nexagen` (copied to the new names in a configuration source placed just before the app's environment variables, so they override appsettings.json defaults while settings under the new names still win). | Existing installs and dev machines start unchanged after the upgrade. |
+| 2026-10-20 | Dev database `tausipos` (user `tausi`) in new Docker volumes `tausi-pgdata` / `tausi-mssqldata`; SQL Server production name `TausiPOS`. The old dev database was `nexagen`, not `NexagenPOS` as the task assumed. | Postgres names are lower case by convention. New volumes, because an existing volume only has the old `nexagen` user; the old data stays in the old volumes. |
+| 2026-10-20 | A dev checkout keeps server secrets in `server/src/<Api project>/data/`, which git does not move with the renamed folder. On start, when the (relative) data folder is missing and `../Nexagen.Api/<same path>` exists, it is copied once. Absolute data folders (production) are never touched. | Without it a dev server would generate a new PIN pepper and every existing PIN would stop working. |
+| 2026-10-20 | Kept on purpose: the data-protection application name `Nexagen`, the PIN-session token issuer `nexagen` and the admin cookie name `nexagen_admin`. | They are not visible to users. Changing them would invalidate protected data, end every PIN session on the terminals and sign every admin out on upgrade, which the rename must not do. |
+| 2026-10-20 | The browser's `nexagen.device` / `nexagen.session` keys move to `tausi.device` / `tausi.session`; the old key is read once and removed. The terminal app copies `nexagen.json` from the old identifier's folder (`com.nexagen.terminal`) to `tausi.json` in the new one (`com.nexagensolutions.tausipos`) when it has no store yet; it never overwrites. | Terminals and browsers stay paired across the upgrade. |
+| 2026-10-20 | Windows service `TausiPOSServer` ("Tausi POS Server", "Tausi POS server by NexaGen Solutions"); installer published as `TausiPOS-Setup.exe`; workflows "Tausi POS CI" and "Tausi POS terminal release". The new installer does not remove an old "Nexagen Terminal" install; RUNNING.md says to uninstall it. | As specified. No terminal has been deployed with the old name yet. |
+| 2026-10-20 | `print.poweredByFooter` (default false) adds a centred "Powered by Tausi POS" line through `PoweredByFooter.AddTo`. `main` has no bill or receipt layouts yet, so for now it shows on the test print when on; the bill and receipt layouts call it when they land. | Customer slips carry the business's name, not ours, unless the owner opts in. |
+
 ## Follow-ups
 
+- **Powered-by footer on bills and receipts:** call `PoweredByFooter.AddTo` from the bill and receipt layouts (the task 4 branch has them in `Slips`), and add the toggle to Settings → Printing when that screen is built.
+- **LICENSE:** the repo has no LICENSE file; the owner to choose the licence text ("NexaGen Solutions" as the copyright holder).
+- **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
 - **Terminal printing (Rust):** `print_raw` in `terminal/src-tauri/src/lib.rs` is a stub. Implement RAW printing to the local Windows queue (OpenPrinter / StartDocPrinter "RAW" / WritePrinter).
 - **Updater:** the updater plugin is installed but has no public key or endpoint yet (`plugins.updater` in `tauri.conf.json`). Generate signing keys, publish `latest.json`, turn on `createUpdaterArtifacts`.
 - **Tighten the Tauri remote capability** from `http(s)://*:*/*` to the paired server's origin (e.g. add the capability at runtime after pairing).

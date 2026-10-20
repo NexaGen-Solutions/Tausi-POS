@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tausi.Application\Tausi.Application.csproj" />
+    <ProjectReference Include="..\Tausi.Infrastructure\Tausi.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Publishing ships the built web app (web/dist) as wwwroot. Build the web app first. -->
+  <Target Name="CopyWebApp" AfterTargets="Publish" Condition="Exists('$(MSBuildProjectDirectory)/../../../web/dist/index.html')">
+    <ItemGroup>
+      <WebDist Include="$(MSBuildProjectDirectory)/../../../web/dist/**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WebDist)" DestinationFiles="@(WebDist->'$(PublishDir)wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+</Project>

@@ -1,0 +1,58 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Tausi.Application.Abstractions;
+using Tausi.Application.Files;
+using Tausi.Application.Ledger;
+using Tausi.Application.Printing;
+using Tausi.Application.Security;
+using Tausi.Infrastructure.Files;
+using Tausi.Infrastructure.Ledger;
+using Tausi.Infrastructure.Persistence;
+using Tausi.Infrastructure.Platform;
+using Tausi.Infrastructure.Printing;
+using Tausi.Infrastructure.Security;
+using Tausi.Infrastructure.Seeding;
+
+namespace Tausi.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<TausiOptions>(config.GetSection(TausiOptions.Section));
+        services.Configure<DatabaseOptions>(config.GetSection("Database"));
+
+        var provider = config.GetSection("Database").Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Postgres;
+        var connection = config.GetConnectionString(TausiOptions.ConnectionStringName)
+            ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set.");
+        switch (provider)
+        {
+            case DatabaseProvider.SqlServer:
+                services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(connection));
+                services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
+                break;
+            default:
+                services.AddDbContext<PostgresTausiDbContext>(o => o.UseNpgsql(connection));
+                services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<PostgresTausiDbContext>());
+                break;
+        }
+        services.AddScoped<ITausiDb>(sp => sp.GetRequiredService<TausiDbContext>());
+
+        services.AddSingleton<ServerSecrets>();
+        services.AddSingleton<IPinHasher, PinHasher>();
+        services.AddScoped<ILedgerPostingService, LedgerPostingService>();
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
+        services.AddScoped<Seeder>();
+
+        services.AddScoped<IPrinterTransport, Network9100Transport>();
+        services.AddScoped<IPrinterTransport, WindowsShareTransport>();
+        services.AddScoped<IPrinterTransport, ViaTerminalTransport>();
+        services.AddScoped<IPrinterTransport, FilePrinterTransport>();
+        services.AddScoped<PrintJobProcessor>();
+        services.AddScoped<ILogoProvider, SkiaLogoProvider>();
+        services.AddHostedService<PrintDispatcher>();
+        services.AddHostedService<HousekeepingService>();
+        return services;
+    }
+}

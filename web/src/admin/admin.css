@@ -76,6 +76,12 @@
   color: var(--color-text-secondary);
   font-size: 15px;
 }
+.admin__about {
+  margin: var(--space-3) 0 0;
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
 .admin__main {
   min-width: 0;
 }

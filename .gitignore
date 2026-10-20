@@ -7,16 +7,18 @@ TestResults/
 
 # Node
 node_modules/
-web/dist/
+dist/
 coverage/
 
-# Tauri / Rust
-terminal/src-tauri/target/
+# Tauri / Rust (any crate's build folder)
+target/
 terminal/src-tauri/gen/schemas/
 
 # Runtime data (dev)
-server/src/Nexagen.Api/data/
-server/src/Nexagen.Api/wwwroot/
+server/src/Tausi.Api/data/
+server/src/Tausi.Api/wwwroot/
+# Left behind in dev checkouts from before the rename to Tausi
+server/src/Nexagen.Api/
 print-output/
 
 # Editors / OS

@@ -1,4 +1,4 @@
-name: CI
+name: Tausi POS CI
 
 on:
   push:
@@ -11,13 +11,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: nexagen
-          POSTGRES_PASSWORD: nexagen_ci
-          POSTGRES_DB: nexagen
+          POSTGRES_USER: tausi
+          POSTGRES_PASSWORD: tausi_ci
+          POSTGRES_DB: tausipos
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U nexagen"
+          --health-cmd "pg_isready -U tausi"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -25,7 +25,7 @@ jobs:
       DOTNET_NOLOGO: "1"
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       # Integration tests use this server instead of starting their own container.
-      NEXAGEN_TEST_POSTGRES: "Host=localhost;Port=5432;Username=nexagen;Password=nexagen_ci;Database=nexagen"
+      TAUSI_TEST_POSTGRES: "Host=localhost;Port=5432;Username=tausi;Password=tausi_ci;Database=tausipos"
     defaults:
       run:
         working-directory: server

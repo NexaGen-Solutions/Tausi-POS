@@ -1,18 +1,18 @@
-# Nexagen POS — Design
+# Tausi POS — Design
 
 Last updated: 19 Oct 2026
 
-Nexagen POS is a restaurant and bar POS **product**, built on .NET, React and Tauri. It runs on each customer's own server and terminals. Mau's Village is the first customer.
+Tausi POS is a restaurant and bar POS **product** by **NexaGen Solutions**, built on .NET, React and Tauri. It runs on each customer's own server and terminals. Mau's Village is the first customer.
 
 - **Coding rules:** `AGENTS.md` in the repo root.
 - **Screens:** `docs/wireframes/` (PDF).
 
 ## Overview
 
-Nexagen POS is sold to bars and restaurants, and each business gets its own install:
+Tausi POS is sold to bars and restaurants, and each business gets its own install:
 
 - a **server** (Windows or Linux) that holds the data, rules and printing
-- a full-screen **Nexagen Terminal** app on each counter
+- a full-screen **Tausi Terminal** app on each counter
 
 It must run the whole business on its own, covering sales, stock and basic accounting. ERPNext is an optional link for later.
 
@@ -48,7 +48,7 @@ ERPNext integration is optional and can be switched on later without changing th
 
 ```mermaid
 flowchart TB
-  subgraph Counters["Counter terminals (Windows 10/11, Nexagen Terminal app)"]
+  subgraph Counters["Counter terminals (Windows 10/11, Tausi Terminal app)"]
     CA["Counter A<br/>prints Dispense A"]
     P1["Pillar 1<br/>prints Dispense A"]
     CB["Counter B<br/>prints Dispense B"]
@@ -56,7 +56,7 @@ flowchart TB
   end
   LAN["Wired LAN · live updates over SignalR"]
   subgraph Server["Business server (Windows or Linux)"]
-    SVC["Nexagen Server<br/>all rules, live updates, printing"]
+    SVC["Tausi Server<br/>all rules, live updates, printing"]
     DB[("Database<br/>SQL Server Express or PostgreSQL")]
   end
   ADMIN["Admin site<br/>browser on any LAN PC"]
@@ -76,10 +76,10 @@ Everything runs on the business's own machines and LAN, so service doesn't need 
 
 | Part | Runs on | Built with | What it does |
 | --- | --- | --- | --- |
-| **Nexagen Server** | The business's server PC, as a Windows service or Linux (systemd) service | .NET 10 (LTS), ASP.NET Core, SignalR, EF Core | All business rules: tickets, printing, voids, permissions, settling, stock, ledger, reports. Prints to the printers directly and pushes live updates to every terminal. |
+| **Tausi Server** | The business's server PC, as a Windows service or Linux (systemd) service | .NET 10 (LTS), ASP.NET Core, SignalR, EF Core | All business rules: tickets, printing, voids, permissions, settling, stock, ledger, reports. Prints to the printers directly and pushes live updates to every terminal. |
 | **Database** | Same server | SQL Server Express (Windows) or PostgreSQL (Linux and dev); one EF Core model | Menu, tables, tickets, payments, stock, ledger, users, logs. |
-| **Nexagen Terminal** | Each counter PC (Windows 10/11) | Tauri v2 shell + the React UI | Full-screen, starts with Windows, knows which terminal it is, updates itself. Prints to a local USB printer when a printer is set to "via terminal". |
-| **Admin site** | Any PC on the LAN, in a browser | The same React UI, served by Nexagen Server | Menu, prices, stock, deliveries, cash book, staff, permissions, terminals, printers, reports, settings. |
+| **Tausi Terminal** | Each counter PC (Windows 10/11) | Tauri v2 shell + the React UI | Full-screen, starts with Windows, knows which terminal it is, updates itself. Prints to a local USB printer when a printer is set to "via terminal". |
+| **Admin site** | Any PC on the LAN, in a browser | The same React UI, served by Tausi Server | Menu, prices, stock, deliveries, cash book, staff, permissions, terminals, printers, reports, settings. |
 
 The terminal app and admin site share one React codebase. Development happens on Ubuntu, where the server and UI run; GitHub Actions builds the Windows terminal installer.
 
@@ -233,7 +233,7 @@ All reports run in the admin site, filter by date or work period, and export to 
 
 ## Optional: ERPNext integration
 
-Nexagen POS works fully on its own. To use ERPNext for accounting and stock later, switch on the **ERPNext Sync** module. The POS screens don't change. The sync is **one-way and runs in the background**, so ERPNext being slow or offline never stops service.
+Tausi POS works fully on its own. To use ERPNext for accounting and stock later, switch on the **ERPNext Sync** module. The POS screens don't change. The sync is **one-way and runs in the background**, so ERPNext being slow or offline never stops service.
 
 | Direction | What | When |
 | --- | --- | --- |
@@ -253,7 +253,7 @@ How it works:
 
 **Server** (POSSERVER2 at Mau's Village)
 
-- One installer sets up the Nexagen Server as a Windows service (or a systemd service on Linux), and creates the `NexagenPOS` database on SQL Server Express or PostgreSQL.
+- One installer sets up the Tausi Server as a Windows service (or a systemd service on Linux), and creates the `TausiPOS` database on SQL Server Express or PostgreSQL.
 - Give the server a fixed IP and allow the service's port in the firewall. Turn off power saving on its network adapter.
 
 **Terminals**
