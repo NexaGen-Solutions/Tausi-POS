@@ -22,7 +22,12 @@ public sealed record SeededUser(string Name, string Role, string Pin);
 /// </summary>
 public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log)
 {
-    public const string AdminPasswordVariable = "NEXAGEN_ADMIN_PASSWORD";
+    public const string AdminPasswordVariable = "TAUSI_ADMIN_PASSWORD";
+    public const string OldAdminPasswordVariable = "NEXAGEN_ADMIN_PASSWORD";
+
+    /// <summary>The admin-site password for the demo Administrator, from the environment (old name accepted).</summary>
+    public static string? AdminPasswordFromEnvironment(Func<string, string?>? read = null) =>
+        Legacy.LegacyNames.Environment(AdminPasswordVariable, OldAdminPasswordVariable, read);
 
     public async Task SeedBase(CancellationToken ct)
     {

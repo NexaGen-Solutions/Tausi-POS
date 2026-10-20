@@ -9,7 +9,7 @@ public sealed class PostgresDesignTimeFactory : IDesignTimeDbContextFactory<Post
 {
     public PostgresTausiDbContext CreateDbContext(string[] args) =>
         new(new DbContextOptionsBuilder<PostgresTausiDbContext>()
-            .UseNpgsql("Host=localhost;Database=nexagen_design")
+            .UseNpgsql("Host=localhost;Database=tausi_design")
             .Options);
 }
 
@@ -17,6 +17,6 @@ public sealed class SqlServerDesignTimeFactory : IDesignTimeDbContextFactory<Sql
 {
     public SqlServerTausiDbContext CreateDbContext(string[] args) =>
         new(new DbContextOptionsBuilder<SqlServerTausiDbContext>()
-            .UseSqlServer("Server=localhost;Database=nexagen_design;Trusted_Connection=True;TrustServerCertificate=True")
+            .UseSqlServer("Server=localhost;Database=tausi_design;Trusted_Connection=True;TrustServerCertificate=True")
             .Options);
 }

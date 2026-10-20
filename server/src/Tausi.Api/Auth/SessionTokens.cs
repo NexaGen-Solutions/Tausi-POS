@@ -12,6 +12,7 @@ namespace Tausi.Api.Auth;
 /// </summary>
 public sealed class SessionTokens(ServerSecrets secrets, TimeProvider clock)
 {
+    // Kept from before the rename to Tausi: changing it would end every PIN session on the terminals.
     public const string Issuer = "nexagen";
 
     public SymmetricSecurityKey Key { get; } = new(secrets.JwtSigningKey);

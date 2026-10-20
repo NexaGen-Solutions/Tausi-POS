@@ -24,7 +24,7 @@ public static class DependencyInjection
         services.Configure<DatabaseOptions>(config.GetSection("Database"));
 
         var provider = config.GetSection("Database").Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Postgres;
-        var connection = config.GetConnectionString("Tausi")
+        var connection = config.GetConnectionString(TausiOptions.ConnectionStringName)
             ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set.");
         switch (provider)
         {

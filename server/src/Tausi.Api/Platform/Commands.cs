@@ -1,3 +1,4 @@
+using Tausi.Infrastructure.Legacy;
 using Tausi.Infrastructure.Seeding;
 
 namespace Tausi.Api.Platform;
@@ -50,7 +51,7 @@ public static class Commands
 
         await using var scope = scopes.CreateAsyncScope();
         var created = await scope.ServiceProvider.GetRequiredService<Seeder>()
-            .SeedDemo(Environment.GetEnvironmentVariable(Seeder.AdminPasswordVariable), CancellationToken.None,
+            .SeedDemo(Seeder.AdminPasswordFromEnvironment(), CancellationToken.None,
                 filePrinters: app.Environment.IsDevelopment());
 
         if (created.Count == 0)
@@ -65,7 +66,8 @@ public static class Commands
         foreach (var u in created)
             Console.WriteLine($"  {u.Name,-15} {u.Role,-12} {u.Pin}");
         Console.WriteLine();
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Seeder.AdminPasswordVariable)))
+        foreach (var warning in LegacyNames.TakeWarnings()) Console.WriteLine("Warning: " + warning);
+        if (string.IsNullOrEmpty(Seeder.AdminPasswordFromEnvironment()))
             Console.WriteLine($"Set {Seeder.AdminPasswordVariable} and run the seed again to give Administrator (user name: admin) an admin-site password.");
         else
             Console.WriteLine("Admin site: user name 'admin' with the password from " + Seeder.AdminPasswordVariable + ".");

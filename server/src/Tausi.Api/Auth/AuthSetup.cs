@@ -12,7 +12,7 @@ namespace Tausi.Api.Auth;
 
 public static class AuthSetup
 {
-    private const string SessionExpiredItem = "nexagen.session_expired";
+    private const string SessionExpiredItem = "tausi.session_expired";
 
     /// <summary>
     /// Two kinds of session, one policy:
@@ -63,6 +63,7 @@ public static class AuthSetup
             })
             .AddCookie(TausiClaims.AdminScheme, o =>
             {
+                // Name kept from before the rename to Tausi: changing it would sign every admin out.
                 o.Cookie.Name = "nexagen_admin";
                 o.Cookie.HttpOnly = true;
                 o.Cookie.SameSite = SameSiteMode.Strict;

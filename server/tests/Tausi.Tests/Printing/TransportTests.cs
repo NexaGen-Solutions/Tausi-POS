@@ -78,7 +78,7 @@ public class FilePrinterTransportTests
     [Fact]
     public async Task Writes_a_readable_slip()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "nexagen-print-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "tausi-print-" + Guid.NewGuid().ToString("N"));
         var options = Options.Create(new TausiOptions { Printing = { OutputDirectory = dir } });
         var transport = new FilePrinterTransport(options, new FakeEnv(), new FakeTimeProvider());
         var job = new PrintJob { Kind = PrintJobKind.Test, TextPreview = "Mau's Village\nTest OK\n" };

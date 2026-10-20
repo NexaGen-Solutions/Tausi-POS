@@ -5,15 +5,15 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: nexagen
-      POSTGRES_PASSWORD: nexagen_dev
-      POSTGRES_DB: nexagen
+      POSTGRES_USER: tausi
+      POSTGRES_PASSWORD: tausi_dev
+      POSTGRES_DB: tausipos
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - tausi-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nexagen"]
+      test: ["CMD-SHELL", "pg_isready -U tausi"]
       interval: 5s
       retries: 10
 
@@ -23,12 +23,13 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Express
-      MSSQL_SA_PASSWORD: "Nexagen_dev_123"
+      MSSQL_SA_PASSWORD: "Tausi_dev_123"
     ports:
       - "1433:1433"
     volumes:
-      - mssqldata:/var/opt/mssql
+      - tausi-mssqldata:/var/opt/mssql
 
+# Renamed with the product (Tausi POS); the old pgdata / mssqldata volumes are left untouched.
 volumes:
-  pgdata:
-  mssqldata:
+  tausi-pgdata:
+  tausi-mssqldata:

@@ -1,19 +1,20 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Tausi.Infrastructure.Legacy;
 using Tausi.Infrastructure.Persistence;
 using Testcontainers.MsSql;
 
 namespace Tausi.IntegrationTests;
 
-/// <summary>The SQL Server migrations apply cleanly. Needs Docker (or NEXAGEN_TEST_SQLSERVER).</summary>
+/// <summary>The SQL Server migrations apply cleanly. Needs Docker (or TAUSI_TEST_SQLSERVER).</summary>
 public class SqlServerMigrationTests
 {
     [SkippableFact]
     public async Task Migrations_apply_on_sql_server()
     {
-        var external = Environment.GetEnvironmentVariable("NEXAGEN_TEST_SQLSERVER");
+        var external = LegacyNames.Environment("TAUSI_TEST_SQLSERVER", "NEXAGEN_TEST_SQLSERVER");
         Skip.If(string.IsNullOrEmpty(external) && !File.Exists("/var/run/docker.sock") && !OperatingSystem.IsWindows(),
-            "No Docker and no NEXAGEN_TEST_SQLSERVER: skipping the SQL Server check.");
+            "No Docker and no TAUSI_TEST_SQLSERVER: skipping the SQL Server check.");
 
         MsSqlContainer? container = null;
         var connection = external;

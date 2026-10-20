@@ -4,6 +4,7 @@ namespace Tausi.Infrastructure;
 public sealed class TausiOptions
 {
     public const string Section = "Tausi";
+    public const string ConnectionStringName = "Tausi";
 
     /// <summary>Uploaded files and generated server secrets live here. Back it up with the database.</summary>
     public string DataDirectory { get; set; } = "data";

@@ -8,11 +8,18 @@ using Tausi.Application;
 using Tausi.Application.Events;
 using Tausi.Application.Printing;
 using Tausi.Infrastructure;
+using Tausi.Infrastructure.Legacy;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Settings and the dev data folder from before the rename to Tausi still work (warned once each).
+LegacyNames.ApplyToConfiguration(builder.Configuration);
+LegacyNames.CopyOldDataDirectory(
+    builder.Configuration.GetSection(TausiOptions.Section).Get<TausiOptions>()?.DataDirectory ?? "data",
+    builder.Environment.ContentRootPath);
+
 // Runs as a Windows Service or a systemd service when started by one; does nothing otherwise.
-builder.Host.UseWindowsService(o => o.ServiceName = "Tausi Server");
+builder.Host.UseWindowsService(o => o.ServiceName = "TausiPOSServer");
 builder.Host.UseSystemd();
 
 builder.Services.AddApplication();
@@ -29,6 +36,7 @@ builder.Services.AddSingleton<ITerminalPrintChannel, HubTerminalPrintChannel>();
 builder.Services.AddHostedService<DatabaseStartup>();
 
 var app = builder.Build();
+foreach (var warning in LegacyNames.TakeWarnings()) app.Logger.LogWarning("{Warning}", warning);
 
 if (args.Length > 0 && await Commands.TryRun(app, args))
     return;

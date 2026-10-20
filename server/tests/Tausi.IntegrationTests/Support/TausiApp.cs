@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Tausi.Api.Platform;
+using Tausi.Infrastructure.Legacy;
 using Tausi.Infrastructure.Persistence;
 using Tausi.Infrastructure.Seeding;
 using Npgsql;
@@ -16,7 +17,7 @@ using Testcontainers.PostgreSql;
 namespace Tausi.IntegrationTests.Support;
 
 /// <summary>
-/// The real server on a real PostgreSQL. Uses NEXAGEN_TEST_POSTGRES when set (CI provides a
+/// The real server on a real PostgreSQL. Uses TAUSI_TEST_POSTGRES (or the old NEXAGEN_TEST_POSTGRES) when set (CI provides a
 /// service container), otherwise starts a throwaway container with Testcontainers.
 /// Each run gets its own fresh database, seeded with the demo data.
 /// </summary>
@@ -29,11 +30,11 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         Converters = { new JsonStringEnumConverter() },
     };
 
-    private static readonly string? ExternalServer = Environment.GetEnvironmentVariable("NEXAGEN_TEST_POSTGRES");
+    private static readonly string? ExternalServer = LegacyNames.Environment("TAUSI_TEST_POSTGRES", "NEXAGEN_TEST_POSTGRES");
 
     private PostgreSqlContainer? _container;
     private string _connectionString = "";
-    private readonly string _dataDir = Path.Combine(Path.GetTempPath(), "nexagen-it-" + Guid.NewGuid().ToString("N"));
+    private readonly string _dataDir = Path.Combine(Path.GetTempPath(), "tausi-it-" + Guid.NewGuid().ToString("N"));
 
     public string PrintOutput => Path.Combine(_dataDir, "print-output");
 
@@ -55,7 +56,7 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         }
         _connectionString = new NpgsqlConnectionStringBuilder(server)
         {
-            Database = "nexagen_it_" + Guid.NewGuid().ToString("N")[..12],
+            Database = "tausi_it_" + Guid.NewGuid().ToString("N")[..12],
         }.ConnectionString;
 
         var scopes = Services.GetRequiredService<IServiceScopeFactory>();
