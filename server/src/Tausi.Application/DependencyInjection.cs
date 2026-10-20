@@ -1,0 +1,75 @@
+using Microsoft.Extensions.DependencyInjection;
+using Tausi.Application.Auditing;
+using Tausi.Application.Auth;
+using Tausi.Application.Day;
+using Tausi.Application.Menu;
+using Tausi.Application.Roles;
+using Tausi.Application.Dev;
+using Tausi.Application.Printers;
+using Tausi.Application.Printing;
+using Tausi.Application.Security;
+using Tausi.Application.Settings;
+using Tausi.Application.Staff;
+using Tausi.Application.Terminals;
+
+namespace Tausi.Application;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<PrintQueue>();
+        services.AddScoped<PinAuthenticator>();
+        services.AddScoped<SessionKeeper>();
+        services.AddScoped<PinRules>();
+        services.AddScoped<StaffAccess>();
+        services.AddScoped<MenuAccess>();
+
+        // Use cases: one class per action.
+        services.AddScoped<PinLogin>();
+        services.AddScoped<Logout>();
+        services.AddScoped<ChangePin>();
+        services.AddScoped<GetMaxPinLength>();
+        services.AddScoped<OpenDay>();
+        services.AddScoped<ListStaff>();
+        services.AddScoped<GetStaffMember>();
+        services.AddScoped<CreateStaff>();
+        services.AddScoped<UpdateStaff>();
+        services.AddScoped<ResetStaffPin>();
+        services.AddScoped<DeactivateStaff>();
+        services.AddScoped<ReactivateStaff>();
+        services.AddScoped<GetAdminMenu>();
+        services.AddScoped<GetPriceLog>();
+        services.AddScoped<GetPosMenu>();
+        services.AddScoped<SaveCategory>();
+        services.AddScoped<ReorderCategories>();
+        services.AddScoped<DeactivateCategory>();
+        services.AddScoped<SaveItem>();
+        services.AddScoped<SetItemPrices>();
+        services.AddScoped<SaveGroup>();
+        services.AddScoped<SetOptionPrices>();
+        services.AddScoped<SavePriceList>();
+        services.AddScoped<MakeDefaultPriceList>();
+        services.AddScoped<ExportMenu>();
+        services.AddScoped<MenuImport>();
+        services.AddScoped<SetTerminalPriceList>();
+        services.AddScoped<ListTerminals>();
+        services.AddScoped<SetRolePermission>();
+        services.AddScoped<AdminLogin>();
+        services.AddScoped<IssueApproval>();
+        services.AddScoped<StartPairing>();
+        services.AddScoped<CompletePairing>();
+        services.AddScoped<ClaimPairing>();
+        services.AddScoped<GetDeviceInfo>();
+        services.AddScoped<GetBrand>();
+        services.AddScoped<GetBusinessSettings>();
+        services.AddScoped<UpdateBusinessSettings>();
+        services.AddScoped<UploadBusinessLogo>();
+        services.AddScoped<TestPrint>();
+        services.AddScoped<DevVoidProbe>();
+        return services;
+    }
+}
