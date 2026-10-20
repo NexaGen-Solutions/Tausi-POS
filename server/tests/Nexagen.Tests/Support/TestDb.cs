@@ -10,6 +10,7 @@ public sealed class SqliteTestDbContext(DbContextOptions options) : NexagenDbCon
 {
     protected override string? ActiveUserFilter => "\"Active\" = 1";
     protected override string? OpenWorkPeriodFilter => "\"IsOpen\" = 1";
+    protected override string? DefaultPriceListFilter => "\"IsDefault\" = 1";
 
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {

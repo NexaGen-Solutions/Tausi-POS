@@ -14,6 +14,9 @@ public class Terminal : VersionedEntity
     public Guid? ReceiptPrinterId { get; set; }
     public Printer? ReceiptPrinter { get; set; }
 
+    /// <summary>Use this price list instead of the default; null uses the default.</summary>
+    public Guid? PriceListId { get; set; }
+
     public DateTimeOffset? LastSeenAt { get; set; }
     public string? AppVersion { get; set; }
 

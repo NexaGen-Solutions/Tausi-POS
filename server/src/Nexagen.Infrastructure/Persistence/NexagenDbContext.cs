@@ -4,6 +4,7 @@ using Nexagen.Domain.Audit;
 using Nexagen.Domain.Common;
 using Nexagen.Domain.Devices;
 using Nexagen.Domain.Ledger;
+using Nexagen.Domain.Menu;
 using Nexagen.Domain.Money;
 using Nexagen.Domain.People;
 using Nexagen.Domain.Platform;
@@ -39,12 +40,23 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
     public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalLine> JournalLines => Set<JournalLine>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<MenuItem> MenuItems => Set<MenuItem>();
+    public DbSet<MenuItemPrice> MenuItemPrices => Set<MenuItemPrice>();
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
+    public DbSet<ModifierGroup> ModifierGroups => Set<ModifierGroup>();
+    public DbSet<ModifierOption> ModifierOptions => Set<ModifierOption>();
+    public DbSet<ModifierGroupAssignment> ModifierGroupAssignments => Set<ModifierGroupAssignment>();
+    public DbSet<PriceChangeLog> PriceChangeLogs => Set<PriceChangeLog>();
 
     /// <summary>Filter for the "active users have unique PINs" index; the SQL differs per provider.</summary>
     protected virtual string? ActiveUserFilter => null;
 
     /// <summary>Filter for the "only one open work period" index; the SQL differs per provider.</summary>
     protected virtual string? OpenWorkPeriodFilter => null;
+
+    /// <summary>Filter for the "one default price list" index; the SQL differs per provider.</summary>
+    protected virtual string? DefaultPriceListFilter => null;
 
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {
@@ -209,6 +221,73 @@ public class NexagenDbContext(DbContextOptions options) : DbContext(options), IN
             e.Property(x => x.SourceId).HasMaxLength(64);
             e.HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        m.Entity<Category>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(60);
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+
+        m.Entity<MenuItem>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(MenuItem.MaxNameLength);
+            e.Property(x => x.ShortName).HasMaxLength(MenuItem.MaxShortNameLength);
+            e.Property(x => x.ErpItemCode).HasMaxLength(140);
+            e.Property(x => x.VatRate).HasPrecision(5, 2);
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => new { x.CategoryId, x.SortOrder });
+            e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Prices).WithOne().HasForeignKey(x => x.MenuItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<MenuItemPrice>(e =>
+        {
+            e.HasIndex(x => new { x.MenuItemId, x.PriceListId }).IsUnique();
+            e.HasOne(x => x.PriceList).WithMany().HasForeignKey(x => x.PriceListId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<PriceList>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(40);
+            e.HasIndex(x => x.Name).IsUnique();
+            var defaultIndex = e.HasIndex(x => x.IsDefault).IsUnique();
+            if (DefaultPriceListFilter is not null) defaultIndex.HasFilter(DefaultPriceListFilter);
+        });
+
+        m.Entity<ModifierGroup>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(60);
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasMany(x => x.Options).WithOne().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<ModifierOption>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(60);
+            e.HasIndex(x => new { x.GroupId, x.Name }).IsUnique();
+        });
+
+        m.Entity<ModifierGroupAssignment>(e =>
+        {
+            e.HasOne<ModifierGroup>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Category>().WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MenuItem>().WithMany().HasForeignKey(x => x.MenuItemId).OnDelete(DeleteBehavior.Restrict);
+            // A group is given to a category, or to an item, once.
+            e.HasIndex(x => new { x.GroupId, x.CategoryId }).IsUnique();
+            e.HasIndex(x => new { x.GroupId, x.MenuItemId }).IsUnique();
+        });
+
+        m.Entity<PriceChangeLog>(e =>
+        {
+            e.Property(x => x.Source).HasMaxLength(20);
+            e.Property(x => x.OldPrice).HasPrecision(18, 2);
+            e.Property(x => x.NewPrice).HasPrecision(18, 2);
+            e.HasIndex(x => new { x.MenuItemId, x.At });
+            e.HasIndex(x => x.At);
+        });
+
+        m.Entity<Terminal>(e =>
+            e.HasOne<PriceList>().WithMany().HasForeignKey(x => x.PriceListId).OnDelete(DeleteBehavior.Restrict));
 
         // Every editable entity carries an optimistic concurrency token.
         foreach (var type in m.Model.GetEntityTypes().Where(t => typeof(VersionedEntity).IsAssignableFrom(t.ClrType)))

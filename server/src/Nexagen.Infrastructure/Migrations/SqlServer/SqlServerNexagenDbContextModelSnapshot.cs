@@ -154,6 +154,9 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                     b.Property<DateTimeOffset?>("PinLockedUntil")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("PriceListId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("ReceiptPrinterId")
                         .HasColumnType("uniqueidentifier");
 
@@ -171,6 +174,8 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("PriceListId");
 
                     b.HasIndex("ReceiptPrinterId");
 
@@ -331,6 +336,289 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .IsUnique();
 
                     b.ToTable("LedgerAccounts");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.MenuItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ErpItemCode")
+                        .HasMaxLength(140)
+                        .HasColumnType("nvarchar(140)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("nvarchar(18)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("VatRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("CategoryId", "SortOrder");
+
+                    b.ToTable("MenuItems");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.MenuItemPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MenuItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("PriceListId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PriceListId");
+
+                    b.HasIndex("MenuItemId", "PriceListId")
+                        .IsUnique();
+
+                    b.ToTable("MenuItemPrices");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.ModifierGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxSelect")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinSelect")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("ModifierGroups");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.ModifierGroupAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MenuItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("MenuItemId");
+
+                    b.HasIndex("GroupId", "CategoryId")
+                        .IsUnique()
+                        .HasFilter("[CategoryId] IS NOT NULL");
+
+                    b.HasIndex("GroupId", "MenuItemId")
+                        .IsUnique()
+                        .HasFilter("[MenuItemId] IS NOT NULL");
+
+                    b.ToTable("ModifierGroupAssignments");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.ModifierOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<decimal>("PriceAddOn")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("ModifierOptions");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.PriceChangeLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MenuItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ModifierOptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("NewPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("OldPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("PriceListId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("MenuItemId", "At");
+
+                    b.ToTable("PriceChangeLogs");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.PriceList", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasFilter("[IsDefault] = 1");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("PriceLists");
                 });
 
             modelBuilder.Entity("Nexagen.Domain.People.ApprovalGrant", b =>
@@ -860,6 +1148,11 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .HasForeignKey("DispensePrinterId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Nexagen.Domain.Menu.PriceList", null)
+                        .WithMany()
+                        .HasForeignKey("PriceListId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Nexagen.Domain.Devices.Printer", "ReceiptPrinter")
                         .WithMany()
                         .HasForeignKey("ReceiptPrinterId")
@@ -885,6 +1178,62 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
                         .IsRequired();
 
                     b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.MenuItem", b =>
+                {
+                    b.HasOne("Nexagen.Domain.Menu.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.MenuItemPrice", b =>
+                {
+                    b.HasOne("Nexagen.Domain.Menu.MenuItem", null)
+                        .WithMany("Prices")
+                        .HasForeignKey("MenuItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexagen.Domain.Menu.PriceList", "PriceList")
+                        .WithMany()
+                        .HasForeignKey("PriceListId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PriceList");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.ModifierGroupAssignment", b =>
+                {
+                    b.HasOne("Nexagen.Domain.Menu.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Nexagen.Domain.Menu.ModifierGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexagen.Domain.Menu.MenuItem", null)
+                        .WithMany()
+                        .HasForeignKey("MenuItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.ModifierOption", b =>
+                {
+                    b.HasOne("Nexagen.Domain.Menu.ModifierGroup", null)
+                        .WithMany("Options")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Nexagen.Domain.People.RolePermission", b =>
@@ -923,6 +1272,16 @@ namespace Nexagen.Infrastructure.Migrations.SqlServer
             modelBuilder.Entity("Nexagen.Domain.Ledger.JournalEntry", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.MenuItem", b =>
+                {
+                    b.Navigation("Prices");
+                });
+
+            modelBuilder.Entity("Nexagen.Domain.Menu.ModifierGroup", b =>
+                {
+                    b.Navigation("Options");
                 });
 
             modelBuilder.Entity("Nexagen.Domain.People.Role", b =>

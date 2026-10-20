@@ -58,6 +58,12 @@ Each entry: date, decision, reason.
 | 2026-10-20 | The one-time PIN message is "Give this PIN to Grace. They must change it at first login." | The task's example said "She"; a name doesn't tell us anyone's pronouns, so the screen doesn't guess. |
 | 2026-10-20 | The staff screen's right-side panel opens when needed (Add staff button, Edit, Reset PIN, Reactivate) instead of always showing the add form. Roles are listed Waiter, Cashier, Supervisor, Admin, then added roles; the first is the default. | The task adds columns the wireframe doesn't have (last login, terminals, three actions); with the panel always open the actions were cut off at 1280 wide. The wireframe says "Waitress"; the role is called Waiter. |
 
+## Menu and prices
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-20 | **Order lines copy their price.** When an item is ordered, its price (and option add-ons, VAT rate and the gross/net/VAT split) is copied onto the order line. Changing a menu price afterwards never changes a line already on a ticket. The order line itself comes with the order screen. | Tickets and receipts must not change under people's feet; the price log explains the menu, the lines explain the sale. |
+
 ## Idempotency
 
 | Date | Decision | Reason |
