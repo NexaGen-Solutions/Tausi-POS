@@ -6,6 +6,7 @@ using Tausi.Application.Files;
 using Tausi.Application.Ledger;
 using Tausi.Application.Printing;
 using Tausi.Application.Security;
+using Tausi.Application.Tickets;
 using Tausi.Infrastructure.Files;
 using Tausi.Infrastructure.Ledger;
 using Tausi.Infrastructure.Persistence;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddSingleton<ServerSecrets>();
         services.AddSingleton<IPinHasher, PinHasher>();
         services.AddScoped<ILedgerPostingService, LedgerPostingService>();
+        services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddScoped<Seeder>();
 
@@ -55,6 +57,7 @@ public static class DependencyInjection
         services.AddHostedService<PrintDispatcher>();
         services.AddHostedService<PrinterHealthMonitor>();
         services.AddHostedService<HousekeepingService>();
+        services.AddHostedService<TicketLockSweeper>();
         return services;
     }
 }

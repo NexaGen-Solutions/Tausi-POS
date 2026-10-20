@@ -30,6 +30,11 @@ public static class AuditActions
     public const string StaffDeactivated = "staff.deactivated";
     public const string StaffReactivated = "staff.reactivated";
     public const string DevVoidProbe = "dev.void_probe";
+    public const string TicketMoved = "ticket.moved";
+    public const string TicketMerged = "ticket.merged";
+    public const string AreaChanged = "tables.area_changed";
+    public const string TableChanged = "tables.table_changed";
+    public const string TablesAdded = "tables.added";
 }
 
 /// <summary>
