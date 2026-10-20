@@ -128,8 +128,14 @@ public class MenuApiTests(MenuApp app)
             prices = new Dictionary<Guid, decimal?> { [ListId("Price 2")] = 270m }, allowZero = false, rowVersion = ItemVersion("Balozi Lager"),
         })).EnsureSuccessStatusCode();
 
+        var terminals = await (await admin.GetAsync("/api/admin/terminals")).Json();
+        var listed = terminals.EnumerateArray().Single(t => t.GetProperty("name").GetString() == "Menu Counter B");
+        listed.GetProperty("id").GetGuid().Should().Be(counterB.TerminalId);
+
         (await admin.PutAsJsonAsync($"/api/admin/terminals/{counterB.TerminalId}/price-list", new { priceListId = ListId("Price 2") }))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await (await admin.GetAsync("/api/admin/terminals")).Json()).EnumerateArray()
+            .Single(t => t.GetProperty("name").GetString() == "Menu Counter B").GetProperty("priceListId").GetGuid().Should().Be(ListId("Price 2"));
 
         var menu = await (await counterB.Http.GetAsync("/api/pos/menu")).Json();
         menu.GetProperty("priceListName").GetString().Should().Be("Price 2");

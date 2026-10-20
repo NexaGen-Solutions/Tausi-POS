@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<ExportMenu>();
         services.AddScoped<MenuImport>();
         services.AddScoped<SetTerminalPriceList>();
+        services.AddScoped<ListTerminals>();
         services.AddScoped<SetRolePermission>();
         services.AddScoped<AdminLogin>();
         services.AddScoped<IssueApproval>();

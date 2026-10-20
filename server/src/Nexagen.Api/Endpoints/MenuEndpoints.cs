@@ -62,6 +62,9 @@ public static class MenuEndpoints
 
         app.MapGet("/api/pos/menu", (GetPosMenu get, CancellationToken ct) => get.Execute(ct)).WithTags("Menu");
 
+        app.MapGet("/api/admin/terminals", (ListTerminals list, CancellationToken ct) => list.Execute(ct))
+            .WithTags("Terminals").RequireAuthorization();
+
         app.MapPut("/api/admin/terminals/{id:guid}/price-list", async (Guid id, TerminalPriceListRequest r, SetTerminalPriceList set, CancellationToken ct) =>
         {
             await set.Execute(id, r, ct);

@@ -131,8 +131,8 @@ curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
   -d '{"permissionKey":"menu.edit","value":"Allowed"}' http://localhost:5080/api/admin/roles/<role id>/permissions
 ```
 
-Ids are in `GET /api/admin/menu` (price lists), `GET /api/health` / the database (terminals) and
-`GET /api/admin/staff` (role ids).
+Ids: price lists in `GET /api/admin/menu`, terminals in `GET /api/admin/terminals`, roles in
+`GET /api/admin/staff` (`roleId`, `assignableRoles`).
 
 ### Admin site
 
