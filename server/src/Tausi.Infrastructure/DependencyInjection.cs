@@ -24,17 +24,19 @@ public static class DependencyInjection
         services.Configure<TausiOptions>(config.GetSection(TausiOptions.Section));
         services.Configure<DatabaseOptions>(config.GetSection("Database"));
 
+        // Queries load related collections in one SQL statement (EF's default, stated so it doesn't warn);
+        // the table map relies on it.
         var provider = config.GetSection("Database").Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Postgres;
         var connection = config.GetConnectionString(TausiOptions.ConnectionStringName)
             ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set.");
         switch (provider)
         {
             case DatabaseProvider.SqlServer:
-                services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(connection));
+                services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
                 break;
             default:
-                services.AddDbContext<PostgresTausiDbContext>(o => o.UseNpgsql(connection));
+                services.AddDbContext<PostgresTausiDbContext>(o => o.UseNpgsql(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<PostgresTausiDbContext>());
                 break;
         }
