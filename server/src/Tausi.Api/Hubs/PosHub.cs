@@ -22,7 +22,11 @@ public sealed class PosHub(TerminalPresence presence, TausiDbContext db) : Hub
     public override async Task OnConnectedAsync()
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, BusinessGroup);
-        if (Terminal is { } terminal) presence.Connected(terminal.TerminalId, Context.ConnectionId);
+        if (await TerminalId() is { } terminalId)
+        {
+            Context.Items[TerminalItem] = terminalId;
+            presence.Connected(terminalId, Context.ConnectionId);
+        }
         await base.OnConnectedAsync();
     }
 
@@ -35,11 +39,25 @@ public sealed class PosHub(TerminalPresence presence, TausiDbContext db) : Hub
     /// <summary>The terminal app reports the printers installed on its PC (for "via terminal" printers).</summary>
     public async Task ReportPrinters(string[] names)
     {
-        if (Terminal is not { } terminal) return;
+        if (Context.Items.TryGetValue(TerminalItem, out var item) is false || item is not Guid terminalId) return;
         var clean = names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).Distinct().Order().Take(100).ToList();
-        await db.Terminals.Where(t => t.Id == terminal.TerminalId)
+        await db.Terminals.Where(t => t.Id == terminalId)
             .ExecuteUpdateAsync(u => u.SetProperty(t => t.LocalPrintersJson, JsonSerializer.Serialize(clean)));
     }
 
-    private DeviceTerminal? Terminal => Context.GetHttpContext()?.Features.Get<DeviceTerminal>();
+    private const string TerminalItem = "terminalId";
+
+    /// <summary>
+    /// The terminal behind this connection. Long-polling connections see a copy of the request
+    /// without our request features, so fall back to the device token in the query string.
+    /// </summary>
+    private async Task<Guid?> TerminalId()
+    {
+        var http = Context.GetHttpContext();
+        if (http?.Features.Get<DeviceTerminal>() is { } terminal) return terminal.TerminalId;
+        string? token = http?.Request.Query[Auth.TausiClaims.DeviceTokenQuery];
+        if (string.IsNullOrEmpty(token)) return null;
+        var hash = SecureTokens.Hash(token);
+        return await db.Terminals.AsNoTracking().Where(t => t.DeviceTokenHash == hash).Select(t => (Guid?)t.Id).FirstOrDefaultAsync();
+    }
 }
