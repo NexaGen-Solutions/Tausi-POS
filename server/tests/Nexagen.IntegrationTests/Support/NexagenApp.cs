@@ -191,6 +191,15 @@ public sealed class StaffCollection : ICollectionFixture<StaffApp>
     public const string Name = "staff";
 }
 
+/// <summary>Its own server and database, for tests that change the menu.</summary>
+public sealed class MenuApp : NexagenApp;
+
+[CollectionDefinition(Name)]
+public sealed class MenuCollection : ICollectionFixture<MenuApp>
+{
+    public const string Name = "menu";
+}
+
 /// <summary>Its own server and database, so opening the day does not affect other tests.</summary>
 public sealed class DayApp : NexagenApp;
 
