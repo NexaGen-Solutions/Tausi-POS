@@ -1,4 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { ApiError, api } from '../shared/api/client';
+import { saveDevice, serverUrl } from '../shared/device/device';
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { onPosEvent } from '../shared/connection/hub';
@@ -33,12 +35,26 @@ export function PosLayout() {
       const userId = (payload as { userId?: string } | null)?.userId;
       if (userId && pinSession()?.user.id === userId) endPinSession('expired');
     };
+    // An admin revoked a terminal: if it was this one, its device token no longer works. Back to pairing.
+    const checkRevoked = async () => {
+      try {
+        await api('/api/device');
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          endPinSession('expired');
+          await saveDevice({ serverUrl: serverUrl(), deviceToken: null });
+          queries.clear();
+          navigate('/setup?revoked=1', { replace: true });
+        }
+      }
+    };
     const off = [
       onPosEvent('user.deactivated', leaveIfMe),
       onPosEvent('user.pin_reset', leaveIfMe),
+      onPosEvent('terminal.revoked', () => void checkRevoked()),
     ];
     return () => off.forEach((unsubscribe) => unsubscribe());
-  }, []);
+  }, [navigate, queries]);
 
   return (
     <>

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { ApiError, api, setApiBase } from '../shared/api/client';
+import { useNavigate, useSearchParams } from 'react-router';
+import { ApiError, api, apiUrl, setApiBase } from '../shared/api/client';
 import {
   isBundledTerminalPage,
+  isTauri,
   loadDevice,
   openServer,
   saveDevice,
   serverUrl,
+  setServerUrl,
 } from '../shared/device/device';
 import { t } from '../shared/i18n/i18n';
 import { Button, Field, TopBar } from '../shared/ui';
@@ -25,30 +27,51 @@ interface PairingClaim {
   terminalName: string | null;
 }
 
+/** How long "Paired as Counter A" shows before the PIN pad. */
+const pairedNoteFor = 1500;
+
 /**
  * First run of a terminal. The terminal app first asks for the server address; then this screen
- * shows a pairing code until an admin registers the terminal, and stores the device token.
+ * shows a pairing code until an admin pairs it from the admin site, and stores the device token.
+ * In the terminal app the server address can be changed here, after an admin signs in.
  */
 export function SetupPage() {
   const bundled = isBundledTerminalPage();
-  const [server, setServer] = useState<string | null>(bundled ? serverUrl() : '');
+  const [params] = useSearchParams();
+  const [step, setStep] = useState<'server' | 'admin' | 'pairing'>(
+    bundled && !serverUrl() ? 'server' : 'pairing',
+  );
 
   return (
     <div className="pos-screen">
       <TopBar title={t('setup.title')} subtitle={t('common.appName')} />
       <main className="setup">
-        {server === null ? (
-          <ServerStep onConnected={setServer} />
-        ) : (
-          <PairingStep server={server} bundled={bundled} />
+        {step === 'server' && (
+          <ServerStep bundled={bundled} onConnected={() => setStep('pairing')} />
+        )}
+        {step === 'admin' && <AdminStep onVerified={() => setStep('server')} />}
+        {step === 'pairing' && (
+          <div className="setup__stack">
+            {params.get('revoked') && (
+              <p className="setup__note" role="status">
+                {t('setup.revoked')}
+              </p>
+            )}
+            <PairingStep bundled={bundled} />
+            {isTauri() && (
+              <Button variant="link" onClick={() => setStep('admin')}>
+                {t('setup.changeServer')}
+              </Button>
+            )}
+          </div>
         )}
       </main>
     </div>
   );
 }
 
-function ServerStep({ onConnected }: { onConnected: (url: string) => void }) {
-  const [address, setAddress] = useState('http://');
+function ServerStep({ bundled, onConnected }: { bundled: boolean; onConnected: () => void }) {
+  const [address, setAddress] = useState(serverUrl() ?? 'http://');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,8 +82,11 @@ function ServerStep({ onConnected }: { onConnected: (url: string) => void }) {
     try {
       const response = await fetch(`${url}/api/health`);
       if (!response.ok) throw new Error();
-      setApiBase(url);
-      onConnected(url);
+      // The app keeps only this server (and restarts to apply it).
+      await setServerUrl(url);
+      if (bundled) setApiBase(url);
+      await loadDevice();
+      onConnected();
     } catch {
       setError(t('setup.serverUnreachable'));
     } finally {
@@ -92,7 +118,57 @@ function ServerStep({ onConnected }: { onConnected: (url: string) => void }) {
   );
 }
 
-function PairingStep({ server, bundled }: { server: string; bundled: boolean }) {
+/** An admin signs in (checked by the current server) before the server address can change. */
+function AdminStep({ onVerified }: { onVerified: () => void }) {
+  const [userName, setUserName] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const verify = async () => {
+    setError(null);
+    try {
+      const response = await fetch(apiUrl('/api/terminals/verify-admin'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName, password }),
+      });
+      if (!response.ok) throw new Error();
+      onVerified();
+    } catch {
+      setError(t('admin.loginFailed'));
+    }
+  };
+
+  return (
+    <form
+      className="setup__panel"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void verify();
+      }}
+    >
+      <p className="setup__note">{t('setup.adminLogin')}</p>
+      <Field
+        label={t('admin.userName')}
+        value={userName}
+        onChange={(e) => setUserName(e.target.value)}
+        autoFocus
+      />
+      <Field
+        label={t('admin.password')}
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        error={error}
+      />
+      <Button type="submit" variant="primary" size="lg" disabled={!userName || !password}>
+        {t('setup.verify')}
+      </Button>
+    </form>
+  );
+}
+
+function PairingStep({ bundled }: { bundled: boolean }) {
   const navigate = useNavigate();
   const [pairing, setPairing] = useState<PairingStarted | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -110,11 +186,13 @@ function PairingStep({ server, bundled }: { server: string; bundled: boolean }) 
         });
         if (stopped) return;
         if (claim.status === 'paired' && claim.deviceToken) {
-          await saveDevice({ serverUrl: server || null, deviceToken: claim.deviceToken });
+          await saveDevice({ serverUrl: serverUrl(), deviceToken: claim.deviceToken });
           await loadDevice();
           setNote(t('setup.paired', { terminal: claim.terminalName ?? '' }));
-          if (bundled) await openServer();
-          else navigate('/pos', { replace: true });
+          timer = window.setTimeout(() => {
+            if (bundled) void openServer();
+            else navigate('/pos', { replace: true });
+          }, pairedNoteFor);
           return;
         }
       } catch (error) {
@@ -143,7 +221,7 @@ function PairingStep({ server, bundled }: { server: string; bundled: boolean }) 
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [attempt, bundled, navigate, server]);
+  }, [attempt, bundled, navigate]);
 
   const code = pairing ? `${pairing.code.slice(0, 3)} ${pairing.code.slice(3)}` : '··· ···';
   const expires = pairing
@@ -158,7 +236,11 @@ function PairingStep({ server, bundled }: { server: string; bundled: boolean }) 
       </p>
       <p className="setup__note">{t('setup.pairingHelp')}</p>
       {pairing && <p className="setup__note">{t('setup.pairingExpires', { time: expires })}</p>}
-      {note && <p className="setup__note">{note}</p>}
+      {note && (
+        <p className="setup__note setup__note--strong" role="status">
+          {note}
+        </p>
+      )}
     </section>
   );
 }
