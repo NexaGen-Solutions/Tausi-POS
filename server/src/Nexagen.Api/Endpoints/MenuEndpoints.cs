@@ -32,13 +32,13 @@ public static class MenuEndpoints
         menu.MapPost("/categories/{id:guid}/deactivate", async (Guid id, DeactivateCategoryRequest r, DeactivateCategory deactivate, CancellationToken ct) =>
             new { itemsDeactivated = await deactivate.Execute(id, r, ct) });
 
-        menu.MapPost("/items", async (ItemRequest r, SaveItem save, CancellationToken ct) => new { id = await save.Execute(null, r, ct) });
-        menu.MapPut("/items/{id:guid}", async (Guid id, ItemRequest r, SaveItem save, CancellationToken ct) => new { id = await save.Execute(id, r, ct) });
+        menu.MapPost("/items", (ItemRequest r, SaveItem save, CancellationToken ct) => save.Execute(null, r, ct));
+        menu.MapPut("/items/{id:guid}", (Guid id, ItemRequest r, SaveItem save, CancellationToken ct) => save.Execute(id, r, ct));
         menu.MapPut("/items/{id:guid}/prices", async (Guid id, ItemPricesRequest r, SetItemPrices set, CancellationToken ct) =>
             new { changed = await set.Execute(id, r, ct) });
 
-        menu.MapPost("/groups", async (GroupRequest r, SaveGroup save, CancellationToken ct) => new { id = await save.Execute(null, r, ct) });
-        menu.MapPut("/groups/{id:guid}", async (Guid id, GroupRequest r, SaveGroup save, CancellationToken ct) => new { id = await save.Execute(id, r, ct) });
+        menu.MapPost("/groups", (GroupRequest r, SaveGroup save, CancellationToken ct) => save.Execute(null, r, ct));
+        menu.MapPut("/groups/{id:guid}", (Guid id, GroupRequest r, SaveGroup save, CancellationToken ct) => save.Execute(id, r, ct));
         menu.MapPut("/groups/{id:guid}/prices", async (Guid id, OptionPricesRequest r, SetOptionPrices set, CancellationToken ct) =>
             new { changed = await set.Execute(id, r, ct) });
 

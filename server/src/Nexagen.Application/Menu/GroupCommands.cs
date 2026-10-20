@@ -13,7 +13,7 @@ namespace Nexagen.Application.Menu;
 /// </summary>
 public sealed class SaveGroup(INexagenDb db, MenuAccess access, IAuditLog audit)
 {
-    public async Task<Guid> Execute(Guid? id, GroupRequest request, CancellationToken ct)
+    public async Task<SavedRef> Execute(Guid? id, GroupRequest request, CancellationToken ct)
     {
         var grant = await access.RequireEdit(ct);
         var name = MenuAccess.ValidName(request.Name, 2, 60, "option group");
@@ -73,7 +73,7 @@ public sealed class SaveGroup(INexagenDb db, MenuAccess access, IAuditLog audit)
             before, View(group), grant.ApprovedByUserId));
         await MenuAccess.Save(db, ct);
         await access.Changed(ct);
-        return group.Id;
+        return new SavedRef(group.Id, group.RowVersion);
     }
 
     private async Task SetAssignments(Guid groupId, IReadOnlyList<Guid> categoryIds, IReadOnlyList<Guid> itemIds, CancellationToken ct)

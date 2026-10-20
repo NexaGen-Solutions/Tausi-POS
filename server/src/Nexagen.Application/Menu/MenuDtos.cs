@@ -58,6 +58,9 @@ public sealed record PriceLogEntryDto(
     string Where,
     string Source);
 
+/// <summary>What was saved, with its new version for the next request (e.g. its prices).</summary>
+public sealed record SavedRef(Guid Id, long RowVersion);
+
 // ---- Requests ----
 // Structure requests carry no price fields at all, and refuse unknown fields: a price sent to
 // them is rejected (400) rather than silently ignored. Prices have their own endpoints.

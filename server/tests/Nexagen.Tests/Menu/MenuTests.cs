@@ -25,7 +25,7 @@ public class MenuTests : IAsyncLifetime
     private Task<int> SetPrices(string item, Dictionary<Guid, decimal?> prices, bool allowZero = false) =>
         _f.Get<SetItemPrices>().Execute(_f.Item(item).Id, new ItemPricesRequest(prices, allowZero, _f.Item(item).RowVersion), CancellationToken.None);
 
-    private Task<Guid> Rename(string item, string newName)
+    private Task<SavedRef> Rename(string item, string newName)
     {
         var i = _f.Item(item);
         return _f.Get<SaveItem>().Execute(i.Id, new ItemRequest(newName, null, i.CategoryId, i.VatRate, i.Active, i.ErpItemCode, null, null, i.RowVersion), CancellationToken.None);
@@ -241,7 +241,7 @@ public class MenuTests : IAsyncLifetime
 
         var admin = await _f.Get<GetAdminMenu>().Execute(CancellationToken.None);
         var item = admin.Items.Single(i => i.Name == "Tusker Lager");
-        item.OwnGroupIds.Should().Equal(size);
+        item.OwnGroupIds.Should().Equal(size.Id);
         item.InheritedGroupIds.Should().ContainSingle();
     }
 
