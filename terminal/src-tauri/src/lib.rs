@@ -3,13 +3,20 @@
 //! On first start (no server address stored) it shows the bundled setup screen, which asks for
 //! the server address and shows a pairing code. Once paired, the server address and device token
 //! live in the store, and the window opens `<server>/pos` directly on every start.
+//!
+//! Locked down: the window can only show the bundled pages or the paired server's pages, and only
+//! the paired server's pages may call the app's commands.
 
 use std::path::Path;
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
+use tauri::ipc::CapabilityBuilder;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
+use tausi_print::{PrintError, PrintRequest};
+use url::Url;
 
 const STORE_FILE: &str = "tausi.json";
 const MAIN_WINDOW_TITLE: &str = "Tausi POS";
@@ -57,6 +64,9 @@ pub struct DeviceConfig {
     pub device_token: Option<String>,
 }
 
+/// The paired server's origin ("http://posserver2:5080"), the only remote place the window may go.
+struct AllowedServer(Mutex<Option<String>>);
+
 fn load_config(app: &AppHandle) -> Result<DeviceConfig, String> {
     let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
     Ok(DeviceConfig {
@@ -69,6 +79,49 @@ fn load_config(app: &AppHandle) -> Result<DeviceConfig, String> {
     })
 }
 
+fn store_config(app: &AppHandle, config: &DeviceConfig) -> Result<(), String> {
+    let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
+    match &config.server_url {
+        Some(v) => store.set("serverUrl", v.clone()),
+        None => {
+            store.delete("serverUrl");
+        }
+    }
+    match &config.device_token {
+        Some(v) => store.set("deviceToken", v.clone()),
+        None => {
+            store.delete("deviceToken");
+        }
+    }
+    store.save().map_err(|e| e.to_string())
+}
+
+/// "http://host:port" from a server address, or None if it isn't a valid http(s) address.
+pub fn origin_of(server: &str) -> Option<String> {
+    let url = Url::parse(server).ok()?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return None;
+    }
+    Some(url.origin().ascii_serialization())
+}
+
+/// May the window show this address? The bundled pages, the dev server in development, and the
+/// paired server; nothing else.
+pub fn navigation_allowed(url: &Url, server_origin: Option<&str>, dev: bool) -> bool {
+    match url.scheme() {
+        "tauri" | "about" | "data" | "blob" => return true,
+        _ => {}
+    }
+    let origin = url.origin().ascii_serialization();
+    if origin == "http://tauri.localhost" || origin == "https://tauri.localhost" {
+        return true;
+    }
+    if dev && (origin == "http://localhost:5173" || origin == "http://127.0.0.1:5173") {
+        return true;
+    }
+    server_origin.is_some_and(|s| s == origin)
+}
+
 /// The address the window should show: the server's POS screens once paired, else the setup screen.
 fn start_url(config: &DeviceConfig) -> Result<WebviewUrl, String> {
     // In development the window always loads the Vite dev server, which proxies to the server.
@@ -77,7 +130,7 @@ fn start_url(config: &DeviceConfig) -> Result<WebviewUrl, String> {
     }
     match (&config.server_url, &config.device_token) {
         (Some(server), Some(_)) => {
-            let url = url::Url::parse(server)
+            let url = Url::parse(server)
                 .and_then(|base| base.join("/pos"))
                 .map_err(|e| e.to_string())?;
             Ok(WebviewUrl::External(url))
@@ -91,48 +144,77 @@ fn get_device_config(app: AppHandle) -> Result<DeviceConfig, String> {
     load_config(&app)
 }
 
+/// Stores the device token after pairing. The server address can only be set by `set_server_url`.
 #[tauri::command]
 fn save_device_config(app: AppHandle, config: DeviceConfig) -> Result<(), String> {
-    let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
-    match config.server_url {
-        Some(v) => store.set("serverUrl", v),
-        None => {
-            store.delete("serverUrl");
-        }
-    }
-    match config.device_token {
-        Some(v) => store.set("deviceToken", v),
-        None => {
-            store.delete("deviceToken");
-        }
-    }
-    store.save().map_err(|e| e.to_string())
+    let current = load_config(&app)?;
+    let server = current.server_url.or(config.server_url);
+    store_config(
+        &app,
+        &DeviceConfig {
+            server_url: server,
+            device_token: config.device_token,
+        },
+    )
 }
 
-/// Moves the window to the paired server's POS screens.
+/// Changes the server address (the setup screen asks for an admin-site login first). The device
+/// token is dropped, and the app restarts so only the new server is allowed.
+#[tauri::command]
+fn set_server_url(app: AppHandle, server_url: String) -> Result<(), String> {
+    let origin = origin_of(&server_url).ok_or("Enter an address like http://POSSERVER2:5080")?;
+    store_config(
+        &app,
+        &DeviceConfig {
+            server_url: Some(origin),
+            device_token: None,
+        },
+    )?;
+    if cfg!(debug_assertions) {
+        return Ok(());
+    }
+    app.restart();
+}
+
+/// Moves the window to the paired server's POS screens (restarts so the server is allowed in).
 #[tauri::command]
 fn open_server(app: AppHandle) -> Result<(), String> {
-    let config = load_config(&app)?;
-    let window = app
-        .get_webview_window(MAIN_WINDOW)
-        .ok_or("no main window")?;
-    match start_url(&config)? {
-        WebviewUrl::External(url) => window.navigate(url).map_err(|e| e.to_string()),
-        _ => window
+    if cfg!(debug_assertions) {
+        let window = app
+            .get_webview_window(MAIN_WINDOW)
+            .ok_or("no main window")?;
+        return window
             .eval("window.location.replace('/pos')")
-            .map_err(|e| e.to_string()),
+            .map_err(|e| e.to_string());
     }
+    app.restart();
 }
 
-/// Prints raw ESC/POS bytes to a printer attached to this PC ("Via terminal" printers).
+/// Prints raw ESC/POS bytes on a printer plugged into this PC ("Via terminal" printers).
 #[tauri::command]
-fn print_raw(printer: String, data_base64: String) -> Result<(), String> {
-    // TODO(printing): send the bytes to the local Windows printer queue in RAW mode
-    // (OpenPrinter / StartDocPrinter with datatype "RAW" / WritePrinter).
-    let _ = data_base64;
-    Err(format!(
-        "Printing via this terminal is not implemented yet (printer \"{printer}\")."
-    ))
+async fn print_raw(printer: String, data_base64: String) -> Result<(), String> {
+    let request = PrintRequest::from_base64(&printer, &data_base64).map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || tausi_print::print_raw(&request))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e: PrintError| e.to_string())
+}
+
+/// The printers installed on this PC, for the admin's "via terminal" printer list.
+#[tauri::command]
+async fn list_printers() -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(tausi_print::list_printers)
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn check_printer(printer: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || tausi_print::check_printer(&printer))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -147,8 +229,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_device_config,
             save_device_config,
+            set_server_url,
             open_server,
-            print_raw
+            print_raw,
+            list_printers,
+            check_printer
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -163,17 +248,36 @@ pub fn run() {
                 }
             }
             let config = load_config(&handle).unwrap_or_default();
+            let server_origin = config.server_url.as_deref().and_then(origin_of);
+
+            // Only the paired server's pages may call the app's commands.
+            if let Some(origin) = &server_origin {
+                app.add_capability(
+                    CapabilityBuilder::new("paired-server")
+                        .remote(format!("{origin}/*"))
+                        .window(MAIN_WINDOW)
+                        .permission("core:default")
+                        .permission("store:default"),
+                )?;
+            }
+            app.manage(AllowedServer(Mutex::new(server_origin)));
 
             // Counter PCs: full screen, no title bar. In development a normal 1280x800 window
             // is easier to work with; set TAUSI_FULLSCREEN=1 to see the real thing.
             let full_screen = !cfg!(debug_assertions)
                 || env_var("TAUSI_FULLSCREEN", "NEXAGEN_FULLSCREEN").is_some();
+            let guard = handle.clone();
             let window = WebviewWindowBuilder::new(app, MAIN_WINDOW, start_url(&config)?)
                 .title(MAIN_WINDOW_TITLE)
                 .inner_size(1280.0, 800.0)
                 .fullscreen(full_screen)
                 .decorations(!full_screen)
                 .focused(true)
+                .on_navigation(move |url| {
+                    let allowed = guard.state::<AllowedServer>();
+                    let server = allowed.0.lock().map(|s| s.clone()).unwrap_or(None);
+                    navigation_allowed(url, server.as_deref(), cfg!(debug_assertions))
+                })
                 .build()?;
             // Take keyboard focus on start, so a cashier can type a PIN without touching the screen.
             let _ = window.set_focus();
@@ -247,5 +351,37 @@ mod tests {
         assert!(!copy_old_store(&data_dir).unwrap());
         assert!(!data_dir.join(STORE_FILE).exists());
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn origins_are_normalised() {
+        assert_eq!(
+            origin_of("http://POSSERVER2:5080/pos").as_deref(),
+            Some("http://posserver2:5080")
+        );
+        assert_eq!(
+            origin_of("https://pos.example/").as_deref(),
+            Some("https://pos.example")
+        );
+        assert_eq!(origin_of("ftp://x"), None);
+        assert_eq!(origin_of("not a url"), None);
+    }
+
+    #[test]
+    fn only_the_paired_server_and_bundled_pages_are_allowed() {
+        let server = Some("http://posserver2:5080");
+        let ok = |u: &str, dev: bool| navigation_allowed(&Url::parse(u).unwrap(), server, dev);
+        assert!(ok("http://posserver2:5080/pos", false));
+        assert!(ok("http://tauri.localhost/setup", false));
+        assert!(ok("tauri://localhost/index.html", false));
+        assert!(!ok("http://posserver2:5081/pos", false));
+        assert!(!ok("https://example.com", false));
+        assert!(!ok("http://localhost:5173/pos", false));
+        assert!(ok("http://localhost:5173/pos", true));
+        assert!(!navigation_allowed(
+            &Url::parse("http://posserver2:5080/").unwrap(),
+            None,
+            false
+        ));
     }
 }

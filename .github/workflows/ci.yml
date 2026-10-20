@@ -55,3 +55,29 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
+
+  terminal-windows:
+    # The Windows terminal app (Tauri) with real printing through the Windows spooler.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            terminal/print -> target
+            terminal/src-tauri -> target
+      - name: Build the web app (bundled for the setup screen)
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Test the print crate
+        run: cargo test
+        working-directory: terminal/print
+      - name: Build and test the terminal app
+        run: cargo test && cargo build
+        working-directory: terminal/src-tauri

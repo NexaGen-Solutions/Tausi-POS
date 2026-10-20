@@ -1,0 +1,11 @@
+[package]
+name = "tausi-print"
+version = "0.1.0"
+edition = "2021"
+description = "Raw ESC/POS printing for Nexagen Terminal: the Windows spooler in RAW mode, lp on Linux"
+
+[dependencies]
+base64 = "0.22"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Graphics_Printing", "Win32_Graphics_Gdi", "Win32_Foundation", "Win32_Security"] }

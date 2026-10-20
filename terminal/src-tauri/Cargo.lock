@@ -3765,6 +3765,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tausi-print"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "windows",
+]
+
+[[package]]
 name = "tausi-terminal"
 version = "0.1.0"
 dependencies = [
@@ -3775,6 +3783,7 @@ dependencies = [
  "tauri-plugin-autostart",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "tausi-print",
  "url",
 ]
 
