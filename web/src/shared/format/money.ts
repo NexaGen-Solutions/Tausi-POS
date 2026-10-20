@@ -13,3 +13,11 @@ export function formatAmount(amount: number): string {
 export function formatMoney(amount: number, currency = 'KES'): string {
   return `${symbols[currency] ?? currency} ${formatAmount(amount)}`;
 }
+
+/** "KSh 215.52": always with cents (net and VAT figures). */
+export function formatMoneyCents(amount: number, currency = 'KES'): string {
+  return `${symbols[currency] ?? currency} ${amount.toLocaleString('en-KE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

@@ -142,3 +142,37 @@
   margin: 0;
   color: var(--color-text-secondary);
 }
+
+/* TEMPORARY test menu list (remove with the order-screen task) */
+.test-menu {
+  width: min(100%, 1100px);
+  text-align: left;
+}
+.test-menu h2 {
+  font-size: 18px;
+}
+.test-menu__note {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.test-menu__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+.test-menu h3 {
+  font-size: 15px;
+}
+.test-menu ul {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.test-menu li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px 0;
+  border-bottom: 1px solid #e3e3df;
+}

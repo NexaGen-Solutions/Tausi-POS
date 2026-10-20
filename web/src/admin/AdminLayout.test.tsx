@@ -62,8 +62,9 @@ describe('admin layout', () => {
   });
 
   it('sends signed-out visitors to the sign-in page', async () => {
+    // Signed out: everything that needs a session answers 401, as the server does.
     fetchMock.mockImplementation(async (url) =>
-      String(url).endsWith('/api/auth/me') ? json(401, { status: 401 }) : json(200, {}),
+      /\/api\/(auth\/me|admin\/)/.test(String(url)) ? json(401, { status: 401 }) : json(200, {}),
     );
 
     renderRoutes(routes, '/admin/menu');

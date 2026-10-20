@@ -6,7 +6,8 @@ namespace Nexagen.Api.Platform;
 /// Command-line tasks instead of starting the server:
 /// <c>migrate</c> brings the database up to date;
 /// <c>seed</c> adds roles, default permissions and ledger accounts;
-/// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals and printers;
+/// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals, printers and,
+/// when the menu is empty, the demo menu; <c>seed --demo-menu</c> adds only the demo menu;
 /// <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their next login.
 /// </summary>
 public static class Commands
@@ -18,6 +19,13 @@ public static class Commands
             case "migrate":
                 await DatabaseStartup.Migrate(app.Services.GetRequiredService<IServiceScopeFactory>(), CancellationToken.None);
                 Console.WriteLine("Database is up to date.");
+                return true;
+            case "seed" when args.Contains("--demo-menu"):
+                await DatabaseStartup.Migrate(app.Services.GetRequiredService<IServiceScopeFactory>(), CancellationToken.None);
+                await using (var scope = app.Services.CreateAsyncScope())
+                    Console.WriteLine(await scope.ServiceProvider.GetRequiredService<Seeder>().SeedDemoMenu(CancellationToken.None)
+                        ? "Demo menu added."
+                        : "There is already a menu; nothing changed.");
                 return true;
             case "seed":
                 await Seed(app, demo: args.Contains("--demo"));

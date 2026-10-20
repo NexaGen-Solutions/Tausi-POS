@@ -113,6 +113,27 @@ curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/
   http://localhost:5080/api/settings/business
 ```
 
+### Menu and prices
+
+`seed --demo` adds the demo menu when the menu is empty; `seed --demo-menu` adds only the menu.
+Open **Menu and prices** on the admin site to edit items, prices (with the price log), option
+groups and price lists, and to import or export CSV. A logged-in terminal shows a temporary
+"Menu (for testing)" list under the table-map placeholder; it refreshes when the menu changes.
+
+For now these are API only (admin cookie from the pairing step):
+
+```bash
+# A terminal sells from another price list (null: back to the default)
+curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
+  -d '{"priceListId":"<price list id>"}' http://localhost:5080/api/admin/terminals/<terminal id>/price-list
+# Change one cell of the permission grid, e.g. give Supervisors menu.edit
+curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
+  -d '{"permissionKey":"menu.edit","value":"Allowed"}' http://localhost:5080/api/admin/roles/<role id>/permissions
+```
+
+Ids: price lists in `GET /api/admin/menu`, terminals in `GET /api/admin/terminals`, roles in
+`GET /api/admin/staff` (`roleId`, `assignableRoles`).
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

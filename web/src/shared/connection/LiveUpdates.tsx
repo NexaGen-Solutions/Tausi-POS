@@ -27,6 +27,7 @@ export function LiveUpdates() {
       }),
       onPosEvent('printer.status', () => void queries.invalidateQueries({ queryKey: ['health'] })),
       onPosEvent('day.opened', () => void queries.invalidateQueries({ queryKey: ['device'] })),
+      onPosEvent('menu.changed', () => void queries.invalidateQueries({ queryKey: ['pos-menu'] })),
       onPosEvent('print.failed', (payload) =>
         setFailed((list) => [...list, payload as PrintFailed]),
       ),

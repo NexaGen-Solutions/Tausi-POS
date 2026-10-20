@@ -50,6 +50,7 @@ app.MapSettingsEndpoints();
 app.MapPrinterEndpoints();
 app.MapDayEndpoints();
 app.MapStaffEndpoints();
+app.MapMenuEndpoints();
 app.MapDevEndpoints();
 app.MapHub<PosHub>(PosHub.Path);
 app.MapNexagenWebFallback();

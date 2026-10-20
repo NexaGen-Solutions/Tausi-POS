@@ -17,6 +17,13 @@ public static class AuditActions
     public const string LogoChanged = "settings.logo_changed";
     public const string TestPrint = "printer.test";
     public const string DayOpened = "day.opened";
+    public const string MenuCategoryChanged = "menu.category_changed";
+    public const string MenuItemChanged = "menu.item_changed";
+    public const string MenuPricesChanged = "menu.prices_changed";
+    public const string MenuGroupChanged = "menu.group_changed";
+    public const string MenuPriceListChanged = "menu.price_list_changed";
+    public const string MenuImported = "menu.imported";
+    public const string TerminalPriceList = "terminal.price_list";
     public const string StaffCreated = "staff.created";
     public const string StaffUpdated = "staff.updated";
     public const string StaffPinReset = "staff.pin_reset";

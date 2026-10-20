@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Nexagen.Domain.Audit;
 using Nexagen.Domain.Devices;
 using Nexagen.Domain.Ledger;
+using Nexagen.Domain.Menu;
 using Nexagen.Domain.People;
 using Nexagen.Domain.Platform;
 using Nexagen.Domain.Printing;
@@ -33,6 +34,14 @@ public interface INexagenDb
     DbSet<LedgerAccount> LedgerAccounts { get; }
     DbSet<JournalEntry> JournalEntries { get; }
     DbSet<JournalLine> JournalLines { get; }
+    DbSet<Category> Categories { get; }
+    DbSet<MenuItem> MenuItems { get; }
+    DbSet<MenuItemPrice> MenuItemPrices { get; }
+    DbSet<PriceList> PriceLists { get; }
+    DbSet<ModifierGroup> ModifierGroups { get; }
+    DbSet<ModifierOption> ModifierOptions { get; }
+    DbSet<ModifierGroupAssignment> ModifierGroupAssignments { get; }
+    DbSet<PriceChangeLog> PriceChangeLogs { get; }
 
     DatabaseFacade Database { get; }
 
