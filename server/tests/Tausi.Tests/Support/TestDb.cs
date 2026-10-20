@@ -35,8 +35,8 @@ public sealed class TestDb : IDisposable
     public SqliteTestDbContext Context { get; }
 
     /// <summary>A second context on the same database, e.g. to read back what was saved.</summary>
-    public SqliteTestDbContext NewContext() =>
-        new(new DbContextOptionsBuilder<SqliteTestDbContext>().UseSqlite(_connection).Options);
+    public SqliteTestDbContext NewContext(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors) =>
+        new(new DbContextOptionsBuilder<SqliteTestDbContext>().UseSqlite(_connection).AddInterceptors(interceptors).Options);
 
     public void Dispose()
     {

@@ -10,14 +10,16 @@ public sealed class TicketDatabase(TausiDbContext db) : ITicketDatabase
 
     public async Task<long> NextNumber(CancellationToken ct)
     {
+        // Run as written: composing (e.g. SingleAsync) would wrap it in a subquery, where SQL Server
+        // does not allow NEXT VALUE FOR.
         if (Provider.Contains("Npgsql", StringComparison.Ordinal))
-            return await db.Database
+            return (await db.Database
                 .SqlQueryRaw<long>($"SELECT nextval('\"{TausiDbContext.TicketNumberSequence}\"') AS \"Value\"")
-                .SingleAsync(ct);
+                .ToListAsync(ct)).Single();
         if (Provider.Contains("SqlServer", StringComparison.Ordinal))
-            return await db.Database
+            return (await db.Database
                 .SqlQueryRaw<long>($"SELECT NEXT VALUE FOR [{TausiDbContext.TicketNumberSequence}] AS [Value]")
-                .SingleAsync(ct);
+                .ToListAsync(ct)).Single();
 
         // SQLite (unit tests only): no sequences, and one writer at a time anyway.
         var last = await db.Tickets.MaxAsync(t => (long?)t.Number, ct);
