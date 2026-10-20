@@ -115,7 +115,7 @@ public class DevicesApiTests(DevicesApp app)
         {
             await Task.Delay(200);
             if (Directory.Exists(app.PrintOutput))
-                slip = Directory.GetFiles(app.PrintOutput, $"*{job.ToString("N")[..8]}*").FirstOrDefault();
+                slip = Directory.GetFiles(app.PrintOutput, $"*{job.ToString("N")[^8..]}.txt").FirstOrDefault();
         }
         slip.Should().NotBeNull();
         (await File.ReadAllTextAsync(slip!)).Should().Contain("Dead Network").And.Contain("Test OK");

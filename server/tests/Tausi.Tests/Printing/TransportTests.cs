@@ -91,6 +91,22 @@ public class FilePrinterTransportTests
         Directory.Delete(dir, true);
     }
 
+    [Fact]
+    public async Task Two_slips_in_the_same_second_get_their_own_files()
+    {
+        // Job ids are time-ordered, so jobs made together share the start of the id.
+        var dir = Path.Combine(Path.GetTempPath(), "tausi-print-" + Guid.NewGuid().ToString("N"));
+        var options = Options.Create(new TausiOptions { Printing = { OutputDirectory = dir } });
+        var transport = new FilePrinterTransport(options, new FakeEnv(), new FakeTimeProvider());
+        var printer = new Printer { Name = "Ticket Printer 1" };
+
+        await transport.Send(printer, new PrintJob { Kind = PrintJobKind.Test, TextPreview = "first\n" }, CancellationToken.None);
+        await transport.Send(printer, new PrintJob { Kind = PrintJobKind.Test, TextPreview = "second\n" }, CancellationToken.None);
+
+        Directory.GetFiles(dir).Should().HaveCount(2);
+        Directory.Delete(dir, true);
+    }
+
     private sealed class FakeEnv : IHostEnvironment
     {
         public string EnvironmentName { get; set; } = "Test";
