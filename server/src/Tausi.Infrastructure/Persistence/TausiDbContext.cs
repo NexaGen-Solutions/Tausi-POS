@@ -143,6 +143,10 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.Property(x => x.DeviceTokenHash).HasMaxLength(64);
             e.HasIndex(x => x.DeviceTokenHash).IsUnique();
             e.Property(x => x.AppVersion).HasMaxLength(50);
+            e.Property(x => x.DispenseHeader).HasMaxLength(40);
+            e.Property(x => x.LocalPrintersJson).Unbounded();
+            e.Ignore(x => x.IsPaired);
+            e.Ignore(x => x.EffectiveDispenseHeader);
             e.HasOne(x => x.DispensePrinter).WithMany().HasForeignKey(x => x.DispensePrinterId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.ReceiptPrinter).WithMany().HasForeignKey(x => x.ReceiptPrinterId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -194,6 +198,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.HasOne(x => x.Printer).WithMany().HasForeignKey(x => x.PrinterId).OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.TextPreview).Unbounded();
             e.Property(x => x.LastError).HasMaxLength(1000);
+            e.Property(x => x.DiscardReason).HasMaxLength(500);
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasIndex(x => x.TicketId);
         });

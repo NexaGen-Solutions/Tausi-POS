@@ -74,6 +74,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -83,6 +86,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("CutAfterSlip")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("DispenseHeader")
                         .HasMaxLength(40)
@@ -96,10 +102,16 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<DateTimeOffset?>("LastPrintedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("OpenDrawerOnReceipt")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid?>("OwningTerminalId")
                         .HasColumnType("uuid");
@@ -132,6 +144,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("AppVersion")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -140,11 +155,19 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("DispenseHeader")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<Guid?>("DispensePrinterId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocalPrintersJson")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -159,6 +182,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.Property<Guid?>("ReceiptPrinterId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
@@ -947,6 +973,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DiscardReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Kind")
                         .IsRequired()

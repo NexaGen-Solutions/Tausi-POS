@@ -74,6 +74,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -83,6 +86,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("CutAfterSlip")
+                        .HasColumnType("bit");
 
                     b.Property<string>("DispenseHeader")
                         .HasMaxLength(40)
@@ -96,10 +102,16 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<DateTimeOffset?>("LastPrintedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("OpenDrawerOnReceipt")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("OwningTerminalId")
                         .HasColumnType("uniqueidentifier");
@@ -132,6 +144,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
                     b.Property<string>("AppVersion")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -140,11 +155,19 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("DispenseHeader")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<Guid?>("DispensePrinterId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LocalPrintersJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -159,6 +182,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<Guid?>("ReceiptPrinterId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
@@ -952,6 +978,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DiscardReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Kind")
                         .IsRequired()

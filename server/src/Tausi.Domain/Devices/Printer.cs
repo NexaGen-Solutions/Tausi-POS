@@ -43,8 +43,26 @@ public class Printer : VersionedEntity
     /// <summary>The header printed on that template's slips, e.g. "Counter A".</summary>
     public string? DispenseHeader { get; set; }
 
+    /// <summary>Cut the paper after each slip (most thermal printers have a cutter).</summary>
+    public bool CutAfterSlip { get; set; } = true;
+
+    /// <summary>Send the cash-drawer pulse when a final receipt prints.</summary>
+    public bool OpenDrawerOnReceipt { get; set; }
+
+    public bool Active { get; set; } = true;
+
     public PrinterStatus Status { get; set; } = PrinterStatus.Unknown;
     public string? LastError { get; set; }
+    public DateTimeOffset? LastPrintedAt { get; set; }
+
+    /// <summary>"Network · 192.168.1.50:9100", "Windows share · \\PC\TP1", "Via terminal (USB) · Pillar 2", "File (dev)".</summary>
+    public string ConnectionText(string? owningTerminalName) => ConnectionMode switch
+    {
+        PrinterConnection.Network9100 => $"Network · {Address}",
+        PrinterConnection.WindowsShare => $"Windows share · {Address}",
+        PrinterConnection.ViaTerminal => $"Via terminal (USB) · {owningTerminalName ?? "?"}",
+        _ => "File (dev)",
+    };
 
     /// <summary>Characters per line in the default font.</summary>
     public int Columns => PaperWidthMm == 58 ? 32 : 42;
