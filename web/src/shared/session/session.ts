@@ -22,12 +22,18 @@ export interface LogoutNotice {
   idleLogoutMinutes: number;
 }
 
-const storageKey = 'nexagen.session';
+const storageKey = 'tausi.session';
+/** The key used before the rename to Tausi POS; a session open during the upgrade is kept. */
+const oldStorageKey = 'nexagen.session';
 type Listener = (session: PinSession | null) => void;
 const listeners = new Set<Listener>();
 
 function read(): PinSession | null {
   try {
+    const old = sessionStorage.getItem(oldStorageKey);
+    if (old !== null && sessionStorage.getItem(storageKey) === null)
+      sessionStorage.setItem(storageKey, old);
+    sessionStorage.removeItem(oldStorageKey);
     const raw = sessionStorage.getItem(storageKey);
     if (!raw) return null;
     const session = JSON.parse(raw) as PinSession;

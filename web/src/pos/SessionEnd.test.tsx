@@ -59,7 +59,7 @@ describe('end of a session', () => {
     expect(await screen.findByRole('heading', { name: 'Enter your PIN' })).toBeInTheDocument();
     expect(screen.queryByText(/CAROL/)).not.toBeInTheDocument();
     expect(pinSession()).toBeNull();
-    expect(sessionStorage.getItem('nexagen.session')).toBeNull();
+    expect(sessionStorage.getItem('tausi.session')).toBeNull();
   });
 
   it('logs out by itself after the idle time and says why for 5 seconds', async () => {

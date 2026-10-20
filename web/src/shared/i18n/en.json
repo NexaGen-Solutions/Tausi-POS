@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Nexagen POS",
+    "appName": "Tausi POS",
     "cancel": "Cancel",
     "close": "Close",
     "retry": "Retry",
@@ -32,7 +32,7 @@
     "serverLabel": "Server address",
     "serverHint": "For example http://POSSERVER2:5080",
     "connect": "Connect",
-    "serverUnreachable": "Cannot reach a Nexagen Server at that address.",
+    "serverUnreachable": "Cannot reach a Tausi Server at that address.",
     "pairingTitle": "Pairing code",
     "pairingHelp": "An admin enters this code to register this terminal. This screen moves on by itself once it is done.",
     "pairingExpires": "The code expires at {time}.",
@@ -85,7 +85,8 @@
     "wrongPin": "That PIN is not right."
   },
   "admin": {
-    "subtitle": "Nexagen POS admin",
+    "subtitle": "Tausi POS admin",
+    "about": "Tausi POS · by NexaGen Solutions · version {version}",
     "logo": "Logo",
     "signedIn": "Signed in: {name}",
     "comingSoon": "Coming in a later task.",

@@ -34,6 +34,10 @@ describe('admin layout', () => {
     renderRoutes(routes, '/admin/settings');
 
     expect(await screen.findByText("Mau's Village")).toBeInTheDocument();
+    expect(screen.getByText('Tausi POS admin')).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Tausi POS · by NexaGen Solutions · version \d+\.\d+\.\d+$/),
+    ).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Logo' })).toHaveAttribute('src', '/files/logo-1');
     const nav = screen.getByRole('navigation', { name: 'Admin' });
     const links = within(nav)

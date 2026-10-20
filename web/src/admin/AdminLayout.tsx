@@ -55,6 +55,7 @@ export function AdminLayout() {
             <Button onClick={() => void signOut()}>{t('common.signOut')}</Button>
           </div>
         )}
+        <p className="admin__about">{t('admin.about', { version: __APP_VERSION__ })}</p>
       </nav>
       <div className="admin__main">
         <OfflineBanner />

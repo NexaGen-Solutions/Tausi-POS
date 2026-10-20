@@ -1,5 +1,5 @@
 /**
- * Which terminal this is. In the Nexagen Terminal app (Tauri) the server address and device
+ * Which terminal this is. In the Tausi Terminal app (Tauri) the server address and device
  * token live in the app's store; in a plain browser during development they live in localStorage.
  */
 export interface DeviceConfig {
@@ -7,7 +7,9 @@ export interface DeviceConfig {
   deviceToken?: string | null;
 }
 
-const storageKey = 'nexagen.device';
+const storageKey = 'tausi.device';
+/** The key used before the rename to Tausi POS; read once so a paired browser stays paired. */
+export const oldStorageKey = 'nexagen.device';
 let current: DeviceConfig = {};
 
 export function isTauri(): boolean {
@@ -29,6 +31,10 @@ export async function loadDevice(): Promise<DeviceConfig> {
     current = await invoke<DeviceConfig>('get_device_config');
   } else {
     try {
+      const old = localStorage.getItem(oldStorageKey);
+      if (old !== null && localStorage.getItem(storageKey) === null)
+        localStorage.setItem(storageKey, old);
+      localStorage.removeItem(oldStorageKey);
       current = JSON.parse(localStorage.getItem(storageKey) ?? '{}') as DeviceConfig;
     } catch {
       current = {};
