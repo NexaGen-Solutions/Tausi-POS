@@ -48,7 +48,8 @@ public sealed class PrintJobProcessor(
         bool WaitsForEarlier(PrintJob job) =>
             job.TicketId is { } ticket
             && (failed.Any(f => f.TicketId == ticket && f.CreatedAt < job.CreatedAt)
-                || queued.Any(q => q.TicketId == ticket && q.Id != job.Id && q.Status == PrintJobStatus.Queued
+                || queued.Any(q => q.TicketId == ticket && q.Id != job.Id
+                    && q.Status is PrintJobStatus.Queued or PrintJobStatus.Failed
                     && (q.CreatedAt < job.CreatedAt || (q.CreatedAt == job.CreatedAt && q.Id.CompareTo(job.Id) < 0))));
 
         var heads = queued.GroupBy(j => j.PrinterId).Select(g => g.First()).OrderBy(j => j.CreatedAt).ThenBy(j => j.Id).ToList();
