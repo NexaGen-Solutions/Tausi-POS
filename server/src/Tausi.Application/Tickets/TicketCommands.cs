@@ -59,7 +59,7 @@ public sealed class StartTicket(
         var lists = await db.PriceLists.AsNoTracking().ToListAsync(ct);
         var defaultList = lists.FirstOrDefault(l => l.IsDefault) ?? throw new ConflictException("There is no default price list.");
         var list = lists.FirstOrDefault(l => l.Id == terminal.PriceListId && l.Active) ?? defaultList;
-        var businessVat = (await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
+        var businessVat = (await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
         var itemIds = request.Lines.Select(l => l.MenuItemId).Distinct().ToList();
         var items = await db.MenuItems.AsNoTracking().Include(i => i.Prices)
             .Where(i => itemIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);

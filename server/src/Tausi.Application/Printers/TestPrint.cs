@@ -28,7 +28,7 @@ public sealed class TestPrint(
         var printer = await db.Printers.Include(p => p.OwningTerminal).FirstOrDefaultAsync(p => p.Id == printerId, ct)
             ?? throw new NotFoundException("Printer not found.");
         if (!printer.Active) throw new DomainException("This printer is not active.");
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
 
         var logo = await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct);
         var settings = PrintSettings.From(business?.OtherJson);

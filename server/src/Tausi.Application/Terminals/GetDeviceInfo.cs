@@ -18,7 +18,7 @@ public sealed class GetDeviceInfo(ITausiDb db, ICurrentSession session)
     public async Task<DeviceInfo> Execute(CancellationToken ct)
     {
         var terminal = session.RequireTerminal();
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         return new DeviceInfo(
             terminal.TerminalId, terminal.Name, business?.Name ?? "", business?.LogoFileId,
             await WorkPeriods.Current(db, ct));

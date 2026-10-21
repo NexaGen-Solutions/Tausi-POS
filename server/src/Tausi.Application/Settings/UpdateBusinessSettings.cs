@@ -34,7 +34,7 @@ public sealed class UpdateBusinessSettings(
         var grant = await permissions.Require(session.RequireUser(), PermissionKeys.SettingsManage, approval.ApprovalToken, ct);
         Validate(request);
 
-        var settings = await db.BusinessSettings.FirstOrDefaultAsync(ct)
+        var settings = await db.BusinessSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("The business has not been set up yet.");
         if (settings.RowVersion != request.RowVersion)
             throw new ConflictException("Someone else changed the settings. Reload and try again.");

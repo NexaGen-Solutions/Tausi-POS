@@ -34,7 +34,7 @@ public sealed class GetAdminMenu(ITausiDb db, MenuAccess access)
         var lists = await db.PriceLists.AsNoTracking().OrderByDescending(l => l.IsDefault).ThenBy(l => l.Name).ToListAsync(ct);
         var groups = await db.ModifierGroups.AsNoTracking().Include(g => g.Options).OrderBy(g => g.SortOrder).ThenBy(g => g.Name).ToListAsync(ct);
         var assignments = await db.ModifierGroupAssignments.AsNoTracking().ToListAsync(ct);
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         var categoryOrder = categories.Select((c, i) => (c.Id, i)).ToDictionary(x => x.Id, x => x.i);
 
         return new AdminMenuDto(
@@ -103,7 +103,7 @@ public sealed class GetPosMenu(ITausiDb db, ICurrentSession session)
             ?? throw new ConflictException("There is no default price list.");
         var list = lists.FirstOrDefault(l => l.Id == terminal.PriceListId && l.Active) ?? defaultList;
 
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         var businessVat = business?.VatRate ?? 16m;
         var categories = await db.Categories.AsNoTracking().Where(c => c.Active)
             .OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync(ct);

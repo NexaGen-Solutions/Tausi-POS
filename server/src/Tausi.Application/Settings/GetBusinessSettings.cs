@@ -12,7 +12,7 @@ public sealed class GetBusinessSettings(
     public async Task<BusinessSettingsDto> Execute(CancellationToken ct)
     {
         await permissions.Require(session.RequireUser(), PermissionKeys.SettingsManage, approval.ApprovalToken, ct);
-        var s = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct)
+        var s = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("The business has not been set up yet.");
         return BusinessSettingsDto.From(s);
     }

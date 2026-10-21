@@ -42,5 +42,5 @@ public sealed record PrintSettings(bool LogoOnBill, bool PoweredByFooter = false
     }
 
     public static async Task<PrintSettings> Load(ITausiDb db, CancellationToken ct) =>
-        From(await db.BusinessSettings.AsNoTracking().Select(s => s.OtherJson).FirstOrDefaultAsync(ct));
+        From(await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).Select(s => s.OtherJson).FirstOrDefaultAsync(ct));
 }
