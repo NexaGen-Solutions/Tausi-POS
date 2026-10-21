@@ -99,7 +99,11 @@ public sealed record TicketDetailDto(
     decimal Rounding = 0,
     decimal Remaining = 0,
     long? ReceiptNumber = null,
-    Guid? DefaultBroughtById = null);
+    Guid? DefaultBroughtById = null,
+    IReadOnlyList<VatLineDto>? VatLines = null);
+
+/// <summary>"Total includes VAT 16%" with its amount, or "VAT exempt" with the exempt amount, as on the bill.</summary>
+public sealed record VatLineDto(string Label, decimal Amount);
 
 /// <summary>A payment on the settle screen: "M-Pesa SJK3XXXXXX − 1,000", "Cash (edna) − 370".</summary>
 public sealed record PaymentDto(

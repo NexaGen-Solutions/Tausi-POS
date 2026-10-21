@@ -131,6 +131,16 @@ public static class TicketDetails
         Build(db, ticket, new LockHolder(user.TerminalId!.Value, user.TerminalName ?? "", user.UserId, user.Name), ct, user.UserId);
 
     /// <param name="viewer">Who is looking, to mark their own pending requests ("Cancel request").</param>
+    /// <summary>The bill's VAT lines: one per rate (after the discount; gifts carry none), then exempt items.</summary>
+    public static IReadOnlyList<VatLineDto> VatLines(Ticket ticket)
+    {
+        var lines = ticket.Lines.Where(l => l.Counts && !l.IsGift).ToList();
+        var result = lines.Where(l => !l.VatExempt).GroupBy(l => l.VatRate).OrderByDescending(g => g.Key)
+            .Select(g => new VatLineDto($"Total includes VAT {g.Key:0.##}%", g.Sum(l => l.Vat))).ToList();
+        if (lines.Any(l => l.VatExempt)) result.Add(new VatLineDto("VAT exempt", lines.Where(l => l.VatExempt).Sum(l => l.Payable)));
+        return result;
+    }
+
     public static async Task<TicketDetailDto> Build(ITausiDb db, Ticket ticket, LockHolder? holder, CancellationToken ct, Guid? viewer = null)
     {
         var shown = ticket.Lines.Where(l => l.Status != OrderLineStatus.Cancelled).ToList();
@@ -185,7 +195,7 @@ public static class TicketDetails
             ticket.Subtotal, ticket.DiscountTotal, TicketPrints.DiscountLabel(ticket),
             pendingDtos.Where(p => p.OrderLineId is null).Select(p => p.Dto).ToList(),
             payments, ticket.Total + rounding, rounding, ticket.Total + rounding - payments.Sum(p => p.Amount),
-            ticket.ReceiptNumber, ticket.OpenedByUserId);
+            ticket.ReceiptNumber, ticket.OpenedByUserId, VatLines(ticket));
     }
 }
 
