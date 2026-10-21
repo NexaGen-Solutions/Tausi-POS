@@ -73,7 +73,7 @@ docs/           design.md, wireframes/, DECISIONS.md, RUNNING.md
 
 ## Live updates (SignalR)
 
-The hub is `/hubs/pos`, and clients join the group `business`. Events are named `noun.verb`: `table.updated`, `ticket.updated`, `approval.requested`, `approval.resolved`, `print.failed`, `printer.status`, `menu.changed`. Payloads are small. Clients refetch the details through the API.
+The hub is `/hubs/pos`, and clients join the group `business`. Events are named `noun.verb`: `tables.changed`, `ticket.changed`, `ticket.lock`, `terminal.status`, `approval.requested`, `approval.resolved`, `print.failed`, `printer.status`, `menu.changed`. Payloads are small. Clients refetch the details through the API.
 
 ## UI rules (match the wireframes)
 
