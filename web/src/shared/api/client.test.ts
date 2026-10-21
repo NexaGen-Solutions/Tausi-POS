@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setDeviceForTests } from '../device/device';
 import { setPinSession } from '../session/session';
-import { ApiError, api, setApprovalHandler } from './client';
+import { ApiError, RequestSentError, api, setApprovalHandler } from './client';
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -69,19 +69,53 @@ describe('api client', () => {
     const handler = vi.fn().mockResolvedValue('approval-xyz');
     setApprovalHandler(handler);
 
-    const result = await api<{ done: boolean }>('/api/dev/void-probe', { method: 'POST' });
+    const result = await api<{ done: boolean }>('/api/pos/tickets/k1/lines/l1/void', {
+      method: 'POST',
+    });
 
     expect(result.done).toBe(true);
-    expect(handler).toHaveBeenCalledWith('order.void');
+    expect(handler).toHaveBeenCalledWith('order.void', undefined);
     expect(headersOf(1).get('X-Approval-Token')).toBe('approval-xyz');
     expect(headersOf(1).get('Idempotency-Key')).toBe(headersOf(0).get('Idempotency-Key'));
+  });
+
+  it('passes what to ask for to the pad, and a request sent instead is not an error to show', async () => {
+    fetchMock.mockResolvedValueOnce(json(403, approvalNeeded));
+    const sent = { id: 'r1', kind: 'Reprint', summary: 'Reprint bill', status: 'Pending' };
+    const handler = vi.fn().mockResolvedValue({ requested: sent });
+    setApprovalHandler(handler);
+    const approval = { kind: 'Reprint' as const, ticketId: 'k1', payload: { reason: null } };
+
+    const error = await api('/api/pos/tickets/k1/reprint-bill', { method: 'POST', approval }).catch(
+      (e: unknown) => e,
+    );
+
+    expect(handler).toHaveBeenCalledWith('order.void', approval);
+    expect(error).toBeInstanceOf(RequestSentError);
+    expect((error as RequestSentError).request).toEqual(sent);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a token already in hand and does not ask again when it is refused', async () => {
+    fetchMock.mockResolvedValueOnce(json(403, approvalNeeded));
+    const handler = vi.fn();
+    setApprovalHandler(handler);
+
+    await expect(
+      api('/api/x', { method: 'POST', approvalToken: 'pin-token' }),
+    ).rejects.toBeInstanceOf(ApiError);
+
+    expect(headersOf(0).get('X-Approval-Token')).toBe('pin-token');
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('gives up when no approval is given', async () => {
     fetchMock.mockResolvedValueOnce(json(403, approvalNeeded));
     setApprovalHandler(vi.fn().mockResolvedValue(null));
 
-    await expect(api('/api/dev/void-probe', { method: 'POST' })).rejects.toBeInstanceOf(ApiError);
+    await expect(
+      api('/api/pos/tickets/k1/lines/l1/void', { method: 'POST' }),
+    ).rejects.toBeInstanceOf(ApiError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

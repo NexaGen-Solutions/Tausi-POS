@@ -272,6 +272,77 @@ describe('table map', () => {
     expect(screen.queryByText('Choose a table for #1047')).not.toBeInTheDocument();
   });
 
+  it('with a supervisor elsewhere, a merge is sent as a request instead', async () => {
+    permissions['ticket.merge'] = 'NeedsApproval';
+    extra = {
+      'POST /api/pos/tickets/merge': () =>
+        json(403, { status: 403, approvalRequired: true, permission: 'ticket.merge' }),
+      'GET /api/pos/approvals/approvers': () => json(200, []),
+      'POST /api/pos/approvals': () =>
+        json(200, {
+          id: 'r2',
+          kind: 'Merge',
+          summary: 'Merge #1047 into #1042',
+          status: 'Pending',
+        }),
+    };
+    await open();
+
+    await userEvent.click(tileFor('7'));
+    await userEvent.click(screen.getByRole('button', { name: 'Merge tickets' }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Merge' }),
+    );
+    const pad = await screen.findByRole('dialog', { name: 'Supervisor approval' });
+    expect(within(pad).getByRole('combobox', { name: 'Send request to' })).toHaveDisplayValue(
+      'Anyone who can approve',
+    );
+    await userEvent.click(within(pad).getByRole('button', { name: 'Send request' }));
+
+    expect(await screen.findByText('Request sent: Merge #1047 into #1042.')).toBeInTheDocument();
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/pos/approvals')!.body).toEqual(
+      {
+        kind: 'Merge',
+        ticketId: 'k1',
+        lineId: null,
+        payload: { ticketIds: ['k2'], intoTicketId: 'k1' },
+        preferredApproverId: null,
+      },
+    );
+  });
+
+  it('with a supervisor elsewhere, a move is sent as a request instead', async () => {
+    permissions['ticket.move'] = 'NeedsApproval';
+    extra = {
+      'POST /api/pos/tickets/k2/move': () =>
+        json(403, { status: 403, approvalRequired: true, permission: 'ticket.move' }),
+      'GET /api/pos/approvals/approvers': () =>
+        json(200, [{ userId: 'u-mau', name: 'MAU', role: 'Supervisor', terminal: 'Counter B' }]),
+      'POST /api/pos/approvals': () =>
+        json(200, { id: 'r1', kind: 'Move', summary: 'Move to Table 4', status: 'Pending' }),
+    };
+    await open();
+
+    await userEvent.click(tileFor('7'));
+    await userEvent.click(screen.getByRole('button', { name: /#1047/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Move to another table' }));
+    await userEvent.click(tileFor('4'));
+    const pad = await screen.findByRole('dialog', { name: 'Supervisor approval' });
+    await userEvent.click(within(pad).getByRole('button', { name: 'Send request' }));
+
+    expect(await screen.findByText('Request sent: Move to Table 4.')).toBeInTheDocument();
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/pos/approvals')!.body).toEqual(
+      {
+        kind: 'Move',
+        ticketId: 'k2',
+        lineId: null,
+        payload: { toTableId: 't-4' },
+        preferredApproverId: 'u-mau',
+      },
+    );
+    expect(screen.queryByText('Choose a table for #1047')).not.toBeInTheDocument();
+  });
+
   it('an incoming ticket.changed refetches and redraws just that table', async () => {
     await open();
     map = mapWith(
