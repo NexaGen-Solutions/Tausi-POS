@@ -36,6 +36,7 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
         var current = version.Current;
         var now = clock.GetUtcNow();
         var settings = await PosSettings.Load(db, ct);
+        var rule = await MoneySettings.Rounding(db, ct);
         var day = await WorkPeriods.Current(db, ct);
 
         var query = db.Tables.AsNoTracking().Where(t => t.Active && t.Area!.Active);
@@ -62,7 +63,8 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
                         db.UserSessions.Any(s => s.Id == k.LockSessionId && s.EndedAt == null),
                         db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
                         db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault(),
-                        k.Lines.Count(l => l.Status == OrderLineStatus.New)))
+                        k.Lines.Count(l => l.Status == OrderLineStatus.New),
+                        k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList()))
                     .ToList(),
             })
             .ToListAsync(ct);
@@ -72,7 +74,7 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
         var areas = ordered.Select(r => new AreaDto(r.AreaId, r.AreaName, r.AreaSort)).DistinctBy(a => a.Id).ToList();
         var tables = ordered.Select(r =>
         {
-            var tickets = r.Tickets.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now)).ToList();
+            var tickets = r.Tickets.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule)).ToList();
             return new TableTileDto(r.Id, r.Name, r.AreaId, r.SortOrder, tickets,
                 tickets.Count == 0 ? null : TableIdle.Minutes(tickets.Select(k => k.LastActivityAt), now, settings.TableIdleLimit));
         }).ToList();
@@ -88,6 +90,7 @@ public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, Tim
     {
         var me = session.RequireUser();
         var now = clock.GetUtcNow();
+        var rule = await MoneySettings.Rounding(db, ct);
         var rows = await db.Tickets.AsNoTracking()
             .Where(k => k.TableId == null && k.Status == TicketStatus.Open)
             .Select(k => new TicketRow(
@@ -100,9 +103,10 @@ public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, Tim
                 db.UserSessions.Any(s => s.Id == k.LockSessionId && s.EndedAt == null),
                 db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
                 db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault(),
-                k.Lines.Count(l => l.Status == OrderLineStatus.New)))
+                k.Lines.Count(l => l.Status == OrderLineStatus.New),
+                        k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList()))
             .ToListAsync(ct);
-        return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now)).ToList();
+        return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule)).ToList();
     }
 }
 
@@ -150,6 +154,20 @@ public static class TicketDetails
         var pendingDtos = pending.Select(r => (r.OrderLineId, Dto: new PendingRequestDto(r.Id, r.Kind.ToString(), r.Summary, r.By ?? "?",
             viewer is { } v && r.RequestedByUserId == v))).ToList();
 
+        // Payments taken so far (read here, so every caller shows them whatever it loaded).
+        var payments = await db.Payments.AsNoTracking()
+            .Where(p => p.TicketId == ticket.Id && p.Status != PaymentStatus.Removed)
+            .Select(p => new PaymentDto(p.Id, p.Type.ToString(), p.Amount, p.Tendered, p.Change, p.MpesaCode, p.CardReference,
+                p.BroughtByUserId, db.Users.Where(u => u.Id == p.BroughtByUserId).Select(u => u.Name).FirstOrDefault() ?? "?",
+                db.Users.Where(u => u.Id == p.TakenByUserId).Select(u => u.Name).FirstOrDefault() ?? "?",
+                p.Status.ToString(), p.TakenAt))
+            .ToListAsync(ct);
+        // SQLite (unit tests) can't order by DateTimeOffset in SQL, so the order is applied here too.
+        payments = payments.OrderBy(p => p.TakenAt).ToList();
+        var rounding = ticket.Status == TicketStatus.Settled
+            ? ticket.RoundingAmount
+            : Domain.Money.CashRounding.Apply(ticket.Total, await MoneySettings.Rounding(db, ct)).Difference;
+
         // Lines in the order they were added; a part split off (void, gift, price change) sits after its line.
         var lines = shown.OrderBy(l => l.AddedAt).ThenBy(l => l.Id).Select(l => new OrderLineDto(
             l.Id, l.MenuItemId, l.Name, l.ShortName, l.Options, l.Note, l.Quantity, l.UnitPrice, l.Gross, l.Status.ToString(),
@@ -165,7 +183,9 @@ public static class TicketDetails
             holder is null ? null : new LockDto(holder.TerminalId, holder.TerminalName, holder.UserId, holder.UserName),
             ticket.RowVersion, ticket.BillNumber, ticket.NewLineCount, failed,
             ticket.Subtotal, ticket.DiscountTotal, TicketPrints.DiscountLabel(ticket),
-            pendingDtos.Where(p => p.OrderLineId is null).Select(p => p.Dto).ToList());
+            pendingDtos.Where(p => p.OrderLineId is null).Select(p => p.Dto).ToList(),
+            payments, ticket.Total + rounding, rounding, ticket.Total + rounding - payments.Sum(p => p.Amount),
+            ticket.ReceiptNumber, ticket.OpenedByUserId);
     }
 }
 
@@ -174,15 +194,19 @@ internal sealed record TicketRow(
     Guid Id, long Number, Guid? TableId, string? CustomerName, Guid OpenedById, string? OpenedBy,
     List<decimal> LineAmounts, DateTimeOffset OpenedAt, DateTimeOffset LastActivityAt, bool Mine,
     Guid? LockTerminalId, Guid? LockUserId, DateTimeOffset? LockExpiresAt, bool LockSessionLive,
-    string? LockTerminal, string? LockUser, int NewLines)
+    string? LockTerminal, string? LockUser, int NewLines, List<decimal> PendingPayments)
 {
-    public TicketSummaryDto ToDto(DateTimeOffset now)
+    public TicketSummaryDto ToDto(DateTimeOffset now, Domain.Money.RoundingRule rule)
     {
         var locked = LockTerminalId is { } terminal && LockUserId is { } user && LockExpiresAt > now && LockSessionLive
             ? new LockDto(terminal, LockTerminal ?? "another terminal", user, LockUser ?? "someone")
             : null;
+        var total = LineAmounts.Sum();
+        var paid = PendingPayments.Sum();
+        // "Part paid · KSh 370 left" on the map while the cashier has taken some of it.
+        decimal? left = paid > 0 ? Domain.Money.CashRounding.Apply(total, rule).Rounded - paid : null;
         return new TicketSummaryDto(Id, Number, TableId, CustomerName, OpenedById, OpenedBy ?? "?",
-            LineAmounts.Sum(), OpenedAt, LastActivityAt, Mine, locked, NewLines);
+            total, OpenedAt, LastActivityAt, Mine, locked, NewLines, paid, left);
     }
 }
 

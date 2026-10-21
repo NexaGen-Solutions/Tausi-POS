@@ -29,6 +29,7 @@ public sealed class LedgerPostingService(ITausiDb db, ICurrentSession session, T
             SourceId = draft.SourceId,
             CreatedAt = clock.GetUtcNow(),
             CreatedByUserId = session.User?.UserId,
+            WorkPeriodId = draft.WorkPeriodId,
             Lines = draft.Lines.Select(l => new JournalLine
             {
                 AccountId = accounts[l.AccountCode].Id,

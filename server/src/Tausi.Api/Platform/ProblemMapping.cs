@@ -27,6 +27,7 @@ public sealed class ProblemMapping(IProblemDetailsService problems, ILogger<Prob
                 Problem(401, "Session expired", "You were logged out. Enter your PIN again.", ("code", TausiClaims.SessionExpiredCode)),
             UnauthenticatedException e => Problem(401, "Not signed in", e.Message),
             NotFoundException e => Problem(404, "Not found", e.Message),
+            Tausi.Application.Day.OpenTicketsException e => Problem(409, "Conflict", e.Message, ("code", e.Code), ("openTickets", e.Tickets)),
             ConflictException { Code: { } code } e => Problem(409, "Conflict", e.Message, ("code", code)),
             ConflictException e => Problem(409, "Conflict", e.Message),
             ForbiddenException e => Problem(403, "Not allowed", e.Message, ("approvalRequired", false), ("code", e.Code)),

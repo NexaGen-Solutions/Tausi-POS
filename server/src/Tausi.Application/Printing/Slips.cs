@@ -48,8 +48,17 @@ public sealed record VoidSlip(
     string Header, string Where, long TicketNumber, DateTimeOffset At, IReadOnlyList<SlipLine> Lines, string Reason,
     string RequestedBy, string ApprovedBy);
 
+/// <summary>One payment on the receipt. <see cref="Type"/> is "Cash", "M-Pesa" or "Card".</summary>
+public sealed record ReceiptPayment(string Type, decimal Amount, decimal? Tendered, decimal? Change, string? Reference, string BroughtBy);
+
+/// <summary>
+/// The final receipt, printed when the ticket is settled. <see cref="Copy"/> for a reprint.
+/// <see cref="Rounding"/> is due minus total (e.g. -0.40).
+/// </summary>
 public sealed record ReceiptSlip(
-    BillSlip Bill, IReadOnlyList<(string Method, string? Reference, decimal Amount)> Payments, decimal Change, string Cashier);
+    BusinessInfo Business, long ReceiptNumber, long TicketNumber, bool Copy, string Where, string Waiter, string Cashier,
+    string Terminal, DateTimeOffset At, IReadOnlyList<SlipLine> Lines, string? DiscountLabel, decimal Rounding,
+    IReadOnlyList<ReceiptPayment> Payments, bool OpenDrawer = false);
 
 public sealed record CashUpSlip(
     string Business, string Person, DateTimeOffset From, DateTimeOffset To,
@@ -105,11 +114,17 @@ public static class Slips
             })
             .ToList();
 
+    private static ReceiptBuilder WriteBusiness(ReceiptBuilder b, BusinessInfo business, SlipStyle style)
+    {
+        b.Logo(style.Logo).Text(business.Name, TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight);
+        if (!string.IsNullOrWhiteSpace(business.Address)) b.Text(business.Address, TextStyle.Center);
+        if (!string.IsNullOrWhiteSpace(business.Phone)) b.Text(business.Phone, TextStyle.Center);
+        return b;
+    }
+
     private static ReceiptBuilder WriteBill(ReceiptBuilder b, BillSlip d, SlipStyle style)
     {
-        b.Logo(style.Logo).Text(d.Business.Name, TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight);
-        if (!string.IsNullOrWhiteSpace(d.Business.Address)) b.Text(d.Business.Address, TextStyle.Center);
-        if (!string.IsNullOrWhiteSpace(d.Business.Phone)) b.Text(d.Business.Phone, TextStyle.Center);
+        WriteBusiness(b, d.Business, style);
         b.Separator().Text($"BILL {d.BillNumber} · Ticket #{d.TicketNumber}", TextStyle.Center | TextStyle.Bold);
         if (d.Corrected) b.Text("Corrected bill · replaces earlier bills", TextStyle.Center | TextStyle.Bold);
         else if (d.BillNumber > 1) b.Text("Replaces earlier bills", TextStyle.Center);
@@ -118,16 +133,27 @@ public static class Slips
             .Columns2(d.Where, d.At.ToString("dd MMM yyyy HH:mm", CultureInfo.InvariantCulture))
             .Columns2($"Waiter: {d.Waiter}", d.Terminal)
             .Separator();
+        var lines = WriteItems(b, d.Lines, d.DiscountLabel, style);
+        return WriteVat(b, lines, style);
+    }
 
-        var lines = AddUp(d.Lines);
+    /// <summary>The items as on the bill (gifts marked GIFT), then Subtotal and the discount if any, then TOTAL.</summary>
+    private static IReadOnlyList<SlipLine> WriteItems(ReceiptBuilder b, IReadOnlyList<SlipLine> items, string? discountLabel, SlipStyle style)
+    {
+        var lines = AddUp(items);
         foreach (var line in lines)
             b.Columns2(line.IsGift ? LineText(line) + " GIFT" : LineText(line), Amount(line.Amount));
         b.Separator();
         var discount = lines.Sum(l => l.Discount);
         if (discount != 0)
             b.Columns2("Subtotal", Money(lines.Sum(l => l.Amount), style.Currency))
-                .Columns2(d.DiscountLabel ?? "Discount", "-" + Money(discount, style.Currency));
+                .Columns2(discountLabel ?? "Discount", "-" + Money(discount, style.Currency));
         b.Columns2("TOTAL", Money(lines.Sum(l => l.Amount - l.Discount), style.Currency), TextStyle.Bold | TextStyle.DoubleHeight);
+        return lines;
+    }
+
+    private static ReceiptBuilder WriteVat(ReceiptBuilder b, IReadOnlyList<SlipLine> lines, SlipStyle style)
+    {
 
         // One line per VAT rate (0% included: zero-rated), from the VAT stored on each line, which is
         // worked out after the discount. Gifts carry none. The amount is never split over two lines:
@@ -196,15 +222,50 @@ public static class Slips
         return b.Cut().Build();
     }
 
-    /// <summary>The final receipt (Task 8): the bill's lines and totals, then the payments.</summary>
+    /// <summary>
+    /// The final receipt: "RECEIPT No. 2041 · Ticket #1042" (COPY on a reprint), the items as on the
+    /// bill, TOTAL and the rounding, each payment, the VAT lines, who served and who brought the
+    /// money, then the footer. The cash drawer opens first when asked to.
+    /// </summary>
     public static PrintDocument Receipt(ReceiptSlip d, SlipStyle style)
     {
-        var b = WriteBill(new ReceiptBuilder(style.Columns, style.Cut), d.Bill, style).Separator();
-        foreach (var (method, reference, amount) in d.Payments)
-            b.Columns2(reference is null ? method : $"{method} {reference}", Money(amount, style.Currency));
-        if (d.Change > 0) b.Columns2("Change", Money(d.Change, style.Currency), TextStyle.Bold);
-        b.Text($"Served by {d.Cashier}");
-        return WriteFooter(b, d.Bill.Business, style).Cut().Build();
+        var b = new ReceiptBuilder(style.Columns, style.Cut);
+        if (d.OpenDrawer) b.OpenDrawer();
+        WriteBusiness(b, d.Business, style);
+        b.Separator().Text($"RECEIPT No. {d.ReceiptNumber} · Ticket #{d.TicketNumber}", TextStyle.Center | TextStyle.Bold);
+        if (d.Copy) b.Text("COPY", TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight);
+        b.Separator()
+            .Columns2(d.Where, d.At.ToString("dd MMM yyyy HH:mm", CultureInfo.InvariantCulture))
+            .Columns2($"Waiter: {d.Waiter}", d.Terminal)
+            .Text($"Cashier: {d.Cashier}")
+            .Separator();
+
+        var lines = WriteItems(b, d.Lines, d.DiscountLabel, style);
+        if (d.Rounding != 0)
+        {
+            var due = lines.Sum(l => l.Amount - l.Discount) + d.Rounding;
+            b.Columns2("Rounding", (d.Rounding > 0 ? "+" : "-") + Amount(Math.Abs(d.Rounding)))
+                .Columns2("Amount due", Money(due, style.Currency), TextStyle.Bold);
+        }
+        b.Separator();
+        foreach (var p in d.Payments)
+        {
+            var label = p.Type switch
+            {
+                "Cash" when p.Change is > 0 => $"Cash {Amount(p.Tendered ?? p.Amount)} · Change {Amount(p.Change.Value)}",
+                "M-Pesa" => $"M-Pesa {p.Reference}",
+                "Card" when !string.IsNullOrWhiteSpace(p.Reference) => $"Card · ref {p.Reference}",
+                _ => p.Type,
+            };
+            b.Columns2(label, Amount(p.Amount));
+        }
+        b.Separator();
+        WriteVat(b, lines, style);
+        b.Separator().Text($"Served by {d.Waiter}");
+        // "Cash brought by edna", once per type and person.
+        foreach (var brought in d.Payments.Select(p => (p.Type, p.BroughtBy)).Distinct())
+            b.Text($"{brought.Type} brought by {brought.BroughtBy}");
+        return WriteFooter(b, d.Business, style).Cut().Build();
     }
 
     public static PrintDocument CashUp(CashUpSlip d, SlipStyle style)

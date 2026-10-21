@@ -1,4 +1,6 @@
 using Tausi.Application.Approvals;
+using Tausi.Application.Day;
+using Tausi.Application.Settling;
 using Tausi.Application.Tables;
 using Tausi.Domain.Service;
 using Tausi.Application.Tickets;
@@ -58,6 +60,25 @@ public static class TicketEndpoints
         pos.MapPost("/approvals/{id:guid}/reject", (Guid id, RejectApprovalRequestDto? r, RejectRequest reject, CancellationToken ct) =>
             reject.Execute(id, r ?? new RejectApprovalRequestDto(null), ct));
         pos.MapPost("/approvals/{id:guid}/cancel", (Guid id, CancelRequest cancel, CancellationToken ct) => cancel.Execute(id, ct));
+
+        // Settling (cashier only): payments saved as they're added, then complete.
+        pos.MapGet("/tickets/settled", (GetSettledTickets list, CancellationToken ct) => list.Execute(ct));
+        pos.MapGet("/tickets/{id:guid}/brought-by", (Guid id, BroughtByChoices choices, CancellationToken ct) => choices.Execute(id, ct));
+        pos.MapPost("/tickets/{id:guid}/payments", (Guid id, AddPaymentRequest r, PaymentCommands payments, CancellationToken ct) =>
+            payments.Add(id, r, ct));
+        pos.MapDelete("/tickets/{id:guid}/payments/{paymentId:guid}", (Guid id, Guid paymentId, PaymentCommands payments, CancellationToken ct) =>
+            payments.Remove(id, paymentId, ct));
+        pos.MapPost("/tickets/{id:guid}/settle", (Guid id, SettleTicket settle, CancellationToken ct) => settle.Execute(id, ct));
+        pos.MapPost("/tickets/{id:guid}/receipt/reprint", async (Guid id, ReprintReceipt reprint, CancellationToken ct) =>
+        {
+            await reprint.Execute(id, ct);
+            return Results.NoContent();
+        });
+        pos.MapPost("/tickets/{id:guid}/close-empty", async (Guid id, CloseEmptyTicket close, CancellationToken ct) =>
+        {
+            await close.Execute(id, ct);
+            return Results.NoContent();
+        });
 
         pos.MapPost("/tickets/{id:guid}/print-jobs/{jobId:guid}/retry", async (Guid id, Guid jobId, RetryTicketPrint retry, CancellationToken ct) =>
         {

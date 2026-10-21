@@ -51,6 +51,9 @@ public sealed class PermissionService(ITausiDb db, TimeProvider clock) : IPermis
         return new PermissionGrant(permissionKey, grant.ApprovedByUserId);
     }
 
+    /// <summary>Actions a supervisor can't approve for someone else: NeedsApproval counts as NotAllowed.</summary>
+    public static readonly IReadOnlySet<string> NotApprovable = new HashSet<string> { PermissionKeys.TicketSettle };
+
     private async Task<PermissionValue> CheckRole(Guid roleId, string permissionKey, CancellationToken ct)
     {
         if (!PermissionKeys.IsKnown(permissionKey))
@@ -60,6 +63,8 @@ public sealed class PermissionService(ITausiDb db, TimeProvider clock) : IPermis
             .Where(p => p.RoleId == roleId && p.PermissionKey == permissionKey)
             .Select(p => (PermissionValue?)p.Value)
             .FirstOrDefaultAsync(ct);
+        // Only the cashier settles: a waiter can't settle even with a supervisor's PIN.
+        if (cell == PermissionValue.NeedsApproval && NotApprovable.Contains(permissionKey)) return PermissionValue.NotAllowed;
         return cell ?? PermissionValue.NotAllowed;
     }
 }

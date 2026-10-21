@@ -40,6 +40,13 @@ public static class DependencyInjection
         services.AddScoped<Approvals.ListApprovals>();
         services.AddScoped<Approvals.Approvers>();
         services.AddScoped<Approvals.ExpireApprovals>();
+        services.AddScoped<Settling.PaymentCommands>();
+        services.AddScoped<Settling.SettleTicket>();
+        services.AddScoped<Settling.BroughtByChoices>();
+        services.AddScoped<Settling.GetSettledTickets>();
+        services.AddScoped<Settling.ReprintReceipt>();
+        services.AddScoped<Day.CloseWorkPeriod>();
+        services.AddScoped<Day.CloseEmptyTicket>();
 
         // Use cases: one class per action.
         services.AddScoped<PinLogin>();

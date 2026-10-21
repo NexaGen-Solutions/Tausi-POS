@@ -17,6 +17,12 @@ public static class AuditActions
     public const string LogoChanged = "settings.logo_changed";
     public const string TestPrint = "printer.test";
     public const string DayOpened = "day.opened";
+    public const string DayClosed = "day.closed";
+    public const string PaymentAdded = "payment.added";
+    public const string PaymentRemoved = "payment.removed";
+    public const string TicketSettled = "ticket.settled";
+    public const string ReceiptReprinted = "ticket.receipt_reprinted";
+    public const string TicketClosedEmpty = "ticket.closed_empty";
     public const string MenuCategoryChanged = "menu.category_changed";
     public const string MenuItemChanged = "menu.item_changed";
     public const string MenuPricesChanged = "menu.prices_changed";

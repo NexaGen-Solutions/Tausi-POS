@@ -33,7 +33,8 @@ public sealed class TicketEditing(ITausiDb db, ICurrentSession session, ITicketD
         try
         {
             await tickets.LockRows([id], ct);
-            var ticket = await db.Tickets.Include(k => k.Lines).Include(k => k.Table).FirstOrDefaultAsync(k => k.Id == id, ct)
+            var ticket = await db.Tickets.Include(k => k.Lines).Include(k => k.Table).Include(k => k.Payments)
+                .FirstOrDefaultAsync(k => k.Id == id, ct)
                 ?? throw new NotFoundException("Ticket not found.");
             if (!ticket.IsOpen) throw new DomainException($"#{ticket.Number} is no longer open.");
 

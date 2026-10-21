@@ -115,6 +115,14 @@ public sealed class ReceiptBuilder
         return this;
     }
 
+    /// <summary>Pulses the cash drawer (connected to the printer's drawer port).</summary>
+    public ReceiptBuilder OpenDrawer()
+    {
+        Write(DrawerPulse);
+        _text.AppendLine(CenterPad("[open drawer]"));
+        return this;
+    }
+
     /// <summary>"1234567890123…" exactly the paper width, to check the width is set right.</summary>
     public ReceiptBuilder Ruler()
     {
