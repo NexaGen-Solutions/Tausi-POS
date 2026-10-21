@@ -58,6 +58,11 @@ export function TableTileButton({
             {t('pos.map.idle', { minutes: state.idleMinutes })}
           </span>
         )}
+        {state.notPrinted > 0 && (
+          <span className="map-tile__unprinted">
+            {t('pos.map.notPrinted', { count: state.notPrinted })}
+          </span>
+        )}
         {state.lockedElsewhere && <LockIcon />}
       </span>
     </button>

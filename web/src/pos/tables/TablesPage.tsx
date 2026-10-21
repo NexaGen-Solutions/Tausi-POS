@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError, api } from '../../shared/api/client';
 import type { Brand, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
@@ -39,12 +39,20 @@ export function TablesPage() {
   const takeaway = useTakeaway(tab === 'takeaway');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chosenId, setChosenId] = useState<string | null>(null);
-  const [moving, setMoving] = useState<TicketSummary | null>(null);
   const [merging, setMerging] = useState(false);
   const [busy, setBusy] = useState(false);
   const lastTap = useRef<{ id: string; at: number } | null>(null);
+  const [params, setParams] = useSearchParams();
+  // "Move table" on the order screen comes here with ?move={ticketId}: choose its new table.
+  const [movingId, setMovingId] = useState<string | null>(() => params.get('move'));
 
   const data = map.data;
+  const moving =
+    data?.tables.flatMap((table) => table.tickets).find((k) => k.id === movingId) ?? null;
+  const setMoving = (ticket: TicketSummary | null) => {
+    setMovingId(ticket?.id ?? null);
+    if (params.has('move')) setParams({}, { replace: true });
+  };
   const currency = brand.data?.currency ?? 'KES';
   const permission = (key: string) => me.data?.permissions[key] ?? 'NotAllowed';
   const can = (key: string) => permission(key) !== 'NotAllowed';

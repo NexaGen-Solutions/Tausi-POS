@@ -13,7 +13,7 @@ import { RequireSession } from '../pos/RequireSession';
 import { SetupPage } from '../pos/SetupPage';
 import { MySalesPage } from '../pos/MySalesPage';
 import { TablesPage } from '../pos/tables/TablesPage';
-import { TicketPage } from '../pos/ticket/TicketPage';
+import { OrderPage, SettlePlaceholder } from '../pos/order/OrderPage';
 import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { t } from '../shared/i18n/i18n';
 import { RootRedirect } from './RootRedirect';
@@ -48,7 +48,15 @@ export const routes: RouteObject[] = [
         path: 'ticket/:id',
         element: (
           <RequireSession>
-            <TicketPage />
+            <OrderPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'settle/:id',
+        element: (
+          <RequireSession>
+            <SettlePlaceholder />
           </RequireSession>
         ),
       },

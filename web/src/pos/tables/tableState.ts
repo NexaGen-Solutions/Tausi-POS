@@ -13,6 +13,8 @@ export interface TileState {
   idleMinutes: number | null;
   /** One of its tickets is open on another terminal. */
   lockedElsewhere: boolean;
+  /** Lines added but not printed yet, on all its tickets. */
+  notPrinted: number;
 }
 
 /**
@@ -27,7 +29,14 @@ export function tileState(
 ): TileState {
   const tickets = table.tickets;
   if (tickets.length === 0)
-    return { kind: 'free', total: 0, waiter: null, idleMinutes: null, lockedElsewhere: false };
+    return {
+      kind: 'free',
+      total: 0,
+      waiter: null,
+      idleMinutes: null,
+      lockedElsewhere: false,
+      notPrinted: 0,
+    };
 
   const total = tickets.reduce((sum, t) => sum + t.total, 0);
   const waiter =
@@ -39,9 +48,10 @@ export function tileState(
   const lockedElsewhere = tickets.some(
     (t) => t.lock !== null && t.lock.terminalId !== myTerminalId,
   );
+  const notPrinted = tickets.reduce((sum, t) => sum + (t.newLines ?? 0), 0);
   return idle >= idleLimitMinutes
-    ? { kind: 'idle', total, waiter, idleMinutes: idle, lockedElsewhere }
-    : { kind: 'occupied', total, waiter, idleMinutes: null, lockedElsewhere };
+    ? { kind: 'idle', total, waiter, idleMinutes: idle, lockedElsewhere, notPrinted }
+    : { kind: 'occupied', total, waiter, idleMinutes: null, lockedElsewhere, notPrinted };
 }
 
 /** My tables: at least one open ticket opened by me, or with a line added by me. */
@@ -84,6 +94,7 @@ export function tileLabel(table: TableTile, state: TileState): string {
   if (state.kind === 'free') return `${table.name}: ${t('pos.map.free')}`;
   const parts = [state.waiter, formatAmount(state.total)];
   if (state.idleMinutes !== null) parts.push(t('pos.map.idle', { minutes: state.idleMinutes }));
+  if (state.notPrinted > 0) parts.push(t('pos.map.notPrinted', { count: state.notPrinted }));
   if (state.lockedElsewhere) parts.push(t('pos.map.lockedElsewhere'));
   return `${table.name}: ${parts.join(', ')}`;
 }
