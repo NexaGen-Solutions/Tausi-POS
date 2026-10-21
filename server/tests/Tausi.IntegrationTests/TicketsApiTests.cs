@@ -33,6 +33,12 @@ public class TicketsApiTests(TicketsApp app) : IAsyncLifetime
     private Guid Table(string name) => app.Db(db => db.Tables.Single(t => t.Name == name).Id);
     private Guid Item(string name) => app.Db(db => db.MenuItems.Single(i => i.Name == name).Id);
 
+    /// <summary>Beers ask Temperature; the pop-up chooses Cold by default.</summary>
+    private Guid[] ColdForBeers(string item) => app.Db(db =>
+        db.MenuItems.Where(i => i.Name == item).Select(i => i.Category!.Name).Single() == "Beers"
+            ? [db.ModifierOptions.Single(o => o.Name == "Cold").Id]
+            : Array.Empty<Guid>());
+
     private async Task<TerminalClient> Waiter(string name = "edna")
     {
         var terminal = await app.PairTerminal();
@@ -45,7 +51,7 @@ public class TicketsApiTests(TicketsApp app) : IAsyncLifetime
         var response = await terminal.Http.PostAsJsonAsync("/api/pos/tickets", new
         {
             tableId = table is null ? (Guid?)null : Table(table),
-            lines = new[] { new { menuItemId = Item(item), quantity } },
+            lines = new[] { new { menuItemId = Item(item), quantity, optionIds = ColdForBeers(item) } },
         });
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
         return await response.Json();

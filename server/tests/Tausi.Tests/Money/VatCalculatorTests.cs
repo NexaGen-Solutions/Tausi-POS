@@ -141,4 +141,31 @@ public class VatCalculatorTests
         var act = () => VatCalculator.ForLine(100m, 1, rate);
         act.Should().Throw<DomainException>();
     }
+
+    [Theory]
+    [InlineData(3, 99.99, 16, 299.97, 41.38)]
+    [InlineData(0.5, 250, 16, 125.00, 17.24)]
+    [InlineData(7, 0.29, 16, 2.03, 0.28)]
+    [InlineData(12, 1370, 16, 16440, 2267.59)]
+    [InlineData(2, 50, 0, 100, 0)]
+    public void Line_amounts_round_vat_half_away_from_zero_on_the_line_gross(
+        decimal quantity, decimal unitPrice, decimal rate, decimal gross, decimal vat)
+    {
+        var line = VatCalculator.ForLine(unitPrice, quantity, rate);
+
+        line.Gross.Should().Be(gross);
+        line.Vat.Should().Be(vat);
+        line.Net.Should().Be(gross - vat);
+    }
+
+    [Fact]
+    public void A_lines_amounts_follow_its_quantity()
+    {
+        var line = new Tausi.Domain.Service.OrderLine { UnitPrice = 250m, VatRate = 16m };
+
+        line.SetQuantity(2);
+        (line.Gross, line.Vat, line.Net).Should().Be((500m, 68.97m, 431.03m));
+        line.SetQuantity(3);
+        (line.Gross, line.Vat, line.Net).Should().Be((750m, 103.45m, 646.55m));
+    }
 }
