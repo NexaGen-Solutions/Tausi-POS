@@ -75,6 +75,9 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
     /// Development: demo printers use the File connection, so prints land in print-output/.
     /// Otherwise they are Windows-share placeholders to be set on site.
     /// </param>
+    /// <summary>Mau's Village is in Kenya.</summary>
+    public const string DemoTimeZone = "Africa/Nairobi";
+
     public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false)
     {
         await SeedBase(ct);
@@ -90,7 +93,14 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 PrintMode = PrintMode.OneButton,
                 ReceiptFooter = "Thank you. Karibu tena!",
                 OtherJson = PosSettings.DefaultJson,
+                TimeZone = DemoTimeZone,
             });
+        }
+        else
+        {
+            // Settings from before the time-zone setting: the demo business is in Kenya.
+            var settings = await db.BusinessSettings.OrderBy(s => s.Id).FirstAsync(ct);
+            if (string.IsNullOrWhiteSpace(settings.TimeZone)) settings.TimeZone = DemoTimeZone;
         }
 
         var roles = await db.Roles.ToDictionaryAsync(r => r.Name, ct);
@@ -228,14 +238,14 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 if (!items.TryGetValue(itemName, out var item) || item.Prices.Count == 0) continue;
                 var price = item.Prices[0].Price;
                 var rate = item.EffectiveVatRate(vat);
-                var amounts = VatCalculator.ForLine(price, qty, rate);
+                var amounts = VatCalculator.ForLine(price, qty, rate, item.VatExempt);
                 var cold = item.CategoryId == beersId ? coldOption : null;
                 ticket.Lines.Add(new OrderLine
                 {
                     TicketId = ticket.Id, MenuItemId = item.Id, Name = item.Name, ShortName = item.ShortName,
                     Options = cold?.Name, OptionIds = cold?.Id.ToString() ?? "",
                     Quantity = qty, UnitPrice = price,
-                    VatRate = rate, Gross = amounts.Gross, Net = amounts.Net, Vat = amounts.Vat,
+                    VatRate = rate, VatExempt = item.VatExempt, Gross = amounts.Gross, Net = amounts.Net, Vat = amounts.Vat,
                     AddedByUserId = user.Id, AddedTerminalId = terminal.Id, AddedAt = opened, PrintedAt = opened,
                     Status = OrderLineStatus.Printed, PrintRound = 1,
                 });

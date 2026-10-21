@@ -55,17 +55,40 @@ public class PrintTicketTests : IAsyncLifetime
         _f.Read().AuditEntries.Should().Contain(a => a.Action == AuditActions.TicketPrinted);
     }
 
-    [Fact]
-    public async Task Bill_and_slip_show_the_local_time_of_the_server()
+    [Theory]
+    [InlineData("Africa/Nairobi", "20 Oct 2026 21:00", "21:00")]
+    [InlineData("America/New_York", "20 Oct 2026 14:00", "14:00")]
+    public async Task Bill_and_slip_show_the_business_time_whatever_the_servers_time_zone(string zone, string billAt, string slipAt)
     {
-        _f.Clock.SetLocalTimeZone(TimeZoneInfo.CreateCustomTimeZone("EAT", TimeSpan.FromHours(3), "EAT", "EAT"));
+        // The server's clock is in UTC (18:00); the business setting decides the printed time.
+        _f.Clock.SetLocalTimeZone(TimeZoneInfo.Utc);
+        await _f.Db.BusinessSettings.ExecuteUpdateAsync(u => u.SetProperty(b => b.TimeZone, zone));
         var ticket = await Table4();
 
         await Print(ticket.Id);
 
         var jobs = Jobs(ticket.Id);
-        jobs[0].TextPreview.Should().Contain("20 Oct 2026 21:00").And.NotContain("18:00");
-        jobs[1].TextPreview.Should().Contain("21:00").And.NotContain("18:00");
+        jobs[0].TextPreview.Should().Contain(billAt).And.NotContain("18:00");
+        jobs[1].TextPreview.Should().Contain(slipAt).And.NotContain("18:00");
+    }
+
+    [Fact]
+    public async Task An_exempt_item_is_billed_as_vat_exempt_and_a_zero_rated_one_at_vat_0_percent()
+    {
+        await _f.Db.MenuItems.Where(i => i.Name == "Mau's Water 1L")
+            .ExecuteUpdateAsync(u => u.SetProperty(i => i.VatExempt, true).SetProperty(i => i.VatRate, 0m));
+        await _f.Db.MenuItems.Where(i => i.Name == "Pineapple Punch").ExecuteUpdateAsync(u => u.SetProperty(i => i.VatRate, 0m));
+        var ticket = await Table4();
+
+        var saved = _f.Ticket(ticket.Number).Lines;
+        saved.Single(l => l.Name == "Mau's Water 1L").Should().Match<OrderLine>(l => l.VatExempt && l.Vat == 0m && l.Net == l.Gross);
+        saved.Single(l => l.Name == "Pineapple Punch").Should().Match<OrderLine>(l => !l.VatExempt && l.VatRate == 0m && l.Vat == 0m);
+
+        await Print(ticket.Id);
+
+        var bill = Jobs(ticket.Id)[0].TextPreview;
+        bill.Should().Contain("Total includes VAT 16%: KSh 68.97").And.Contain("Total includes VAT 0%: KSh 0.00")
+            .And.MatchRegex(@"VAT exempt: +KSh 100\.00");
     }
 
     [Fact]

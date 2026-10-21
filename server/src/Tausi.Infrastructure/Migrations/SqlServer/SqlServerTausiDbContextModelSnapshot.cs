@@ -429,6 +429,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
+                    b.Property<bool>("VatExempt")
+                        .HasColumnType("bit");
+
                     b.Property<decimal?>("VatRate")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
@@ -1174,6 +1177,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("VatExempt")
+                        .HasColumnType("bit");
+
                     b.Property<decimal>("VatRate")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
@@ -1384,6 +1390,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<decimal>("VatRate")
                         .HasPrecision(5, 2)

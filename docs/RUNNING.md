@@ -208,6 +208,14 @@ curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/
 
 Reload the terminal to pick it up.
 
+**Time zone:** bills and slips print the business's time (`timeZone`, an IANA name; the demo is
+`Africa/Nairobi`), whatever zone the server runs in. Change it the same way: set `"timeZone"` in
+`/tmp/settings.json` (for example `"Africa/Kampala"`) and PUT it back. Unknown names are refused.
+
+**VAT on bills:** an item marked **VAT exempt** (admin site → Menu → item → VAT rate) is listed as
+"VAT exempt: KSh …"; a **Zero-rated (0%)** item is in the VAT lines as "Total includes VAT 0%:
+KSh 0.00".
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

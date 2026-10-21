@@ -12,11 +12,13 @@ Waiter: edna                     Counter A
 1 x Pineapple Punch                    270
 1 x Johnnie Walker Black Label
 Blended Scotch Whisky 750ml          4,500
+1 x Fresh Milk 500ml                    70
 2 x Mau's Water 1L                     100
 ------------------------------------------
-TOTAL                            KSh 5,620
+TOTAL                            KSh 5,690
 Total includes VAT 16%: KSh 761.38
-VAT exempt:                        KSh 100
+Total includes VAT 0%: KSh 0.00
+VAT exempt:                     KSh 100.00
 ------------------------------------------
          Thank you. Karibu tena!
           This is not a receipt

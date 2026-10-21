@@ -45,7 +45,7 @@ public sealed class GetAdminMenu(ITausiDb db, MenuAccess access)
                 {
                     var (own, inherited) = MenuRules.GroupsOf(i, assignments);
                     return new AdminItemDto(i.Id, i.Name, i.ShortName, i.CategoryId, i.SortOrder, i.VatRate, i.Active,
-                        i.ErpItemCode, i.Prices.ToDictionary(p => p.PriceListId, p => p.Price), own, inherited, i.RowVersion);
+                        i.ErpItemCode, i.Prices.ToDictionary(p => p.PriceListId, p => p.Price), own, inherited, i.RowVersion, i.VatExempt);
                 }).ToList(),
             lists.Select(l => new AdminPriceListDto(l.Id, l.Name, l.Active, l.IsDefault, l.RowVersion)).ToList(),
             groups.Select(g => new AdminGroupDto(g.Id, g.Name, g.MinSelect, g.MaxSelect, g.SortOrder, g.Active,

@@ -17,10 +17,13 @@ public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string C
 /// <summary>
 /// One line on a slip: "2 x Tusker Lager (Cold)   500". <see cref="Vat"/> is the line's own VAT
 /// (stored per line); <see cref="ShortName"/> and <see cref="Note"/> are for the dispense slip.
+/// <see cref="VatExempt"/> lines are listed as "VAT exempt"; a zero-rated line (rate 0, not exempt)
+/// is part of "Total includes VAT 0%".
 /// </summary>
 public sealed record SlipLine(
     decimal Quantity, string Name, string? Options, decimal Amount,
-    decimal UnitPrice = 0, decimal VatRate = 0, decimal Vat = 0, string? ShortName = null, string? Note = null);
+    decimal UnitPrice = 0, decimal VatRate = 0, decimal Vat = 0, string? ShortName = null, string? Note = null,
+    bool VatExempt = false);
 
 /// <summary>The business as printed at the top and bottom of customer slips.</summary>
 public sealed record BusinessInfo(string Name, string? Address = null, string? Phone = null, string? Footer = null);
@@ -68,6 +71,10 @@ public static class Slips
     public static string Money(decimal amount, string currency) =>
         $"{(currency == "KES" ? "KSh" : currency)} {Amount(amount)}";
 
+    /// <summary>"KSh 0.00", "KSh 206.90": VAT figures always show cents.</summary>
+    public static string MoneyCents(decimal amount, string currency) =>
+        $"{(currency == "KES" ? "KSh" : currency)} {amount.ToString("#,##0.00", Kenya)}";
+
     private static string Qty(decimal q) => q.ToString("0.##", CultureInfo.InvariantCulture);
 
     private static string LineText(SlipLine l) => $"{Qty(l.Quantity)} x {l.Name}" + (l.Options is { Length: > 0 } o ? $" ({o})" : "");
@@ -85,7 +92,7 @@ public static class Slips
 
     /// <summary>Lines with the same item, options and price, added together (the bill shows them once).</summary>
     public static IReadOnlyList<SlipLine> AddUp(IEnumerable<SlipLine> lines) =>
-        lines.GroupBy(l => (l.Name, l.Options, l.UnitPrice, l.VatRate))
+        lines.GroupBy(l => (l.Name, l.Options, l.UnitPrice, l.VatRate, l.VatExempt))
             .Select(g => g.First() with
             {
                 Quantity = g.Sum(l => l.Quantity),
@@ -111,17 +118,16 @@ public static class Slips
         foreach (var line in lines) b.Columns2(LineText(line), Amount(line.Amount));
         b.Separator().Columns2("TOTAL", Money(lines.Sum(l => l.Amount), style.Currency), TextStyle.Bold | TextStyle.DoubleHeight);
 
-        // One line per VAT rate, from the VAT stored on each line. The amount is never split over two
-        // lines: on narrow paper the label is shortened.
-        foreach (var rate in lines.Where(l => l.VatRate > 0).GroupBy(l => l.VatRate).OrderByDescending(g => g.Key))
+        // One line per VAT rate (0% included: zero-rated), from the VAT stored on each line. The amount
+        // is never split over two lines: on narrow paper the label is shortened.
+        foreach (var rate in lines.Where(l => !l.VatExempt).GroupBy(l => l.VatRate).OrderByDescending(g => g.Key))
         {
-            var vat = Money(rate.Sum(l => l.Vat), style.Currency);
+            var vat = MoneyCents(rate.Sum(l => l.Vat), style.Currency);
             var full = $"Total includes VAT {Qty(rate.Key)}%: {vat}";
             if (full.Length <= style.Columns) b.Text(full);
             else b.Columns2($"Includes VAT {Qty(rate.Key)}%", vat);
         }
-        var exempt = lines.Where(l => l.VatRate == 0).Sum(l => l.Amount);
-        if (lines.Any(l => l.VatRate == 0)) b.Columns2("VAT exempt:", Money(exempt, style.Currency));
+        if (lines.Any(l => l.VatExempt)) b.Columns2("VAT exempt:", MoneyCents(lines.Where(l => l.VatExempt).Sum(l => l.Amount), style.Currency));
         return b;
     }
 

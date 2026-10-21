@@ -37,8 +37,14 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
   const [name, setName] = useState(item?.name ?? '');
   const [shortName, setShortName] = useState(item?.shortName ?? '');
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? activeCategories[0]?.id ?? '');
-  const [vatMode, setVatMode] = useState<'default' | 'exempt' | 'custom'>(
-    item?.vatRate == null ? 'default' : item.vatRate === 0 ? 'exempt' : 'custom',
+  const [vatMode, setVatMode] = useState<'default' | 'zero' | 'exempt' | 'custom'>(
+    item?.vatExempt
+      ? 'exempt'
+      : item?.vatRate == null
+        ? 'default'
+        : item.vatRate === 0
+          ? 'zero'
+          : 'custom',
   );
   const [customVat, setCustomVat] = useState(
     item?.vatRate && item.vatRate > 0 ? String(item.vatRate) : '',
@@ -65,7 +71,11 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
 
   const shownShort = shortName || name.trim().slice(0, 18);
   const vatRate =
-    vatMode === 'default' ? menu.businessVatRate : vatMode === 'exempt' ? 0 : Number(customVat);
+    vatMode === 'default'
+      ? menu.businessVatRate
+      : vatMode === 'exempt' || vatMode === 'zero'
+        ? 0
+        : Number(customVat);
   const category = menu.categories.find((c) => c.id === categoryId);
   const inherited = menu.groups.filter((g) =>
     item ? item.inheritedGroupIds.includes(g.id) : g.categoryIds.includes(categoryId),
@@ -121,6 +131,7 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
           shortName: shortName.trim() || null,
           categoryId,
           vatRate: vatMode === 'default' ? null : vatRate,
+          vatExempt: vatMode === 'exempt',
           active,
           erpItemCode: erpCode.trim() || null,
           groupIds,
@@ -195,6 +206,7 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
         onChange={(e) => setVatMode(e.target.value as typeof vatMode)}
         options={[
           { value: 'default', label: t('admin.menu.vatDefault', { rate: menu.businessVatRate }) },
+          { value: 'zero', label: t('admin.menu.vatZero') },
           { value: 'exempt', label: t('admin.menu.vatExempt') },
           { value: 'custom', label: t('admin.menu.vatCustom') },
         ]}

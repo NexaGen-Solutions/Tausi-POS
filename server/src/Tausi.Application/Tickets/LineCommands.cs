@@ -63,6 +63,7 @@ public static class TicketLines
             Note = note,
             UnitPrice = item.UnitPrice,
             VatRate = item.VatRate,
+            VatExempt = item.VatExempt,
             AddedByUserId = userId,
             AddedTerminalId = terminalId,
             AddedAt = now,

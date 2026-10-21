@@ -428,6 +428,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("VatExempt")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal?>("VatRate")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
@@ -1169,6 +1172,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<bool>("VatExempt")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("VatRate")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
@@ -1379,6 +1385,11 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("VatRate")
                         .HasPrecision(5, 2)

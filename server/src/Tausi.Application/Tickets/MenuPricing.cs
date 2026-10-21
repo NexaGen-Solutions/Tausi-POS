@@ -9,7 +9,8 @@ namespace Tausi.Application.Tickets;
 
 /// <summary>What a line copies from the menu when it is added.</summary>
 public sealed record PricedItem(
-    Guid MenuItemId, string Name, string ShortName, decimal UnitPrice, decimal VatRate, string? Options, string OptionIds);
+    Guid MenuItemId, string Name, string ShortName, decimal UnitPrice, decimal VatRate, string? Options, string OptionIds,
+    bool VatExempt = false);
 
 /// <summary>
 /// Prices items for one terminal: the price comes from the terminal's price list (or the default
@@ -65,6 +66,6 @@ public sealed class Pricer(
         var text = ordered.Count == 0 ? null : string.Join(", ", ordered.Select(p => p.Option.Name));
         var ids = string.Join(",", chosen.Order());
         return new PricedItem(item.Id, item.Name, item.ShortName, price + ordered.Sum(p => p.Option.PriceAddOn),
-            item.EffectiveVatRate(businessVat), text, ids);
+            item.EffectiveVatRate(businessVat), text, ids, item.VatExempt);
     }
 }

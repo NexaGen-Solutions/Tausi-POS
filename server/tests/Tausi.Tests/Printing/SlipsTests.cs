@@ -17,15 +17,18 @@ public class SlipsTests
         new SlipStyle(paper == 58 ? 32 : 42, Cut: true, Logo: null, PoweredBy: poweredBy));
 
     private static SlipLine Line(decimal qty, string name, decimal price, string? options = null, decimal rate = 16m,
-        string? shortName = null, string? note = null)
+        string? shortName = null, string? note = null, bool exempt = false)
     {
-        var amounts = VatCalculator.ForLine(price, qty, rate);
-        return new SlipLine(qty, name, options, amounts.Gross, price, rate, amounts.Vat, shortName ?? name, note);
+        var amounts = VatCalculator.ForLine(price, qty, rate, exempt);
+        return new SlipLine(qty, name, options, amounts.Gross, price, rate, amounts.Vat, shortName ?? name, note, exempt);
     }
 
     private static readonly BusinessInfo Mau = new("Mau's Village", "Ruaka Road, Nairobi", "Tel 0712 345 678", "Thank you. Karibu tena!");
 
-    /// <summary>A bill with lines added at different times: two separate Tusker (Cold) lines, a long name and a VAT-exempt item.</summary>
+    /// <summary>
+    /// A bill with lines added at different times: two separate Tusker (Cold) lines, a long name, a
+    /// zero-rated item and a VAT-exempt one.
+    /// </summary>
     private static BillSlip SampleBill(int number = 1, bool reprint = false, BusinessInfo? business = null) => new(
         business ?? Mau, number, 1042, reprint, "Table 7", "edna", "Counter A", At,
         [
@@ -33,7 +36,8 @@ public class SlipsTests
             Line(1, "Pineapple Punch", 270m),
             Line(1, "Tusker Lager", 250m, "Cold", shortName: "Tusker"),
             Line(1, "Johnnie Walker Black Label Blended Scotch Whisky 750ml", 4500m, shortName: "JW Black"),
-            Line(2, "Mau's Water 1L", 50m, rate: 0m, shortName: "Water"),
+            Line(1, "Fresh Milk 500ml", 70m, rate: 0m, shortName: "Milk"),
+            Line(2, "Mau's Water 1L", 50m, rate: 0m, shortName: "Water", exempt: true),
         ]);
 
     [Theory]
@@ -83,6 +87,23 @@ public class SlipsTests
     [InlineData(32)]
     public void Bill_1_adds_up_identical_lines_wraps_long_names_and_shows_vat_per_rate(int columns) =>
         Golden($"bill-1-{columns}", Slips.Bill(SampleBill(), new SlipStyle(columns, true, null)));
+
+    [Fact]
+    public void A_zero_rated_item_is_in_the_vat_lines_at_0_percent_and_only_exempt_items_say_vat_exempt()
+    {
+        BillSlip Bill(params SlipLine[] lines) => new(Mau, 1, 1042, false, "Table 7", "edna", "Counter A", At, lines);
+        var style = new SlipStyle(42, true, null);
+
+        var zeroRated = Slips.Bill(Bill(Line(1, "Fresh Milk 500ml", 70m, rate: 0m)), style).Text;
+        zeroRated.Should().Contain("Total includes VAT 0%: KSh 0.00").And.NotContain("exempt");
+
+        var exempt = Slips.Bill(Bill(Line(2, "Mau's Water 1L", 50m, rate: 0m, exempt: true)), style).Text;
+        exempt.Should().MatchRegex(@"VAT exempt: +KSh 100\.00").And.NotContain("Total includes VAT");
+
+        // An exempt item with a rate still carries no VAT, and is not in the 16% line.
+        var both = Slips.Bill(Bill(Line(1, "Pineapple Punch", 270m), Line(1, "Exempt juice", 116m, rate: 16m, exempt: true)), style).Text;
+        both.Should().Contain("Total includes VAT 16%: KSh 37.24").And.MatchRegex(@"VAT exempt: +KSh 116\.00");
+    }
 
     [Theory]
     [InlineData(42)]

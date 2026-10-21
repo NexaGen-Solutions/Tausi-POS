@@ -38,6 +38,8 @@ public class OrderLine : Entity
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal VatRate { get; set; }
+    /// <summary>Copied from the item: exempt from VAT (printed as "VAT exempt"), not zero-rated.</summary>
+    public bool VatExempt { get; set; }
     public decimal Gross { get; set; }
     public decimal Net { get; set; }
     public decimal Vat { get; set; }
@@ -63,7 +65,7 @@ public class OrderLine : Entity
     /// <summary>Sets the quantity and the amounts from the copied unit price and VAT rate.</summary>
     public void SetQuantity(decimal quantity)
     {
-        var amounts = Money.VatCalculator.ForLine(UnitPrice, quantity, VatRate);
+        var amounts = Money.VatCalculator.ForLine(UnitPrice, quantity, VatRate, VatExempt);
         Quantity = quantity;
         Gross = amounts.Gross;
         Net = amounts.Net;

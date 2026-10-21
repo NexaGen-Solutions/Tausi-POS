@@ -45,7 +45,9 @@ public sealed class SaveItem(ITausiDb db, MenuAccess access, IAuditLog audit)
         item.Name = name;
         item.ShortName = shortName;
         item.CategoryId = request.CategoryId;
-        item.VatRate = request.VatRate;
+        // Exempt items carry no rate of their own: VAT is 0 whatever the rate.
+        item.VatExempt = request.VatExempt;
+        item.VatRate = request.VatExempt ? 0m : request.VatRate;
         item.Active = request.Active;
         item.ErpItemCode = string.IsNullOrWhiteSpace(request.ErpItemCode) ? null : request.ErpItemCode.Trim();
         if (request.SortOrder is { } sort) item.SortOrder = sort;
@@ -72,7 +74,7 @@ public sealed class SaveItem(ITausiDb db, MenuAccess access, IAuditLog audit)
     }
 
     private static object View(MenuItem i) =>
-        new { i.Name, i.ShortName, i.CategoryId, i.VatRate, i.Active, i.ErpItemCode };
+        new { i.Name, i.ShortName, i.CategoryId, i.VatRate, i.VatExempt, i.Active, i.ErpItemCode };
 }
 
 /// <summary>

@@ -15,6 +15,7 @@ public static class ImportFields
     public const string Name = "name";
     public const string ShortName = "short_name";
     public const string VatRate = "vat_rate";
+    public const string VatExempt = "vat_exempt";
     public const string Active = "active";
     public const string OptionGroups = "option_groups";
     public const string ErpItemCode = "erpnext_item_code";
@@ -106,6 +107,8 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
             if (row.ShortName is not null) item.ShortName = row.ShortName;
             else if (row.Existing is null) item.ShortName = MenuItem.DefaultShortName(row.Name);
             if (row.HasVat) item.VatRate = row.Vat;
+            if (row.VatExempt is { } exempt) item.VatExempt = exempt;
+            if (item.VatExempt) item.VatRate = 0m;
             if (row.Active is { } active) item.Active = active;
             if (row.ErpCode is not null) item.ErpItemCode = row.ErpCode.Length == 0 ? null : row.ErpCode;
 
@@ -159,6 +162,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
         public string? ShortName { get; set; }
         public bool HasVat { get; set; }
         public decimal? Vat { get; set; }
+        public bool? VatExempt { get; set; }
         public bool? Active { get; set; }
         public string? ErpCode { get; set; }
         public List<Guid>? GroupIds { get; set; }
@@ -190,7 +194,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
         var fields = new List<ImportFieldChoice>
         {
             new(ImportFields.Ignore, "Ignore"), new(ImportFields.Category, "Category"), new(ImportFields.Name, "Name"),
-            new(ImportFields.ShortName, "Short name"), new(ImportFields.VatRate, "VAT rate"), new(ImportFields.Active, "Active"),
+            new(ImportFields.ShortName, "Short name"), new(ImportFields.VatRate, "VAT rate"), new(ImportFields.VatExempt, "VAT exempt"), new(ImportFields.Active, "Active"),
             new(ImportFields.OptionGroups, "Option groups"), new(ImportFields.ErpItemCode, "ERPNext item code"),
         };
         fields.AddRange(lists.Select(l => new ImportFieldChoice(ImportFields.PricePrefix + l.Id, $"Price: {l.Name}")));
@@ -244,6 +248,11 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
                     w.HasVat = true;
                     if (!MenuCsv.TryMoney(Cell(ImportFields.VatRate), out var vat) || vat is < 0m or >= 100m) error = "The VAT rate is not a number from 0 to 99.";
                     else w.Vat = vat;
+                }
+                if (error is null && Has(ImportFields.VatExempt) && Cell(ImportFields.VatExempt) is { Length: > 0 } exemptText)
+                {
+                    if (!MenuCsv.TryBool(exemptText, out var exempt)) error = "VAT exempt must be yes or no.";
+                    else w.VatExempt = exempt;
                 }
                 if (error is null && Has(ImportFields.Active))
                 {
@@ -302,6 +311,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
                 if (w.ShortName is { } s && s != existing.ShortName) diff.Add(new ImportChange("Short name", existing.ShortName, s, false));
                 if (w.HasVat && w.Vat != existing.VatRate)
                     diff.Add(new ImportChange("VAT rate", Vat(existing.VatRate), Vat(w.Vat), false));
+                if (w.VatExempt is { } x && x != existing.VatExempt) diff.Add(new ImportChange("VAT exempt", Yes(existing.VatExempt), Yes(x), false));
                 if (w.Active is { } a && a != existing.Active) diff.Add(new ImportChange("Active", Yes(existing.Active), Yes(a), false));
                 if (w.ErpCode is { } e && e != (existing.ErpItemCode ?? "")) diff.Add(new ImportChange("ERPNext item code", existing.ErpItemCode, e, false));
                 if (w.GroupIds is { } gids)
@@ -357,6 +367,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
             "name" or "item" or "itemname" or "product" or "productname" => ImportFields.Name,
             "shortname" => ImportFields.ShortName,
             "vat" or "vatrate" or "tax" or "taxrate" => ImportFields.VatRate,
+            "vatexempt" or "exempt" or "taxexempt" => ImportFields.VatExempt,
             "active" or "status" => ImportFields.Active,
             "optiongroups" or "options" or "modifiers" => ImportFields.OptionGroups,
             "erpnextitemcode" or "erpitemcode" or "itemcode" => ImportFields.ErpItemCode,

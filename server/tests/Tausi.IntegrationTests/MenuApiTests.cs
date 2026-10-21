@@ -156,7 +156,7 @@ public class MenuApiTests(MenuApp app)
         preview.GetProperty("updated").GetInt32().Should().Be(0);
         preview.GetProperty("errors").GetInt32().Should().Be(0);
 
-        var added = csv.TrimEnd() + "\r\nFood,Mandazi,Mandazi,,yes,50,,,\r\n";
+        var added = csv.TrimEnd() + "\r\nFood,Mandazi,Mandazi,,no,yes,50,,,\r\n";
         var apply = await admin.PostAsync("/api/admin/menu/import/apply", Csv(added, new { updateExisting = true, deactivateMissing = false, skipErrors = false }));
         apply.StatusCode.Should().Be(HttpStatusCode.OK);
         (await apply.Json()).GetProperty("new").GetInt32().Should().Be(1);

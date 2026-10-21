@@ -95,6 +95,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         {
             e.Property(x => x.VatRate).HasPrecision(5, 2);
             e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.TimeZone).HasMaxLength(BusinessTimeZone.MaxLength);
             e.Property(x => x.Address).HasMaxLength(500);
             e.Property(x => x.ReceiptFooter).HasMaxLength(1000);
             e.Property(x => x.OtherJson).Unbounded();

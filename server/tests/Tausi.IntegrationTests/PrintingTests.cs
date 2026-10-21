@@ -27,6 +27,13 @@ public class PrintingTests(TausiApp app)
         var text = await File.ReadAllTextAsync(slip!);
         text.Should().Contain("Ticket Printer 2").And.Contain("Test OK")
             .And.NotContain("Powered by Tausi POS", "the footer is off by default");
+
+        // The business is in Africa/Nairobi (seeded), whatever zone the server (CI: UTC) runs in.
+        var nairobi = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Africa/Nairobi"));
+        var printed = text.Split('\n').Single(l => l.StartsWith("Time")).Split(' ', StringSplitOptions.RemoveEmptyEntries)[1];
+        var at = TimeOnly.ParseExact(printed, "HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        Math.Abs((TimeOnly.FromDateTime(nairobi.DateTime) - at).TotalMinutes % (24 * 60)).Should().BeLessThan(2,
+            "the test print shows the business's time");
     }
 
     [Fact]

@@ -14,11 +14,14 @@ public sealed record BusinessSettingsDto(
     string ReceiptFooter,
     PrintMode PrintMode,
     string OtherJson,
-    long RowVersion)
+    long RowVersion,
+    string TimeZone)
 {
+    /// <summary>An empty time zone (from before the setting) shows as the server's.</summary>
     public static BusinessSettingsDto From(BusinessSettings s) => new(
         s.Name, s.LogoFileId, s.Address, s.Phone, s.VatRate, s.Currency, s.Rounding,
-        s.ReceiptFooter, s.PrintMode, s.OtherJson, s.RowVersion);
+        s.ReceiptFooter, s.PrintMode, s.OtherJson, s.RowVersion,
+        string.IsNullOrWhiteSpace(s.TimeZone) ? BusinessTimeZone.ServerZoneId() : s.TimeZone);
 }
 
 /// <summary>The public face of the business, shown before login and in the admin sidebar.</summary>
