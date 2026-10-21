@@ -1,0 +1,187 @@
+using Microsoft.EntityFrameworkCore;
+using Tausi.Application.Abstractions;
+using Tausi.Application.Common;
+using Tausi.Application.Day;
+using Tausi.Application.Security;
+using Tausi.Application.Settings;
+using Tausi.Domain.Service;
+
+namespace Tausi.Application.Tickets;
+
+/// <summary>How long a table's open tickets have gone without activity, when that is past the limit.</summary>
+public static class TableIdle
+{
+    /// <summary>
+    /// A table is idle when one of its open tickets has had no activity (a line added, voided or
+    /// printed, a move or a merge) for the limit. Returns the longest idle time in whole minutes.
+    /// </summary>
+    public static int? Minutes(IEnumerable<DateTimeOffset> lastActivity, DateTimeOffset now, TimeSpan limit)
+    {
+        var oldest = lastActivity.DefaultIfEmpty(now).Min();
+        var idle = now - oldest;
+        return idle >= limit ? (int)idle.TotalMinutes : null;
+    }
+}
+
+/// <summary>
+/// The table map: active areas and tables with their open tickets, totals and edit locks.
+/// Tables and tickets come from one database query however many tables there are.
+/// </summary>
+public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVersion version, TimeProvider clock)
+{
+    public async Task<TableMapDto> Execute(IReadOnlyCollection<Guid>? onlyTableIds, CancellationToken ct)
+    {
+        var me = session.RequireUser();
+        // Read the version first: an event published while we query is then seen as newer.
+        var current = version.Current;
+        var now = clock.GetUtcNow();
+        var settings = await PosSettings.Load(db, ct);
+        var day = await WorkPeriods.Current(db, ct);
+
+        var query = db.Tables.AsNoTracking().Where(t => t.Active && t.Area!.Active);
+        if (onlyTableIds is { Count: > 0 }) query = query.Where(t => onlyTableIds.Contains(t.Id));
+
+        var rows = await query
+            .Select(t => new
+            {
+                t.Id,
+                t.Name,
+                t.AreaId,
+                t.SortOrder,
+                AreaName = t.Area!.Name,
+                AreaSort = t.Area.SortOrder,
+                Tickets = db.Tickets
+                    .Where(k => k.TableId == t.Id && k.Status == TicketStatus.Open)
+                    .Select(k => new TicketRow(
+                        k.Id, k.Number, k.TableId, k.CustomerName, k.OpenedByUserId,
+                        db.Users.Where(u => u.Id == k.OpenedByUserId).Select(u => u.Name).FirstOrDefault(),
+                        k.Lines.Where(l => l.VoidedAt == null).Select(l => l.Gross).ToList(),
+                        k.OpenedAt, k.LastActivityAt,
+                        k.OpenedByUserId == me.UserId || k.Lines.Any(l => l.AddedByUserId == me.UserId),
+                        k.LockTerminalId, k.LockUserId, k.LockExpiresAt,
+                        db.UserSessions.Any(s => s.Id == k.LockSessionId && s.EndedAt == null),
+                        db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
+                        db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault()))
+                    .ToList(),
+            })
+            .ToListAsync(ct);
+
+        var ordered = rows.OrderBy(r => r.AreaSort).ThenBy(r => r.AreaName).ThenBy(r => r.SortOrder)
+            .ThenBy(r => r.Name, NaturalOrder.Instance).ToList();
+        var areas = ordered.Select(r => new AreaDto(r.AreaId, r.AreaName, r.AreaSort)).DistinctBy(a => a.Id).ToList();
+        var tables = ordered.Select(r =>
+        {
+            var tickets = r.Tickets.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now)).ToList();
+            return new TableTileDto(r.Id, r.Name, r.AreaId, r.SortOrder, tickets,
+                tickets.Count == 0 ? null : TableIdle.Minutes(tickets.Select(k => k.LastActivityAt), now, settings.TableIdleLimit));
+        }).ToList();
+
+        return new TableMapDto(current, now, day is not null, settings.TableIdleMinutes, areas, tables);
+    }
+}
+
+/// <summary>Open takeaway tickets (no table), oldest first.</summary>
+public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, TimeProvider clock)
+{
+    public async Task<IReadOnlyList<TicketSummaryDto>> Execute(CancellationToken ct)
+    {
+        var me = session.RequireUser();
+        var now = clock.GetUtcNow();
+        var rows = await db.Tickets.AsNoTracking()
+            .Where(k => k.TableId == null && k.Status == TicketStatus.Open)
+            .Select(k => new TicketRow(
+                k.Id, k.Number, k.TableId, k.CustomerName, k.OpenedByUserId,
+                db.Users.Where(u => u.Id == k.OpenedByUserId).Select(u => u.Name).FirstOrDefault(),
+                k.Lines.Where(l => l.VoidedAt == null).Select(l => l.Gross).ToList(),
+                k.OpenedAt, k.LastActivityAt,
+                k.OpenedByUserId == me.UserId || k.Lines.Any(l => l.AddedByUserId == me.UserId),
+                k.LockTerminalId, k.LockUserId, k.LockExpiresAt,
+                db.UserSessions.Any(s => s.Id == k.LockSessionId && s.EndedAt == null),
+                db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
+                db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault()))
+            .ToListAsync(ct);
+        return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now)).ToList();
+    }
+}
+
+/// <summary>One ticket with its lines, for the order screen. Any user with order.add may open any open ticket.</summary>
+public sealed class GetTicket(ITausiDb db, ICurrentSession session, TicketLocks locks)
+{
+    public async Task<TicketDetailDto> Execute(Guid id, CancellationToken ct)
+    {
+        session.RequireUser();
+        var ticket = await db.Tickets.AsNoTracking().Include(k => k.Lines).Include(k => k.Table)
+            .FirstOrDefaultAsync(k => k.Id == id, ct)
+            ?? throw new NotFoundException("Ticket not found.");
+        return await Detail(db, ticket, await locks.Holder(ticket, ct), ct);
+    }
+
+    public static async Task<TicketDetailDto> Detail(ITausiDb db, Ticket ticket, LockHolder? holder, CancellationToken ct)
+    {
+        var userIds = ticket.Lines.Select(l => l.AddedByUserId).Append(ticket.OpenedByUserId).Distinct().ToList();
+        var terminalIds = ticket.Lines.Select(l => l.AddedTerminalId).Distinct().ToList();
+        var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Name, ct);
+        var terminals = await db.Terminals.AsNoTracking().Where(t => terminalIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
+        var tableName = ticket.Table?.Name
+            ?? (ticket.TableId is { } tableId ? await db.Tables.AsNoTracking().Where(t => t.Id == tableId).Select(t => t.Name).FirstOrDefaultAsync(ct) : null);
+
+        var lines = ticket.Lines.OrderBy(l => l.AddedAt).ThenBy(l => l.Id).Select(l => new OrderLineDto(
+            l.Id, l.Name, l.Options, l.Quantity, l.UnitPrice, l.Gross,
+            users.GetValueOrDefault(l.AddedByUserId, "?"), terminals.GetValueOrDefault(l.AddedTerminalId, "?"),
+            l.AddedAt, l.PrintedAt is not null, l.IsVoided)).ToList();
+
+        return new TicketDetailDto(
+            ticket.Id, ticket.Number, ticket.Status.ToString(), ticket.TableId, tableName, ticket.CustomerName,
+            users.GetValueOrDefault(ticket.OpenedByUserId, "?"), ticket.OpenedAt, ticket.LastActivityAt, ticket.Note,
+            ticket.Total, lines,
+            holder is null ? null : new LockDto(holder.TerminalId, holder.TerminalName, holder.UserId, holder.UserName),
+            ticket.RowVersion);
+    }
+}
+
+/// <summary>A ticket as read by the map queries (totals are summed here; SQLite cannot sum decimals).</summary>
+internal sealed record TicketRow(
+    Guid Id, long Number, Guid? TableId, string? CustomerName, Guid OpenedById, string? OpenedBy,
+    List<decimal> LineAmounts, DateTimeOffset OpenedAt, DateTimeOffset LastActivityAt, bool Mine,
+    Guid? LockTerminalId, Guid? LockUserId, DateTimeOffset? LockExpiresAt, bool LockSessionLive,
+    string? LockTerminal, string? LockUser)
+{
+    public TicketSummaryDto ToDto(DateTimeOffset now)
+    {
+        var locked = LockTerminalId is { } terminal && LockUserId is { } user && LockExpiresAt > now && LockSessionLive
+            ? new LockDto(terminal, LockTerminal ?? "another terminal", user, LockUser ?? "someone")
+            : null;
+        return new TicketSummaryDto(Id, Number, TableId, CustomerName, OpenedById, OpenedBy ?? "?",
+            LineAmounts.Sum(), OpenedAt, LastActivityAt, Mine, locked);
+    }
+}
+
+/// <summary>Sorts "2" before "10" and "Pool 2" before "Pool 10".</summary>
+public sealed class NaturalOrder : IComparer<string>
+{
+    public static readonly NaturalOrder Instance = new();
+
+    public int Compare(string? x, string? y)
+    {
+        if (x is null || y is null) return string.Compare(x, y, StringComparison.Ordinal);
+        int i = 0, j = 0;
+        while (i < x.Length && j < y.Length)
+        {
+            if (char.IsDigit(x[i]) && char.IsDigit(y[j]))
+            {
+                var si = i; while (i < x.Length && char.IsDigit(x[i])) i++;
+                var sj = j; while (j < y.Length && char.IsDigit(y[j])) j++;
+                var a = x[si..i].TrimStart('0'); var b = y[sj..j].TrimStart('0');
+                var c = a.Length != b.Length ? a.Length.CompareTo(b.Length) : string.CompareOrdinal(a, b);
+                if (c != 0) return c;
+            }
+            else
+            {
+                var c = char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]));
+                if (c != 0) return c;
+                i++; j++;
+            }
+        }
+        return (x.Length - i).CompareTo(y.Length - j);
+    }
+}

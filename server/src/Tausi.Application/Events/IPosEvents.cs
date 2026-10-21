@@ -3,8 +3,9 @@ namespace Tausi.Application.Events;
 /// <summary>Live-update event names (<c>noun.verb</c>). Payloads are small; clients refetch details.</summary>
 public static class PosEventNames
 {
-    public const string TableUpdated = "table.updated";
-    public const string TicketUpdated = "ticket.updated";
+    public const string TicketChanged = "ticket.changed";
+    public const string TicketLock = "ticket.lock";
+    public const string TablesChanged = "tables.changed";
     public const string ApprovalRequested = "approval.requested";
     public const string ApprovalResolved = "approval.resolved";
     public const string PrintFailed = "print.failed";

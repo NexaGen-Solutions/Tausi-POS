@@ -10,7 +10,9 @@ using Tausi.Application.Printing;
 using Tausi.Application.Security;
 using Tausi.Application.Settings;
 using Tausi.Application.Staff;
+using Tausi.Application.Tables;
 using Tausi.Application.Terminals;
+using Tausi.Application.Tickets;
 
 namespace Tausi.Application;
 
@@ -81,6 +83,26 @@ public static class DependencyInjection
         services.AddScoped<UploadBusinessLogo>();
         services.AddScoped<TestPrint>();
         services.AddScoped<DevVoidProbe>();
+
+        // Tables and tickets
+        services.AddSingleton<TableMapVersion>();
+        services.AddScoped<TicketEvents>();
+        services.AddScoped<TicketLocks>();
+        services.AddScoped<GetTableMap>();
+        services.AddScoped<GetTakeawayTickets>();
+        services.AddScoped<GetTicket>();
+        services.AddScoped<LockTicket>();
+        services.AddScoped<UnlockTicket>();
+        services.AddScoped<ReleaseTicketLocks>();
+        services.AddScoped<StartTicket>();
+        services.AddScoped<MoveTicket>();
+        services.AddScoped<MergeTickets>();
+        services.AddScoped<TableAdmin>();
+        services.AddScoped<GetTablesAdmin>();
+        services.AddScoped<SaveArea>();
+        services.AddScoped<SaveTable>();
+        services.AddScoped<QuickAddTables>();
+        services.AddScoped<DeleteTableOrArea>();
         return services;
     }
 }

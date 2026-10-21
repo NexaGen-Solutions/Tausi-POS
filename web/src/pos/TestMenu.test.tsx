@@ -59,7 +59,7 @@ describe('terminal test menu (temporary)', () => {
 
   it('shows the menu and updates after menu.changed', async () => {
     setPinSession(sessionFor('edna', 'Waiter'));
-    renderRoutes(routes, '/pos/tables');
+    renderRoutes(routes, '/pos/ticket/new?table=t-7');
 
     const list = await screen.findByRole('region', { name: 'Menu (for testing)' });
     expect(await within(list).findByTestId('price-Tusker Lager')).toHaveTextContent('250');

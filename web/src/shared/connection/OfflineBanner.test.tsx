@@ -11,7 +11,9 @@ describe('OfflineBanner', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
     act(() => updateConnection({ apiReachable: false }));
-    expect(screen.getByRole('alert')).toHaveTextContent('No connection to the server');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Not connected to the server. Reconnecting…',
+    );
 
     act(() => updateConnection({ apiReachable: true }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();

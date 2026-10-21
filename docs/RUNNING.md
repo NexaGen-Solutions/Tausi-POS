@@ -71,9 +71,9 @@ cd web && npm run dev     # http://localhost:5173, proxies /api, /hubs and /file
    is already paired asks first and logs the old device out.
 3. Within two seconds the browser shows "Paired as Counter A" and moves on to the PIN pad. Log in with a PIN
    from the seed (tap the keypad or type it; it submits by itself at 4 digits).
-4. If no day is open, MAU (Supervisor) or Administrator gets **Open the day**; a waiter is told to
-   ask a supervisor. Once the day is open you reach the table map placeholder. Other terminals'
-   PIN screens show "Work period open since …" straight away.
+4. After login the terminal shows the **table map**. If no day is open it says "The day isn't
+   open yet": MAU (Supervisor) or Administrator also get **Open day** there; waiters can look but
+   not start tickets. Other terminals' PIN screens show "Work period open since …" straight away.
 
 The device token is kept in the browser's `localStorage` (`tausi.device`). Clear it, or press
 **Edit → Revoke** for the terminal on the admin site, to pair again: a revoked terminal that is
@@ -121,8 +121,8 @@ curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/
 
 `seed --demo` adds the demo menu when the menu is empty; `seed --demo-menu` adds only the menu.
 Open **Menu and prices** on the admin site to edit items, prices (with the price log), option
-groups and price lists, and to import or export CSV. A logged-in terminal shows a temporary
-"Menu (for testing)" list under the table-map placeholder; it refreshes when the menu changes.
+groups and price lists, and to import or export CSV. The ticket screen on a terminal (tap a table
+twice) shows a temporary "Menu (for testing)" list; it refreshes when the menu changes.
 
 For now these are API only (admin cookie from the sign-in above):
 
@@ -136,6 +136,40 @@ curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
 ```
 
 Role ids are in `GET /api/admin/staff` (`roleId`, `assignableRoles`).
+
+### Table map and tickets
+
+`seed --demo` adds Mau's layout (tables 1–16 in Main, Pool 1–2, Bar 1–2) and, into a database with
+no tickets, a few open tickets: two on Table 7, one idle on Table 5 (no activity for 48 minutes)
+and others. They belong to a demo day that is closed again, so the map starts with "The day isn't
+open yet". Log in as MAU and press **Open day** (or as a waiter, after someone has opened it).
+
+- **Tap** a table to see its tickets on the right; **tap twice** to open it (a free table opens a
+  new draft, a table with one ticket opens that ticket). The ticket screen is a placeholder until
+  Task 6: it shows the lines read-only and **Back to tables**. Tickets are saved with their first
+  line, which comes with Task 6 (`POST /api/pos/tickets` already exists for it).
+- **Locks:** open the same ticket on two browser terminals. The second shows "Open on Counter A by
+  edna. You can view it but not change it." Press Back to tables on the first; the second becomes
+  editable within two seconds. A lock not renewed for 90 seconds, or whose user logs out or is
+  logged out for being idle, is released within 5 seconds.
+- **Merge** on Table 7: Merge tickets, tick both, confirm "Merge #… into #…?". The oldest is kept and
+  every line keeps its waiter. **Move**: Move to another table, then tap the new table.
+- To try approvals, set waiters' `ticket.merge` to NeedsApproval (curl in the Menu section above);
+  merging then asks for a supervisor PIN.
+- **Idle tables** turn orange after `pos.tableIdleMinutes` (default 30) without activity. To see it
+  quickly, set it to 1 in the settings JSON (as for idle logout above, with
+  `{"pos":{"idleLogoutMinutes":10,"logoutAfterSettle":false,"tableIdleMinutes":1}}`).
+- **Offline:** stop the server; the map shows "Not connected to the server. Reconnecting…" and
+  every button is disabled until it is back.
+- **Admin site → Tables** lists areas and tables, with **Quick add** ("from 1 to 16 in Main", with
+  an optional name before the number such as Pool). A table with open tickets can't be switched off.
+
+The demo day stays closed only until someone opens a day. To get back to "no open day" in
+development (closing days properly comes with the cash-up):
+
+```bash
+dotnet run --project src/Tausi.Api -- close-day
+```
 
 ### Admin site
 

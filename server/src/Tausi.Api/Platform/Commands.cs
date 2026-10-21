@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Tausi.Application.Abstractions;
 using Tausi.Infrastructure.Legacy;
 using Tausi.Infrastructure.Seeding;
 
@@ -8,8 +10,9 @@ namespace Tausi.Api.Platform;
 /// <c>migrate</c> brings the database up to date;
 /// <c>seed</c> adds roles, default permissions and ledger accounts;
 /// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals, printers and,
-/// when the menu is empty, the demo menu; <c>seed --demo-menu</c> adds only the demo menu;
-/// <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their next login.
+/// when they are empty, the demo menu, tables and a few open tickets; <c>seed --demo-menu</c> adds
+/// only the demo menu; <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their
+/// next login; <c>close-day</c> (Development only) closes the open day without a cash-up, for testing.
 /// </summary>
 public static class Commands
 {
@@ -34,6 +37,9 @@ public static class Commands
             case "require-pin-change":
                 await RequirePinChange(app, args.Skip(1).FirstOrDefault());
                 return true;
+            case "close-day":
+                await CloseDay(app);
+                return true;
             default:
                 return false;
         }
@@ -56,7 +62,8 @@ public static class Commands
 
         if (created.Count == 0)
         {
-            Console.WriteLine("Demo data is already in place. Existing PINs are not shown again.");
+            Console.WriteLine("Demo staff are already in place (existing PINs are not shown again). " +
+                "The demo menu, tables and tickets were added where they were missing.");
             return;
         }
         Console.WriteLine();
@@ -71,6 +78,23 @@ public static class Commands
             Console.WriteLine($"Set {Seeder.AdminPasswordVariable} and run the seed again to give Administrator (user name: admin) an admin-site password.");
         else
             Console.WriteLine("Admin site: user name 'admin' with the password from " + Seeder.AdminPasswordVariable + ".");
+    }
+
+    /// <summary>Development only, until cash-up closes days: closes the open work period.</summary>
+    private static async Task CloseDay(WebApplication app)
+    {
+        if (!app.Environment.IsDevelopment())
+        {
+            Console.WriteLine("close-day is for development only. Days are closed with the cash-up.");
+            Environment.ExitCode = 2;
+            return;
+        }
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+        var closed = await db.WorkPeriods.Where(w => w.IsOpen).ExecuteUpdateAsync(u => u
+            .SetProperty(w => w.IsOpen, false)
+            .SetProperty(w => w.ClosedAt, DateTimeOffset.UtcNow));
+        Console.WriteLine(closed == 1 ? "The day is closed." : "No day was open.");
     }
 
     private static async Task RequirePinChange(WebApplication app, string? name)

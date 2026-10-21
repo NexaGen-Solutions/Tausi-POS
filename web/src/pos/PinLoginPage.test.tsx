@@ -123,7 +123,7 @@ describe('PIN login screen', () => {
 
     for (const d of ['6', '8', '1', '3']) await userEvent.click(key(d));
 
-    expect(await screen.findByText('Table map: coming in Screen 2')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'All tables' })).toBeInTheDocument();
     expect(screen.getByText('Counter A · edna (Waiter)')).toBeInTheDocument();
     expect(pinSession()?.user.name).toBe('edna');
     const login = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/auth/pin'))!;
@@ -137,7 +137,7 @@ describe('PIN login screen', () => {
 
     await userEvent.keyboard('6813{Enter}');
 
-    expect(await screen.findByText('Table map: coming in Screen 2')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'All tables' })).toBeInTheDocument();
   });
 
   it('a wrong PIN clears the dots and says so for 3 seconds', async () => {

@@ -219,6 +219,15 @@ public sealed class DevicesCollection : ICollectionFixture<DevicesApp>
 /// <summary>Its own server and database, so opening the day does not affect other tests.</summary>
 public sealed class DayApp : TausiApp;
 
+/// <summary>Its own server and database for tickets: it opens the day and changes permissions.</summary>
+public sealed class TicketsApp : TausiApp;
+
+[CollectionDefinition(Name)]
+public sealed class TicketsCollection : ICollectionFixture<TicketsApp>
+{
+    public const string Name = "tickets";
+}
+
 [CollectionDefinition(Name)]
 public sealed class DayCollection : ICollectionFixture<DayApp>
 {

@@ -3,11 +3,13 @@ using Microsoft.Extensions.Logging;
 using Tausi.Application.Abstractions;
 using Tausi.Application.Security;
 using Tausi.Application.Settings;
+using Tausi.Application.Tickets;
 using Tausi.Domain.Devices;
 using Tausi.Domain.Ledger;
 using Tausi.Domain.Menu;
 using Tausi.Domain.Money;
 using Tausi.Domain.People;
+using Tausi.Domain.Service;
 using Tausi.Domain.Settings;
 
 namespace Tausi.Infrastructure.Seeding;
@@ -20,7 +22,7 @@ public sealed record SeededUser(string Name, string Role, string Pin);
 /// every business. The demo seed adds the first customer's business, staff, terminals and printers.
 /// Existing rows are never changed, so running it again keeps any edits.
 /// </summary>
-public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log)
+public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, ITicketDatabase? ticketNumbers = null)
 {
     public const string AdminPasswordVariable = "TAUSI_ADMIN_PASSWORD";
     public const string OldAdminPasswordVariable = "NEXAGEN_ADMIN_PASSWORD";
@@ -140,7 +142,112 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log)
         await SeedDevices(filePrinters, ct);
         await db.SaveChangesAsync(ct);
         await SeedDemoMenu(ct);
+        await SeedDemoTables(ct);
+        await SeedDemoTickets(ct);
         return created;
+    }
+
+    /// <summary>Mau's layout: tables 1–16 in Main, Pool 1–2 in Pool, Bar 1–2 in Bar. Only into an empty layout.</summary>
+    public async Task<bool> SeedDemoTables(CancellationToken ct)
+    {
+        if (await db.Areas.AnyAsync(ct) || await db.Tables.AnyAsync(ct)) return false;
+        var layout = new (string Area, string Prefix, int Count)[] { ("Main", "", 16), ("Pool", "Pool ", 2), ("Bar", "Bar ", 2) };
+        var areaSort = 0;
+        foreach (var (name, prefix, count) in layout)
+        {
+            var area = new Area { Name = name, SortOrder = areaSort += 10 };
+            db.Areas.Add(area);
+            for (var n = 1; n <= count; n++)
+                db.Tables.Add(new DiningTable { Name = prefix + n, AreaId = area.Id, SortOrder = n });
+        }
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    /// <summary>
+    /// A few open tickets with lines, so the demo map shows occupied tables, totals, two tickets on
+    /// Table 7 (to try merging) and an idle table. They belong to the open day, or, when no day is
+    /// open, to a demo day that is closed again, so the map also shows "The day isn't open yet".
+    /// Only into a database with no tickets.
+    /// </summary>
+    public async Task<bool> SeedDemoTickets(CancellationToken ct)
+    {
+        if (await db.Tickets.AnyAsync(ct)) return false;
+        var tables = await db.Tables.ToDictionaryAsync(t => t.Name, ct);
+        var users = await db.Users.ToDictionaryAsync(u => u.Name, ct);
+        var terminals = await db.Terminals.ToDictionaryAsync(t => t.Name, ct);
+        var items = await db.MenuItems.Include(i => i.Prices).ToDictionaryAsync(i => i.Name, ct);
+        var vat = (await db.BusinessSettings.FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
+        if (tables.Count == 0 || items.Count == 0 || !terminals.ContainsKey("Counter A")) return false;
+
+        var now = DateTimeOffset.UtcNow;
+        var day = await db.WorkPeriods.FirstOrDefaultAsync(w => w.IsOpen, ct);
+        if (day is null)
+        {
+            day = new WorkPeriod
+            {
+                OpenedAt = now.AddHours(-3),
+                OpenedByUserId = users["MAU"].Id,
+                ClosedAt = now,
+                ClosedByUserId = users["MAU"].Id,
+                IsOpen = false,
+            };
+            db.WorkPeriods.Add(day);
+        }
+
+        var demo = new (string Table, string Waiter, string Terminal, int MinutesAgo, int IdleMinutes, (string Item, int Qty)[] Lines)[]
+        {
+            ("1", "WAMBOO", "Counter A", 70, 4, [("Tusker Lager", 4), ("Guiness", 2), ("Mau's Water 1L", 2)]),
+            ("3", "CYNTHIA", "Pillar 1", 40, 9, [("Gilbeys 350ml", 1)]),
+            ("5", "Ruth", "Counter B", 95, 48, [("Heineken", 2), ("Pineapple Punch", 2), ("Sodas 300ml", 1)]),
+            ("7", "edna", "Counter A", 60, 6, [("Tusker Lager", 3), ("Pineapple Punch", 1), ("Sodas 300ml", 3)]),
+            ("7", "edna", "Pillar 1", 25, 3, [("White Cap Lager", 1), ("Mau's Water 1L", 1), ("Faxe Can", 1)]),
+            ("8", "WAMBOO", "Counter A", 30, 12, [("Guiness", 2)]),
+            ("11", "CYNTHIA", "Pillar 1", 50, 15, [("Viceroy 375ml", 1), ("Sodas 300ml", 3)]),
+            ("Pool 1", "MAU", "Counter B", 35, 2, [("Pool Table", 6)]),
+            ("Bar 1", "Ruth", "Counter B", 20, 5, [("Tusker Lager", 1), ("Delmonte", 1)]),
+        };
+        foreach (var (tableName, waiter, terminalName, minutesAgo, idle, lines) in demo)
+        {
+            if (!tables.TryGetValue(tableName, out var table) || !users.TryGetValue(waiter, out var user)
+                || !terminals.TryGetValue(terminalName, out var terminal)) continue;
+            var opened = now.AddMinutes(-minutesAgo);
+            var ticket = new Ticket
+            {
+                Number = ticketNumbers is null ? await NextNumberWithoutSequence(ct) : await ticketNumbers.NextNumber(ct),
+                TableId = table.Id,
+                OpenedByUserId = user.Id,
+                OpenedAt = opened,
+                TerminalId = terminal.Id,
+                WorkPeriodId = day.Id,
+                LastActivityAt = now.AddMinutes(-idle),
+            };
+            foreach (var (itemName, qty) in lines)
+            {
+                if (!items.TryGetValue(itemName, out var item) || item.Prices.Count == 0) continue;
+                var price = item.Prices[0].Price;
+                var rate = item.EffectiveVatRate(vat);
+                var amounts = VatCalculator.ForLine(price, qty, rate);
+                ticket.Lines.Add(new OrderLine
+                {
+                    TicketId = ticket.Id, MenuItemId = item.Id, Name = item.Name, Quantity = qty, UnitPrice = price,
+                    VatRate = rate, Gross = amounts.Gross, Net = amounts.Net, Vat = amounts.Vat,
+                    AddedByUserId = user.Id, AddedTerminalId = terminal.Id, AddedAt = opened, PrintedAt = opened,
+                });
+            }
+            db.Tickets.Add(ticket);
+        }
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    private long _lastNumberWithoutSequence;
+
+    private async Task<long> NextNumberWithoutSequence(CancellationToken ct)
+    {
+        if (_lastNumberWithoutSequence == 0)
+            _lastNumberWithoutSequence = await db.Tickets.MaxAsync(t => (long?)t.Number, ct) ?? 1000;
+        return ++_lastNumberWithoutSequence;
     }
 
     private async Task SeedDevices(bool filePrinters, CancellationToken ct)

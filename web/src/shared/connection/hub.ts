@@ -11,8 +11,9 @@ import { updateConnection } from './status';
 
 /** Live-update events from the server (AGENTS.md). Payloads are small; refetch details via the API. */
 export const posEvents = [
-  'table.updated',
-  'ticket.updated',
+  'ticket.changed',
+  'ticket.lock',
+  'tables.changed',
   'approval.requested',
   'approval.resolved',
   'print.failed',

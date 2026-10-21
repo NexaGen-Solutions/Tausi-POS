@@ -48,6 +48,19 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
     public DbSet<ModifierOption> ModifierOptions => Set<ModifierOption>();
     public DbSet<ModifierGroupAssignment> ModifierGroupAssignments => Set<ModifierGroupAssignment>();
     public DbSet<PriceChangeLog> PriceChangeLogs => Set<PriceChangeLog>();
+    public DbSet<Area> Areas => Set<Area>();
+    public DbSet<DiningTable> Tables => Set<DiningTable>();
+    public DbSet<Ticket> Tickets => Set<Ticket>();
+    public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+
+    /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
+    public const string TicketNumberSequence = "TicketNumbers";
+
+    /// <summary>Ticket numbers start here, so they look like the four-digit numbers staff know.</summary>
+    public const long FirstTicketNumber = 1001;
+
+    /// <summary>True for databases with sequences (PostgreSQL, SQL Server); SQLite in unit tests has none.</summary>
+    protected virtual bool HasSequences => false;
 
     /// <summary>Filter for the "active users have unique PINs" index; the SQL differs per provider.</summary>
     protected virtual string? ActiveUserFilter => null;
@@ -72,6 +85,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         b.Properties<PrintJobKind>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<PrintJobStatus>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<AccountType>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<TicketStatus>().HaveConversion<string>().HaveMaxLength(20);
     }
 
     protected override void OnModelCreating(ModelBuilder m)
@@ -293,6 +307,54 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
 
         m.Entity<Terminal>(e =>
             e.HasOne<PriceList>().WithMany().HasForeignKey(x => x.PriceListId).OnDelete(DeleteBehavior.Restrict));
+
+        m.Entity<Area>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(Area.MaxNameLength);
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+
+        m.Entity<DiningTable>(e =>
+        {
+            e.ToTable("Tables");
+            e.Property(x => x.Name).HasMaxLength(DiningTable.MaxNameLength);
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => new { x.AreaId, x.SortOrder });
+            e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        if (HasSequences)
+            m.HasSequence<long>(TicketNumberSequence).StartsAt(FirstTicketNumber).IncrementsBy(1);
+
+        m.Entity<Ticket>(e =>
+        {
+            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => new { x.Status, x.TableId });
+            e.Property(x => x.CustomerName).HasMaxLength(Ticket.MaxCustomerNameLength);
+            e.Property(x => x.Note).HasMaxLength(Ticket.MaxNoteLength);
+            e.Ignore(x => x.IsOpen);
+            e.Ignore(x => x.Total);
+            e.HasOne(x => x.Table).WithMany().HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OpenedByUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<WorkPeriod>().WithMany().HasForeignKey(x => x.WorkPeriodId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Ticket>().WithMany().HasForeignKey(x => x.MergedIntoTicketId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<OrderLine>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(MenuItem.MaxNameLength);
+            e.Property(x => x.Options).HasMaxLength(200);
+            e.Property(x => x.Quantity).HasPrecision(18, 3);
+            e.Property(x => x.VatRate).HasPrecision(5, 2);
+            e.Ignore(x => x.IsVoided);
+            e.HasIndex(x => x.TicketId);
+            // Who added a line and where are required (AGENTS.md rule 3).
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.AddedByUserId).OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.AddedTerminalId).OnDelete(DeleteBehavior.Restrict).IsRequired();
+            e.HasOne<MenuItem>().WithMany().HasForeignKey(x => x.MenuItemId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         // Every editable entity carries an optimistic concurrency token.
         foreach (var type in m.Model.GetEntityTypes().Where(t => typeof(VersionedEntity).IsAssignableFrom(t.ClrType)))

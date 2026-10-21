@@ -6,6 +6,7 @@ using Tausi.Application.Files;
 using Tausi.Application.Ledger;
 using Tausi.Application.Printing;
 using Tausi.Application.Security;
+using Tausi.Application.Tickets;
 using Tausi.Infrastructure.Files;
 using Tausi.Infrastructure.Ledger;
 using Tausi.Infrastructure.Persistence;
@@ -23,17 +24,19 @@ public static class DependencyInjection
         services.Configure<TausiOptions>(config.GetSection(TausiOptions.Section));
         services.Configure<DatabaseOptions>(config.GetSection("Database"));
 
+        // Queries load related collections in one SQL statement (EF's default, stated so it doesn't warn);
+        // the table map relies on it.
         var provider = config.GetSection("Database").Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Postgres;
         var connection = config.GetConnectionString(TausiOptions.ConnectionStringName)
             ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set.");
         switch (provider)
         {
             case DatabaseProvider.SqlServer:
-                services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(connection));
+                services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
                 break;
             default:
-                services.AddDbContext<PostgresTausiDbContext>(o => o.UseNpgsql(connection));
+                services.AddDbContext<PostgresTausiDbContext>(o => o.UseNpgsql(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<PostgresTausiDbContext>());
                 break;
         }
@@ -42,6 +45,7 @@ public static class DependencyInjection
         services.AddSingleton<ServerSecrets>();
         services.AddSingleton<IPinHasher, PinHasher>();
         services.AddScoped<ILedgerPostingService, LedgerPostingService>();
+        services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddScoped<Seeder>();
 
@@ -55,6 +59,7 @@ public static class DependencyInjection
         services.AddHostedService<PrintDispatcher>();
         services.AddHostedService<PrinterHealthMonitor>();
         services.AddHostedService<HousekeepingService>();
+        services.AddHostedService<TicketLockSweeper>();
         return services;
     }
 }

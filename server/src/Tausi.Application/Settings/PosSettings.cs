@@ -8,17 +8,22 @@ namespace Tausi.Application.Settings;
 
 /// <summary>
 /// Terminal behaviour settings, kept in BusinessSettings.OtherJson under "pos":
-/// <code>{ "pos": { "idleLogoutMinutes": 10, "logoutAfterSettle": false } }</code>
-/// Missing values fall back to the defaults.
+/// <code>{ "pos": { "idleLogoutMinutes": 10, "logoutAfterSettle": false, "tableIdleMinutes": 30 } }</code>
+/// Missing values fall back to the defaults. <see cref="TableIdleMinutes"/> is how long a table's
+/// open ticket can go without activity before the table map shows it as unpaid and idle.
 /// </summary>
-public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle)
+public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, int TableIdleMinutes = PosSettings.DefaultTableIdleMinutes)
 {
     public const int DefaultIdleLogoutMinutes = 10;
     public const int MaxIdleLogoutMinutes = 24 * 60;
+    public const int DefaultTableIdleMinutes = 30;
+    public const int MaxTableIdleMinutes = 24 * 60;
 
     public static readonly PosSettings Default = new(DefaultIdleLogoutMinutes, false);
 
     public TimeSpan IdleLimit => TimeSpan.FromMinutes(IdleLogoutMinutes);
+
+    public TimeSpan TableIdleLimit => TimeSpan.FromMinutes(TableIdleMinutes);
 
     public static PosSettings From(string? otherJson)
     {
@@ -28,7 +33,9 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle)
             var pos = JsonNode.Parse(otherJson)?["pos"];
             var idle = pos?["idleLogoutMinutes"]?.GetValue<int>() ?? DefaultIdleLogoutMinutes;
             var afterSettle = pos?["logoutAfterSettle"]?.GetValue<bool>() ?? false;
-            return new PosSettings(Math.Clamp(idle, 1, MaxIdleLogoutMinutes), afterSettle);
+            var tableIdle = pos?["tableIdleMinutes"]?.GetValue<int>() ?? DefaultTableIdleMinutes;
+            return new PosSettings(
+                Math.Clamp(idle, 1, MaxIdleLogoutMinutes), afterSettle, Math.Clamp(tableIdle, 1, MaxTableIdleMinutes));
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
@@ -48,6 +55,10 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle)
         if (pos.TryGetProperty("logoutAfterSettle", out var settle)
             && settle.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
             throw new DomainException("pos.logoutAfterSettle must be true or false.");
+        if (pos.TryGetProperty("tableIdleMinutes", out var tableIdle)
+            && (tableIdle.ValueKind != JsonValueKind.Number || !tableIdle.TryGetInt32(out var tableMinutes)
+                || tableMinutes is < 1 or > MaxTableIdleMinutes))
+            throw new DomainException($"pos.tableIdleMinutes must be a whole number from 1 to {MaxTableIdleMinutes}.");
     }
 
     public static async Task<PosSettings> Load(ITausiDb db, CancellationToken ct) =>
@@ -57,7 +68,7 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle)
     public static string DefaultJson =>
         JsonSerializer.Serialize(new
         {
-            pos = new { idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false },
+            pos = new { idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false, tableIdleMinutes = DefaultTableIdleMinutes },
             print = new { logoOnBill = true, poweredByFooter = false },
         });
 }

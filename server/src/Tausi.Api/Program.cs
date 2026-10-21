@@ -60,6 +60,7 @@ app.MapPrinterEndpoints();
 app.MapDayEndpoints();
 app.MapStaffEndpoints();
 app.MapMenuEndpoints();
+app.MapTicketEndpoints();
 app.MapDevEndpoints();
 app.MapHub<PosHub>(PosHub.Path);
 app.MapTausiWebFallback();

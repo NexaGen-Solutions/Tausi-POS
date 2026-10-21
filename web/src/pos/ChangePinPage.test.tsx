@@ -73,7 +73,7 @@ describe('first login: change PIN', () => {
     await screen.findByRole('heading', { name: 'Enter it again' });
     await userEvent.keyboard('90517{Enter}');
 
-    expect(await screen.findByText('Table map: coming in Screen 2')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'All tables' })).toBeInTheDocument();
     expect(changes).toEqual(['5739', '90517']);
     expect(pinSession()?.mustChangePin).toBe(false);
   });
