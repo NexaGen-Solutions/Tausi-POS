@@ -68,9 +68,6 @@
       "pin_unchanged": "Choose a PIN different from your current one.",
       "pin_invalid": "A PIN must be 4 to 6 digits."
     },
-    "testMenu": "Menu (for testing)",
-    "testMenuNote": "A read-only check of the terminal menu. It is replaced by the order screen.",
-    "testMenuList": "Price list: {list}",
     "mySales": "My sales",
     "mySalesComing": "My sales comes in a later task.",
     "backToTables": "Back to tables",
