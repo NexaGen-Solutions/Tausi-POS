@@ -216,6 +216,28 @@ Reload the terminal to pick it up.
 "VAT exempt: KSh …"; a **Zero-rated (0%)** item is in the VAT lines as "Total includes VAT 0%:
 KSh 0.00".
 
+### Voids, gifts, discounts and approvals
+
+Pair two browser terminals (say Pillar 1 and Counter B). Log in as **edna** (waiter) on Pillar 1
+and as **MAU** (supervisor) on Counter B. Open a table on Pillar 1, add 2 Tusker and press Print.
+
+- **Void with a request (Option 2):** select the printed Tusker, press **Void**, choose 1 and
+  "Wrong item", pick "MAU (Supervisor) · Counter B" and press **Send void request**. The line shows
+  "Void pending". Counter B chimes (after its first tap), shows "edna asks: Void 1 × Tusker
+  Lager · Table 7. Open" and its **Approvals** button counts 1. On **Approvals**, press
+  **Approve void**: Pillar 1 shows "MAU approved the void", one line Printed and one Voided, and
+  the total drops by 250. `print-output/` gets a VOID slip on the printer that printed the
+  Tusker, then a corrected bill on Pillar 1's receipt printer.
+- **Void with the PIN (Option 1):** in the same pop-up, type MAU's PIN and press **Approve**.
+  edna's own PIN is refused.
+- **As a supervisor:** MAU opens any table and voids directly; the void log has MAU as both
+  requester and approver.
+- **Gift** (cashiers ask, supervisors do it), **Discount** (next to Ticket note) and **Change price**
+  (supervisors ask the Administrator, the "manager" of the demo) work the same way.
+- **Reprint, Move and Merge** needing approval open the approval pad with **Send request** too.
+- A request not decided within `pos.approvalExpiryMinutes` (30) expires. To try it quickly, set
+  it in the settings JSON as for idle logout above: `{"pos":{…,"approvalExpiryMinutes":1}}`.
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages
@@ -228,15 +250,17 @@ D=<device token from localStorage 'tausi.device'>
 # 5 wrong PINs within 2 minutes: the 5th answers 429 and the terminal is locked for 60 s.
 curl -H "X-Device-Token: $D" -H 'content-type: application/json' -d '{"pin":"0000"}' http://localhost:5080/api/auth/pin
 
-# Approval flow (temporary dev-only endpoint guarded by order.void):
+# Approval flow: a waiter's void of a printed line (ticket and line ids from the order screen):
 T=$(curl -s -H "X-Device-Token: $D" -H 'content-type: application/json' -d '{"pin":"<edna PIN>"}' \
   http://localhost:5080/api/auth/pin | jq -r .token)
-curl -X POST -H "X-Device-Token: $D" -H "Authorization: Bearer $T" http://localhost:5080/api/dev/void-probe
-#   -> 403 with "approvalRequired": true
+V=http://localhost:5080/api/pos/tickets/<ticket id>/lines/<line id>/void
+curl -X POST -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H 'content-type: application/json' \
+  -d '{"quantity":1,"reason":"Wrong item"}' $V      # -> 403 with "approvalRequired": true
 A=$(curl -s -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H 'content-type: application/json' \
   -d '{"pin":"<MAU PIN>","permissionKey":"order.void"}' http://localhost:5080/api/auth/approve | jq -r .approvalToken)
 curl -X POST -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H "X-Approval-Token: $A" \
-  http://localhost:5080/api/dev/void-probe     # 200 once; the same token again -> 403
+  -H 'content-type: application/json' -d '{"quantity":1,"reason":"Wrong item"}' $V   # 200 once; reusing the token -> 403
+# The edit lock is needed too: open the ticket on that terminal first (POST .../lock).
 ```
 
 Any write with an `Idempotency-Key` header returns the original answer when repeated
