@@ -112,4 +112,88 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         (await check.PrintJobs.CountAsync(j => j.TicketId == ticket.Id)).Should().Be(2, "one bill and one dispense slip");
         (await check.Tickets.SingleAsync(k => k.Id == ticket.Id)).BillNumber.Should().Be(1);
     }
+
+    [SkippableFact]
+    public async Task Two_supervisors_approving_one_request_at_once_make_one_void_on_sql_server()
+    {
+        Skip.IfNot(sql.Available, Skipped);
+        const string name = "tausi_approve";
+        var options = sql.Options(name);
+        await using (var db = new SqlServerTausiDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            await new Seeder(db, new PlainPinHasher(), NullLogger<Seeder>.Instance).SeedDemo("pw", CancellationToken.None, filePrinters: true);
+            db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "MAU").Id });
+            await db.SaveChangesAsync();
+        }
+
+        // Each person gets their own service provider (their own session), all on one database.
+        async Task<(ServiceProvider Provider, FixedSession Session)> As(string user, string terminal)
+        {
+            var session = new FixedSession();
+            var services = new ServiceCollection();
+            services.AddApplication();
+            services.AddSingleton(TimeProvider.System);
+            services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(sql.ConnectionFor(name), SqlServerFixture.Slow));
+            services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
+            services.AddScoped<ITausiDb>(sp => sp.GetRequiredService<TausiDbContext>());
+            services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
+            services.AddSingleton<ICurrentSession>(session);
+            services.AddSingleton<IApprovalTokenSource, NoApproval>();
+            services.AddSingleton<IPosEvents, NoEvents>();
+            services.AddSingleton<ILogoProvider, NoLogo>();
+            services.AddSingleton<IPinHasher, PlainPinHasher>();
+            var provider = services.BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+            var u = await db.Users.Include(x => x.Role).SingleAsync(x => x.Name == user);
+            var t = await db.Terminals.SingleAsync(x => x.Name == terminal);
+            var started = await scope.ServiceProvider.GetRequiredService<SessionKeeper>().Start(u.Id, t.Id, CancellationToken.None);
+            await db.SaveChangesAsync();
+            session.User = new SessionUser(u.Id, u.Name, u.RoleId, u.Role!.Name, t.Id, t.Name, started.Id);
+            session.Terminal = new DeviceTerminal(t.Id, t.Name);
+            return (provider, session);
+        }
+
+        var (edna, _) = await As("edna", "Counter A");
+        var (mau, _) = await As("MAU", "Counter B");
+        var (admin, _) = await As("Administrator", "Pillar 1");
+        Guid requestId, ticketId;
+        await using (var scope = edna.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+            var punch = await db.MenuItems.SingleAsync(i => i.Name == "Pineapple Punch");
+            var ticket = await scope.ServiceProvider.GetRequiredService<StartTicket>().Execute(
+                new StartTicketRequest(null, null, [new NewLineRequest(punch.Id, 2)]), CancellationToken.None);
+            ticketId = ticket.Id;
+            var printed = await scope.ServiceProvider.GetRequiredService<PrintTicket>().Print(ticket.Id, CancellationToken.None);
+            var request = await scope.ServiceProvider.GetRequiredService<Application.Approvals.CreateApprovalRequest>().Execute(
+                new Application.Approvals.CreateApprovalRequestDto(ApprovalKind.Void, ticket.Id, printed.Lines[0].Id,
+                    System.Text.Json.JsonSerializer.SerializeToElement(new { quantity = 1, reason = "Wrong item" })), CancellationToken.None);
+            requestId = request.Id;
+        }
+
+        var results = await Task.WhenAll(new[] { mau, admin }.Select(async provider =>
+        {
+            await using var scope = provider.CreateAsyncScope();
+            try
+            {
+                await scope.ServiceProvider.GetRequiredService<Application.Approvals.ApproveRequest>().Execute(requestId, CancellationToken.None);
+                return "approved";
+            }
+            catch (ConflictException e)
+            {
+                return e.Code;
+            }
+        }));
+
+        results.Should().BeEquivalentTo(["approved", Application.Approvals.ApprovalCodes.AlreadyDecided]);
+        await using var check = new SqlServerTausiDbContext(options);
+        (await check.VoidLogs.CountAsync(v => v.TicketId == ticketId)).Should().Be(1);
+        (await check.OrderLines.CountAsync(l => l.TicketId == ticketId && l.Status == OrderLineStatus.Voided)).Should().Be(1);
+        (await check.ApprovalRequests.SingleAsync(r => r.Id == requestId)).Status.Should().Be(ApprovalStatus.Approved);
+        await edna.DisposeAsync();
+        await mau.DisposeAsync();
+        await admin.DisposeAsync();
+    }
 }
