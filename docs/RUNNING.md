@@ -139,10 +139,12 @@ Role ids are in `GET /api/admin/staff` (`roleId`, `assignableRoles`).
 
 ### Table map and tickets
 
-`seed --demo` adds Mau's layout (tables 1–16 in Main, Pool 1–2, Bar 1–2) and, into a database with
-no tickets, a few open tickets: two on Table 7, one idle on Table 5 (no activity for 48 minutes)
-and others. They belong to a demo day that is closed again, so the map starts with "The day isn't
-open yet". Log in as MAU and press **Open day** (or as a waiter, after someone has opened it).
+`seed --demo` adds Mau's layout (tables 1–16 in Main, Pool 1–2, Bar 1–2). A day can't close while
+tickets are open, so demo tickets only go into an open day:
+
+1. On a fresh database the map shows "The day isn't open yet". Log in as MAU and press **Open day**.
+2. Run `seed --demo` again: it adds a few open tickets to that day (two on Table 7, one idle on
+   Table 5 with no activity for 48 minutes, and others). The map shows them at once.
 
 - **Tap** a table to see its tickets on the right; **tap twice** to open it (a free table opens a
   new draft, a table with one ticket opens that ticket). The ticket screen is a placeholder until
@@ -164,8 +166,8 @@ open yet". Log in as MAU and press **Open day** (or as a waiter, after someone h
 - **Admin site → Tables** lists areas and tables, with **Quick add** ("from 1 to 16 in Main", with
   an optional name before the number such as Pool). A table with open tickets can't be switched off.
 
-The demo day stays closed only until someone opens a day. To get back to "no open day" in
-development (closing days properly comes with the cash-up):
+To get back to "no open day" in development (closing days properly comes with the cash-up). Like
+the cash-up will, it refuses while tickets are open and lists them:
 
 ```bash
 dotnet run --project src/Tausi.Api -- close-day

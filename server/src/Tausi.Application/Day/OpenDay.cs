@@ -59,3 +59,24 @@ public static class WorkPeriods
             .Select(w => new WorkPeriodDto(w.Id, w.OpenedAt, w.OpenedByUserId))
             .FirstOrDefaultAsync(ct);
 }
+
+/// <summary>
+/// A day closes only when no ticket is open: the cashier settles, moves or merges everything first,
+/// so every sale belongs to exactly one day (as in SambaPOS). Cash-up uses this when it closes days.
+/// </summary>
+public static class DayClosing
+{
+    public const string OpenTicketsCode = "open_tickets";
+
+    public static async Task EnsureNoOpenTickets(ITausiDb db, CancellationToken ct)
+    {
+        var open = await db.Tickets.AsNoTracking()
+            .Where(k => k.Status == Domain.Service.TicketStatus.Open)
+            .OrderBy(k => k.Number).Select(k => k.Number).ToListAsync(ct);
+        if (open.Count == 0) return;
+        var list = string.Join(", ", open.Take(10).Select(n => $"#{n}")) + (open.Count > 10 ? ", …" : "");
+        throw new ConflictException(
+            $"The day can't close while {open.Count} ticket{(open.Count == 1 ? " is" : "s are")} open ({list}). Settle or move them first.",
+            OpenTicketsCode);
+    }
+}

@@ -64,6 +64,7 @@ public static class Commands
         {
             Console.WriteLine("Demo staff are already in place (existing PINs are not shown again). " +
                 "The demo menu, tables and tickets were added where they were missing.");
+            await DemoTicketsHint(scope);
             return;
         }
         Console.WriteLine();
@@ -72,6 +73,7 @@ public static class Commands
         Console.WriteLine($"  {"Name",-15} {"Role",-12} PIN");
         foreach (var u in created)
             Console.WriteLine($"  {u.Name,-15} {u.Role,-12} {u.Pin}");
+        await DemoTicketsHint(scope);
         Console.WriteLine();
         foreach (var warning in LegacyNames.TakeWarnings()) Console.WriteLine("Warning: " + warning);
         if (string.IsNullOrEmpty(Seeder.AdminPasswordFromEnvironment()))
@@ -80,7 +82,15 @@ public static class Commands
             Console.WriteLine("Admin site: user name 'admin' with the password from " + Seeder.AdminPasswordVariable + ".");
     }
 
-    /// <summary>Development only, until cash-up closes days: closes the open work period.</summary>
+    /// <summary>Demo tickets need an open day; say so when none is open.</summary>
+    private static async Task DemoTicketsHint(AsyncServiceScope scope)
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+        if (!await db.Tickets.AnyAsync() && !await db.WorkPeriods.AnyAsync(w => w.IsOpen))
+            Console.WriteLine("No day is open, so no demo tickets were added. Open the day on a terminal, then run seed --demo again.");
+    }
+
+    /// <summary>Development only, until cash-up closes days: closes the open work period if no ticket is open.</summary>
     private static async Task CloseDay(WebApplication app)
     {
         if (!app.Environment.IsDevelopment())
@@ -91,6 +101,16 @@ public static class Commands
         }
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+        try
+        {
+            await Tausi.Application.Day.DayClosing.EnsureNoOpenTickets(db, CancellationToken.None);
+        }
+        catch (Tausi.Application.Common.ConflictException e)
+        {
+            Console.WriteLine(e.Message);
+            Environment.ExitCode = 1;
+            return;
+        }
         var closed = await db.WorkPeriods.Where(w => w.IsOpen).ExecuteUpdateAsync(u => u
             .SetProperty(w => w.IsOpen, false)
             .SetProperty(w => w.ClosedAt, DateTimeOffset.UtcNow));
