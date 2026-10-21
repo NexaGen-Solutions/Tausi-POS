@@ -37,6 +37,7 @@ function ticket(id: string, number: number, extra: Partial<TicketSummary> = {}):
     lastActivityAt: ago(5),
     mine: false,
     lock: null,
+    newLines: 0,
     ...extra,
   };
 }
@@ -332,6 +333,25 @@ describe('table map', () => {
     expect(screen.getByRole('button', { name: 'New ticket' })).toBeEnabled();
   });
 
+  it('a table with lines left unprinted says so on its tile', async () => {
+    map = mapWith([tile('7', 'main', [ticket('k1', 1042, { newLines: 2 })])]);
+    await open();
+
+    expect(tileFor('7')).toHaveTextContent('2 not printed');
+    expect(tileFor('7')).toHaveAccessibleName('7: edna, 1,370, 2 not printed');
+  });
+
+  it('comes from Move table on the order screen ready to choose the new table', async () => {
+    const user = userEvent.setup();
+    const router = renderRoutes(routes, '/pos/tables?move=k5');
+    expect(await screen.findByText('Choose a table for #1030')).toBeInTheDocument();
+    expect(router.state.location.search).toBe('?move=k5');
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Choose a table for #1030')).not.toBeInTheDocument();
+    expect(router.state.location.search).toBe('');
+  });
+
   it('a waiter without day.open_close sees the banner without the button', async () => {
     map = mapWith(standardTables(), { dayOpen: false });
     await open();
@@ -340,7 +360,7 @@ describe('table map', () => {
     expect(screen.queryByRole('button', { name: 'Open day' })).not.toBeInTheDocument();
   });
 
-  it('the ticket screen shows a ticket open elsewhere read-only, and takes it over when it is released', async () => {
+  it('the order screen shows a ticket open elsewhere read-only, and takes it over when it is released', async () => {
     let lockedBy: string | null = 'Pillar 1';
     extra = {
       'GET /api/pos/tickets/k8': () =>
@@ -358,18 +378,27 @@ describe('table map', () => {
           total: 600,
           rowVersion: 1,
           lock: null,
+          billNumber: 1,
+          newLines: 0,
+          failedJobs: [],
           lines: [
             {
               id: 'l1',
+              menuItemId: 'm-guiness',
               name: 'Guiness',
+              shortName: 'Guiness',
               options: null,
+              note: null,
               quantity: 2,
               unitPrice: 300,
               gross: 600,
+              status: 'Printed',
+              printRound: 1,
+              addedById: 'u-wamboo',
               addedBy: 'WAMBOO',
               addedOn: 'Counter A',
               addedAt: ago(30),
-              printed: true,
+              printedAt: ago(29),
               voided: false,
             },
           ],
@@ -393,8 +422,9 @@ describe('table map', () => {
     expect(
       await screen.findByText('Open on Pillar 1 by Ruth. You can view it but not change it.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Table 8')).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /Guiness/ })).toBeInTheDocument();
+    expect(screen.getByText('Table 8 · Ticket #1050')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Guiness/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ticket note' })).toBeDisabled();
 
     lockedBy = null;
     emit('ticket.lock', { ticketId: 'k8', tableId: 't-8', terminalId: null, version: 12 });
