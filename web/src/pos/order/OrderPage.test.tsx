@@ -683,6 +683,9 @@ describe('order screen', () => {
       printedAt: '2026-10-20T19:42:00Z',
     });
   const mau = { userId: 'u-mau', name: 'MAU', role: 'Supervisor', terminal: 'Counter B' };
+  // Times show on the terminal's own clock, whatever time zone the test runs in.
+  const hhmm = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
   async function openTicket() {
     renderRoutes(routes, '/pos/ticket/k1?table=t-7');
@@ -723,7 +726,7 @@ describe('order screen', () => {
     const dialog = await openVoid(user);
 
     expect(
-      within(dialog).getByText('Table 7 · sent 22:42 by edna', { exact: false }),
+      within(dialog).getByText(`Table 7 · sent ${hhmm('2026-10-20T19:42:00Z')} by edna`),
     ).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'One less' })).toBeDisabled();
     await user.click(within(dialog).getByRole('button', { name: 'One more' }));
