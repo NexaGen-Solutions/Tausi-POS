@@ -166,17 +166,17 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
 
     /// <summary>
     /// A few open tickets with lines, so the demo map shows occupied tables, totals, two tickets on
-    /// Table 7 (to try merging) and an idle table. Only into a database with no tickets, and only
-    /// while a day is open (they belong to it); otherwise the seed adds none and says so.
+    /// Table 7 (to try merging) and an idle table. Only while a day is open (they belong to it).
+    /// Run again, it adds only the ones that are missing: a demo ticket counts as there when its
+    /// waiter already has that many open tickets on its table.
     /// </summary>
     public async Task<bool> SeedDemoTickets(CancellationToken ct)
     {
-        if (await db.Tickets.AnyAsync(ct)) return false;
         var tables = await db.Tables.ToDictionaryAsync(t => t.Name, ct);
         var users = await db.Users.ToDictionaryAsync(u => u.Name, ct);
         var terminals = await db.Terminals.ToDictionaryAsync(t => t.Name, ct);
         var items = await db.MenuItems.Include(i => i.Prices).ToDictionaryAsync(i => i.Name, ct);
-        var vat = (await db.BusinessSettings.FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
+        var vat = (await db.BusinessSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
         if (tables.Count == 0 || items.Count == 0 || !terminals.ContainsKey("Counter A")) return false;
 
         var now = DateTimeOffset.UtcNow;
@@ -196,10 +196,18 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
             ("Pool 1", "MAU", "Counter B", 35, 2, [("Pool Table", 6)]),
             ("Bar 1", "Ruth", "Counter B", 20, 5, [("Tusker Lager", 1), ("Delmonte", 1)]),
         };
+        var open = await db.Tickets.Where(k => k.Status == TicketStatus.Open && k.TableId != null)
+            .Select(k => new { TableId = k.TableId!.Value, k.OpenedByUserId }).ToListAsync(ct);
+        var wanted = new Dictionary<(Guid, Guid), int>();
+        var added = 0;
         foreach (var (tableName, waiter, terminalName, minutesAgo, idle, lines) in demo)
         {
             if (!tables.TryGetValue(tableName, out var table) || !users.TryGetValue(waiter, out var user)
                 || !terminals.TryGetValue(terminalName, out var terminal)) continue;
+            var key = (table.Id, user.Id);
+            wanted[key] = wanted.GetValueOrDefault(key) + 1;
+            if (open.Count(o => o.TableId == table.Id && o.OpenedByUserId == user.Id) >= wanted[key]) continue;
+            added++;
             var opened = now.AddMinutes(-minutesAgo);
             var ticket = new Ticket
             {
@@ -226,6 +234,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
             }
             db.Tickets.Add(ticket);
         }
+        if (added == 0) return false;
         await db.SaveChangesAsync(ct);
         return true;
     }

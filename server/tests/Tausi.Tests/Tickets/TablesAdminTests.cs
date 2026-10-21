@@ -137,4 +137,26 @@ public class TablesAdminTests : IAsyncLifetime
         map.Tables.Single(t => t.Name == "5").IdleMinutes.Should().BeGreaterThanOrEqualTo(30);
         demo.Read().Tickets.Should().OnlyContain(k => k.WorkPeriodId == day.Id);
     }
+
+    [Fact]
+    public async Task Seeding_again_adds_only_missing_demo_tickets()
+    {
+        var seeder = new Tausi.Infrastructure.Seeding.Seeder(_f.Db, _f.Hasher,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Tausi.Infrastructure.Seeding.Seeder>.Instance);
+        // CAROL's own ticket on Table 7 does not count as one of edna's demo tickets there.
+        await _f.LoginOn("CAROL", "Counter B");
+        await _f.NewTicket("7");
+
+        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeTrue();
+        var first = _f.Read().Tickets.Count();
+        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeFalse("nothing is missing");
+        _f.Read().Tickets.Count().Should().Be(first);
+
+        // One demo ticket goes away (settled): seeding again puts back just that one.
+        var five = _f.Table("5").Id;
+        await _f.Db.Tickets.Where(k => k.TableId == five).ExecuteUpdateAsync(u => u.SetProperty(k => k.Status, TicketStatus.Settled));
+        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeTrue();
+        _f.Read().Tickets.Count().Should().Be(first + 1);
+        _f.Read().Tickets.Count(k => k.TableId == _f.Table("7").Id && k.Status == TicketStatus.Open).Should().Be(3);
+    }
 }

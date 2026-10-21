@@ -100,6 +100,21 @@ public class TableMapTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Open_tickets_stay_on_the_map_whatever_day_they_belong_to()
+    {
+        var old = await _f.NewTicket("7");
+        // The day it was opened in ends (in development; cash-up will refuse while tickets are open)
+        // and a new day starts.
+        await _f.Db.WorkPeriods.ExecuteUpdateAsync(u => u.SetProperty(w => w.IsOpen, false));
+        _f.Db.WorkPeriods.Add(new WorkPeriod { OpenedAt = _f.Clock.GetUtcNow(), OpenedByUserId = _f.User("MAU").Id });
+        await _f.Db.SaveChangesAsync();
+
+        var seven = (await Map()).Tables.Single(t => t.Name == "7");
+
+        seven.Tickets.Should().ContainSingle().Which.Number.Should().Be(old.Number);
+    }
+
+    [Fact]
     public void Idle_minutes_count_from_the_quietest_ticket()
     {
         var now = DateTimeOffset.UnixEpoch.AddHours(5);
