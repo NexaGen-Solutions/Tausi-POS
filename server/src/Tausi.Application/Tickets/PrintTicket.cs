@@ -146,7 +146,7 @@ public sealed class PrintTicket(
         var waiter = await UserName(ticket.OpenedByUserId, ct);
         var slip = new BillSlip(
             new BusinessInfo(business.Name, business.Address, business.Phone, business.ReceiptFooter),
-            ticket.BillNumber, ticket.Number, reprint, Where(ticket), waiter, terminal.Name, now,
+            ticket.BillNumber, ticket.Number, reprint, Where(ticket), waiter, terminal.Name, Local(now),
             ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList());
         return Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
     }
@@ -158,7 +158,7 @@ public sealed class PrintTicket(
         foreach (var byWaiter in lines.GroupBy(l => l.AddedByUserId))
             groups.Add(new DispenseGroup(await UserName(byWaiter.Key, ct), byWaiter.Select(ToSlipLine).ToList()));
         var header = terminal.DispenseHeader ?? printer.DispenseHeader ?? terminal.Name;
-        var slip = new DispenseSlip(header, Where(ticket), ticket.Number, now, groups, string.IsNullOrWhiteSpace(ticket.Note) ? null : ticket.Note);
+        var slip = new DispenseSlip(header, Where(ticket), ticket.Number, Local(now), groups, string.IsNullOrWhiteSpace(ticket.Note) ? null : ticket.Note);
         return Slips.Dispense(slip, SlipStyle.For(printer, null));
     }
 
@@ -169,6 +169,9 @@ public sealed class PrintTicket(
         await db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Name).FirstOrDefaultAsync(ct) ?? "?";
 
     /// <summary>"Table 7", "Pool 1", "Takeaway · Otieno" or "Takeaway".</summary>
+    /// <summary>Slips show the time on the server's clock, where the business is.</summary>
+    private DateTimeOffset Local(DateTimeOffset at) => TimeZoneInfo.ConvertTime(at, clock.LocalTimeZone);
+
     public static string Where(Ticket ticket) => ticket.Table is { } table
         ? (table.Name.All(char.IsDigit) ? $"Table {table.Name}" : table.Name)
         : string.IsNullOrWhiteSpace(ticket.CustomerName) ? "Takeaway" : $"Takeaway · {ticket.CustomerName}";

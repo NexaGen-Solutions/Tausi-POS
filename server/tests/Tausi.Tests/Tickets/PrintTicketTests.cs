@@ -56,6 +56,19 @@ public class PrintTicketTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bill_and_slip_show_the_local_time_of_the_server()
+    {
+        _f.Clock.SetLocalTimeZone(TimeZoneInfo.CreateCustomTimeZone("EAT", TimeSpan.FromHours(3), "EAT", "EAT"));
+        var ticket = await Table4();
+
+        await Print(ticket.Id);
+
+        var jobs = Jobs(ticket.Id);
+        jobs[0].TextPreview.Should().Contain("20 Oct 2026 21:00").And.NotContain("18:00");
+        jobs[1].TextPreview.Should().Contain("21:00").And.NotContain("18:00");
+    }
+
+    [Fact]
     public async Task A_second_round_bills_everything_again_but_dispenses_only_the_new_line()
     {
         var ticket = await Table4();
