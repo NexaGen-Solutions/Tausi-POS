@@ -116,19 +116,25 @@ public class TablesAdminTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_demo_seed_has_mau_s_layout_and_open_tickets_including_an_idle_table()
+    public async Task The_demo_seed_adds_open_tickets_only_into_an_open_day()
     {
         await using var demo = await TicketsFixture.Create(openDay: false);
-        await new Tausi.Infrastructure.Seeding.Seeder(demo.Db, demo.Hasher,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<Tausi.Infrastructure.Seeding.Seeder>.Instance).SeedDemoTickets(CancellationToken.None);
+        var seeder = new Tausi.Infrastructure.Seeding.Seeder(demo.Db, demo.Hasher,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Tausi.Infrastructure.Seeding.Seeder>.Instance);
+
+        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeFalse("a day only closes with no open tickets");
+        demo.Read().Tickets.Should().BeEmpty();
+
+        var day = new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = demo.User("MAU").Id };
+        demo.Db.WorkPeriods.Add(day);
+        await demo.Db.SaveChangesAsync();
+        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeTrue();
         demo.Clock.SetUtcNow(DateTimeOffset.UtcNow);
 
         var map = await demo.Get<GetTableMap>().Execute(null, CancellationToken.None);
-
         map.Tables.Should().HaveCount(20);
-        map.DayOpen.Should().BeFalse("the demo tickets belong to a demo day that is closed again");
         map.Tables.Single(t => t.Name == "7").Tickets.Should().HaveCount(2);
         map.Tables.Single(t => t.Name == "5").IdleMinutes.Should().BeGreaterThanOrEqualTo(30);
-        map.Tables.Where(t => t.Tickets.Count > 0).Should().HaveCountGreaterThan(5);
+        demo.Read().Tickets.Should().OnlyContain(k => k.WorkPeriodId == day.Id);
     }
 }

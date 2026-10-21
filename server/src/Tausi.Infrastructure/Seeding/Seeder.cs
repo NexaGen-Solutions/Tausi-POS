@@ -166,9 +166,8 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
 
     /// <summary>
     /// A few open tickets with lines, so the demo map shows occupied tables, totals, two tickets on
-    /// Table 7 (to try merging) and an idle table. They belong to the open day, or, when no day is
-    /// open, to a demo day that is closed again, so the map also shows "The day isn't open yet".
-    /// Only into a database with no tickets.
+    /// Table 7 (to try merging) and an idle table. Only into a database with no tickets, and only
+    /// while a day is open (they belong to it); otherwise the seed adds none and says so.
     /// </summary>
     public async Task<bool> SeedDemoTickets(CancellationToken ct)
     {
@@ -181,19 +180,9 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         if (tables.Count == 0 || items.Count == 0 || !terminals.ContainsKey("Counter A")) return false;
 
         var now = DateTimeOffset.UtcNow;
+        // A day only closes with no open tickets, so demo tickets go into the open day, or not at all.
         var day = await db.WorkPeriods.FirstOrDefaultAsync(w => w.IsOpen, ct);
-        if (day is null)
-        {
-            day = new WorkPeriod
-            {
-                OpenedAt = now.AddHours(-3),
-                OpenedByUserId = users["MAU"].Id,
-                ClosedAt = now,
-                ClosedByUserId = users["MAU"].Id,
-                IsOpen = false,
-            };
-            db.WorkPeriods.Add(day);
-        }
+        if (day is null) return false;
 
         var demo = new (string Table, string Waiter, string Terminal, int MinutesAgo, int IdleMinutes, (string Item, int Qty)[] Lines)[]
         {
