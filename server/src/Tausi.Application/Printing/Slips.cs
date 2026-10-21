@@ -23,7 +23,7 @@ public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string C
 public sealed record SlipLine(
     decimal Quantity, string Name, string? Options, decimal Amount,
     decimal UnitPrice = 0, decimal VatRate = 0, decimal Vat = 0, string? ShortName = null, string? Note = null,
-    bool VatExempt = false);
+    bool VatExempt = false, bool IsGift = false, decimal Discount = 0);
 
 /// <summary>The business as printed at the top and bottom of customer slips.</summary>
 public sealed record BusinessInfo(string Name, string? Address = null, string? Phone = null, string? Footer = null);
@@ -31,9 +31,11 @@ public sealed record BusinessInfo(string Name, string? Address = null, string? P
 /// <param name="Where">"Table 7", "Pool 1" or "Takeaway · Otieno".</param>
 /// <param name="Waiter">Who opened the ticket.</param>
 /// <param name="Terminal">Where the bill is printed.</param>
+/// <param name="Corrected">Printed after a void, gift, discount or price change: "Corrected bill · replaces earlier bills".</param>
+/// <param name="DiscountLabel">"Discount 10% (Regular customer)"; the amount is the lines' discount shares.</param>
 public sealed record BillSlip(
     BusinessInfo Business, int BillNumber, long TicketNumber, bool Reprint, string Where, string Waiter, string Terminal,
-    DateTimeOffset At, IReadOnlyList<SlipLine> Lines);
+    DateTimeOffset At, IReadOnlyList<SlipLine> Lines, bool Corrected = false, string? DiscountLabel = null);
 
 /// <summary>The lines one person added in this round.</summary>
 public sealed record DispenseGroup(string Waiter, IReadOnlyList<SlipLine> Lines);
@@ -41,9 +43,10 @@ public sealed record DispenseGroup(string Waiter, IReadOnlyList<SlipLine> Lines)
 public sealed record DispenseSlip(
     string Header, string Where, long TicketNumber, DateTimeOffset At, IReadOnlyList<DispenseGroup> Groups, string? TicketNote = null);
 
+/// <summary>For the bar that dispensed the item: stop it, or take it back.</summary>
 public sealed record VoidSlip(
-    string Header, string Table, string TicketNo, IReadOnlyList<SlipLine> Lines, string Reason,
-    string RequestedBy, string? ApprovedBy, DateTimeOffset At);
+    string Header, string Where, long TicketNumber, DateTimeOffset At, IReadOnlyList<SlipLine> Lines, string Reason,
+    string RequestedBy, string ApprovedBy);
 
 public sealed record ReceiptSlip(
     BillSlip Bill, IReadOnlyList<(string Method, string? Reference, decimal Amount)> Payments, decimal Change, string Cashier);
@@ -92,12 +95,13 @@ public static class Slips
 
     /// <summary>Lines with the same item, options and price, added together (the bill shows them once).</summary>
     public static IReadOnlyList<SlipLine> AddUp(IEnumerable<SlipLine> lines) =>
-        lines.GroupBy(l => (l.Name, l.Options, l.UnitPrice, l.VatRate, l.VatExempt))
+        lines.GroupBy(l => (l.Name, l.Options, l.UnitPrice, l.VatRate, l.VatExempt, l.IsGift))
             .Select(g => g.First() with
             {
                 Quantity = g.Sum(l => l.Quantity),
                 Amount = g.Sum(l => l.Amount),
                 Vat = g.Sum(l => l.Vat),
+                Discount = g.Sum(l => l.Discount),
             })
             .ToList();
 
@@ -107,7 +111,8 @@ public static class Slips
         if (!string.IsNullOrWhiteSpace(d.Business.Address)) b.Text(d.Business.Address, TextStyle.Center);
         if (!string.IsNullOrWhiteSpace(d.Business.Phone)) b.Text(d.Business.Phone, TextStyle.Center);
         b.Separator().Text($"BILL {d.BillNumber} · Ticket #{d.TicketNumber}", TextStyle.Center | TextStyle.Bold);
-        if (d.BillNumber > 1) b.Text("Replaces earlier bills", TextStyle.Center);
+        if (d.Corrected) b.Text("Corrected bill · replaces earlier bills", TextStyle.Center | TextStyle.Bold);
+        else if (d.BillNumber > 1) b.Text("Replaces earlier bills", TextStyle.Center);
         if (d.Reprint) b.Text("REPRINT", TextStyle.Center | TextStyle.Bold);
         b.Separator()
             .Columns2(d.Where, d.At.ToString("dd MMM yyyy HH:mm", CultureInfo.InvariantCulture))
@@ -115,19 +120,27 @@ public static class Slips
             .Separator();
 
         var lines = AddUp(d.Lines);
-        foreach (var line in lines) b.Columns2(LineText(line), Amount(line.Amount));
-        b.Separator().Columns2("TOTAL", Money(lines.Sum(l => l.Amount), style.Currency), TextStyle.Bold | TextStyle.DoubleHeight);
+        foreach (var line in lines)
+            b.Columns2(line.IsGift ? LineText(line) + " GIFT" : LineText(line), Amount(line.Amount));
+        b.Separator();
+        var discount = lines.Sum(l => l.Discount);
+        if (discount != 0)
+            b.Columns2("Subtotal", Money(lines.Sum(l => l.Amount), style.Currency))
+                .Columns2(d.DiscountLabel ?? "Discount", "-" + Money(discount, style.Currency));
+        b.Columns2("TOTAL", Money(lines.Sum(l => l.Amount - l.Discount), style.Currency), TextStyle.Bold | TextStyle.DoubleHeight);
 
-        // One line per VAT rate (0% included: zero-rated), from the VAT stored on each line. The amount
-        // is never split over two lines: on narrow paper the label is shortened.
-        foreach (var rate in lines.Where(l => !l.VatExempt).GroupBy(l => l.VatRate).OrderByDescending(g => g.Key))
+        // One line per VAT rate (0% included: zero-rated), from the VAT stored on each line, which is
+        // worked out after the discount. Gifts carry none. The amount is never split over two lines:
+        // on narrow paper the label is shortened.
+        foreach (var rate in lines.Where(l => !l.VatExempt && !l.IsGift).GroupBy(l => l.VatRate).OrderByDescending(g => g.Key))
         {
             var vat = MoneyCents(rate.Sum(l => l.Vat), style.Currency);
             var full = $"Total includes VAT {Qty(rate.Key)}%: {vat}";
             if (full.Length <= style.Columns) b.Text(full);
             else b.Columns2($"Includes VAT {Qty(rate.Key)}%", vat);
         }
-        if (lines.Any(l => l.VatExempt)) b.Columns2("VAT exempt:", MoneyCents(lines.Where(l => l.VatExempt).Sum(l => l.Amount), style.Currency));
+        if (lines.Any(l => l.VatExempt && !l.IsGift))
+            b.Columns2("VAT exempt:", MoneyCents(lines.Where(l => l.VatExempt).Sum(l => l.Amount - l.Discount), style.Currency));
         return b;
     }
 
@@ -161,18 +174,25 @@ public static class Slips
         return b;
     }
 
+    /// <summary>
+    /// To the dispense printer that printed the item: "VOID" in large text with the dispense header,
+    /// the item as on the dispense slip, the reason, and who asked and approved.
+    /// </summary>
     public static PrintDocument Void(VoidSlip d, SlipStyle style)
     {
         var b = new ReceiptBuilder(style.Columns, style.Cut)
             .Text("VOID", TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight)
-            .Text(d.Header, TextStyle.Center)
-            .Columns2($"{d.Table} · #{d.TicketNo}", d.At.ToString("HH:mm", CultureInfo.InvariantCulture))
+            .Text(d.Header.ToUpperInvariant(), TextStyle.Center | TextStyle.Bold)
+            .Columns2($"{d.Where} · #{d.TicketNumber}", d.At.ToString("HH:mm", CultureInfo.InvariantCulture))
             .Separator();
-        foreach (var line in d.Lines) b.Text($"{Qty(line.Quantity)} x {line.Name}", TextStyle.Bold | TextStyle.DoubleHeight);
+        foreach (var line in d.Lines)
+        {
+            b.Text($"{Qty(line.Quantity)} x {line.ShortName ?? line.Name}", TextStyle.Bold | TextStyle.DoubleHeight);
+            if (line.Options is { Length: > 0 } options) b.Text("   " + options.ToUpperInvariant());
+        }
         b.Separator()
             .Text($"Reason: {d.Reason}")
-            .Text($"Asked by: {d.RequestedBy}");
-        if (d.ApprovedBy is not null) b.Text($"Approved by: {d.ApprovedBy}");
+            .Text($"By: {d.RequestedBy} · Approved: {d.ApprovedBy}");
         return b.Cut().Build();
     }
 

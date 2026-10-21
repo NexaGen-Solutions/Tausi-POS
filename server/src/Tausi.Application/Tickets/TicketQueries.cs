@@ -55,7 +55,7 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
                     .Select(k => new TicketRow(
                         k.Id, k.Number, k.TableId, k.CustomerName, k.OpenedByUserId,
                         db.Users.Where(u => u.Id == k.OpenedByUserId).Select(u => u.Name).FirstOrDefault(),
-                        k.Lines.Where(l => l.VoidedAt == null && l.Status != OrderLineStatus.Cancelled).Select(l => l.Gross).ToList(),
+                        k.Lines.Where(l => l.VoidedAt == null && l.Status != OrderLineStatus.Cancelled && l.Status != OrderLineStatus.Voided).Select(l => l.Gross - l.Discount).ToList(),
                         k.OpenedAt, k.LastActivityAt,
                         k.OpenedByUserId == me.UserId || k.Lines.Any(l => l.AddedByUserId == me.UserId),
                         k.LockTerminalId, k.LockUserId, k.LockExpiresAt,
@@ -93,7 +93,7 @@ public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, Tim
             .Select(k => new TicketRow(
                 k.Id, k.Number, k.TableId, k.CustomerName, k.OpenedByUserId,
                 db.Users.Where(u => u.Id == k.OpenedByUserId).Select(u => u.Name).FirstOrDefault(),
-                k.Lines.Where(l => l.VoidedAt == null && l.Status != OrderLineStatus.Cancelled).Select(l => l.Gross).ToList(),
+                k.Lines.Where(l => l.VoidedAt == null && l.Status != OrderLineStatus.Cancelled && l.Status != OrderLineStatus.Voided).Select(l => l.Gross - l.Discount).ToList(),
                 k.OpenedAt, k.LastActivityAt,
                 k.OpenedByUserId == me.UserId || k.Lines.Any(l => l.AddedByUserId == me.UserId),
                 k.LockTerminalId, k.LockUserId, k.LockExpiresAt,
@@ -111,11 +111,11 @@ public sealed class GetTicket(ITausiDb db, ICurrentSession session, TicketLocks 
 {
     public async Task<TicketDetailDto> Execute(Guid id, CancellationToken ct)
     {
-        session.RequireUser();
+        var user = session.RequireUser();
         var ticket = await db.Tickets.AsNoTracking().Include(k => k.Lines).Include(k => k.Table)
             .FirstOrDefaultAsync(k => k.Id == id, ct)
             ?? throw new NotFoundException("Ticket not found.");
-        return await TicketDetails.Build(db, ticket, await locks.Holder(ticket, ct), ct);
+        return await TicketDetails.Build(db, ticket, await locks.Holder(ticket, ct), ct, user.UserId);
     }
 }
 
@@ -124,9 +124,10 @@ public static class TicketDetails
 {
     /// <summary>For the terminal that has just changed the ticket (it holds the lock).</summary>
     public static Task<TicketDetailDto> Mine(ITausiDb db, Ticket ticket, SessionUser user, CancellationToken ct) =>
-        Build(db, ticket, new LockHolder(user.TerminalId!.Value, user.TerminalName ?? "", user.UserId, user.Name), ct);
+        Build(db, ticket, new LockHolder(user.TerminalId!.Value, user.TerminalName ?? "", user.UserId, user.Name), ct, user.UserId);
 
-    public static async Task<TicketDetailDto> Build(ITausiDb db, Ticket ticket, LockHolder? holder, CancellationToken ct)
+    /// <param name="viewer">Who is looking, to mark their own pending requests ("Cancel request").</param>
+    public static async Task<TicketDetailDto> Build(ITausiDb db, Ticket ticket, LockHolder? holder, CancellationToken ct, Guid? viewer = null)
     {
         var shown = ticket.Lines.Where(l => l.Status != OrderLineStatus.Cancelled).ToList();
         var userIds = shown.Select(l => l.AddedByUserId).Append(ticket.OpenedByUserId).Distinct().ToList();
@@ -141,17 +142,30 @@ public static class TicketDetails
             .Select(j => new FailedJobDto(j.Id, j.Kind.ToString(), j.Printer!.Name, j.LastError))
             .ToListAsync(ct);
 
+        var pending = await db.ApprovalRequests.AsNoTracking()
+            .Where(r => r.TicketId == ticket.Id && r.Status == ApprovalStatus.Pending)
+            .OrderBy(r => r.RequestedAt)
+            .Select(r => new { r.Id, r.Kind, r.Summary, r.OrderLineId, r.RequestedByUserId, By = db.Users.Where(u => u.Id == r.RequestedByUserId).Select(u => u.Name).FirstOrDefault() })
+            .ToListAsync(ct);
+        var pendingDtos = pending.Select(r => (r.OrderLineId, Dto: new PendingRequestDto(r.Id, r.Kind.ToString(), r.Summary, r.By ?? "?",
+            viewer is { } v && r.RequestedByUserId == v))).ToList();
+
+        // Lines in the order they were added; a part split off (void, gift, price change) sits after its line.
         var lines = shown.OrderBy(l => l.AddedAt).ThenBy(l => l.Id).Select(l => new OrderLineDto(
             l.Id, l.MenuItemId, l.Name, l.ShortName, l.Options, l.Note, l.Quantity, l.UnitPrice, l.Gross, l.Status.ToString(),
             l.PrintRound, l.AddedByUserId, users.GetValueOrDefault(l.AddedByUserId, "?"),
-            terminals.GetValueOrDefault(l.AddedTerminalId, "?"), l.AddedAt, l.PrintedAt, l.IsVoided)).ToList();
+            terminals.GetValueOrDefault(l.AddedTerminalId, "?"), l.AddedAt, l.PrintedAt, l.IsVoided,
+            l.IsGift, l.OriginalUnitPrice, l.Discount, l.VoidReason,
+            pendingDtos.FirstOrDefault(p => p.OrderLineId == l.Id).Dto)).ToList();
 
         return new TicketDetailDto(
             ticket.Id, ticket.Number, ticket.Status.ToString(), ticket.TableId, tableName, ticket.CustomerName,
             users.GetValueOrDefault(ticket.OpenedByUserId, "?"), ticket.OpenedAt, ticket.LastActivityAt, ticket.Note,
             ticket.Total, lines,
             holder is null ? null : new LockDto(holder.TerminalId, holder.TerminalName, holder.UserId, holder.UserName),
-            ticket.RowVersion, ticket.BillNumber, ticket.NewLineCount, failed);
+            ticket.RowVersion, ticket.BillNumber, ticket.NewLineCount, failed,
+            ticket.Subtotal, ticket.DiscountTotal, TicketPrints.DiscountLabel(ticket),
+            pendingDtos.Where(p => p.OrderLineId is null).Select(p => p.Dto).ToList());
     }
 }
 

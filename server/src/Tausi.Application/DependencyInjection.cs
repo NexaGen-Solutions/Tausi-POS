@@ -4,7 +4,6 @@ using Tausi.Application.Auth;
 using Tausi.Application.Day;
 using Tausi.Application.Menu;
 using Tausi.Application.Roles;
-using Tausi.Application.Dev;
 using Tausi.Application.Printers;
 using Tausi.Application.Printing;
 using Tausi.Application.Security;
@@ -30,6 +29,17 @@ public static class DependencyInjection
         services.AddScoped<StaffAccess>();
         services.AddScoped<MenuAccess>();
         services.AddScoped<Settings.BusinessClock>();
+        services.AddScoped<Tickets.TicketPrints>();
+        services.AddScoped<Tickets.TicketActions>();
+        services.AddScoped<Tickets.TicketActionCommands>();
+        services.AddScoped<Approvals.ApprovalActions>();
+        services.AddScoped<Approvals.CreateApprovalRequest>();
+        services.AddScoped<Approvals.ApproveRequest>();
+        services.AddScoped<Approvals.RejectRequest>();
+        services.AddScoped<Approvals.CancelRequest>();
+        services.AddScoped<Approvals.ListApprovals>();
+        services.AddScoped<Approvals.Approvers>();
+        services.AddScoped<Approvals.ExpireApprovals>();
 
         // Use cases: one class per action.
         services.AddScoped<PinLogin>();
@@ -83,7 +93,6 @@ public static class DependencyInjection
         services.AddScoped<UpdateBusinessSettings>();
         services.AddScoped<UploadBusinessLogo>();
         services.AddScoped<TestPrint>();
-        services.AddScoped<DevVoidProbe>();
 
         // Tables and tickets
         services.AddSingleton<TableMapVersion>();

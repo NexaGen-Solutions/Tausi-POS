@@ -7,7 +7,8 @@ namespace Tausi.Infrastructure.Platform;
 
 /// <summary>
 /// Every few seconds, ends ticket edit locks whose terminal stopped renewing them or whose session
-/// ended (including idle logout), so other terminals can edit the ticket again.
+/// ended (including idle logout), so other terminals can edit the ticket again; and expires
+/// approval requests left undecided past <c>pos.approvalExpiryMinutes</c>.
 /// </summary>
 public sealed class TicketLockSweeper(IServiceScopeFactory scopes, TimeProvider clock, ILogger<TicketLockSweeper> log)
     : BackgroundService
@@ -24,6 +25,8 @@ public sealed class TicketLockSweeper(IServiceScopeFactory scopes, TimeProvider 
                 await using var scope = scopes.CreateAsyncScope();
                 var released = await scope.ServiceProvider.GetRequiredService<ReleaseTicketLocks>().Stale(stoppingToken);
                 if (released > 0) log.LogInformation("Released {Count} stale ticket lock(s)", released);
+                var expired = await scope.ServiceProvider.GetRequiredService<Application.Approvals.ExpireApprovals>().Run(stoppingToken);
+                if (expired > 0) log.LogInformation("Expired {Count} approval request(s)", expired);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

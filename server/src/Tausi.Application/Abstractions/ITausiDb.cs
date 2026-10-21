@@ -46,6 +46,10 @@ public interface ITausiDb
     DbSet<DiningTable> Tables { get; }
     DbSet<Ticket> Tickets { get; }
     DbSet<OrderLine> OrderLines { get; }
+    DbSet<ApprovalRequest> ApprovalRequests { get; }
+    DbSet<VoidLog> VoidLogs { get; }
+    DbSet<GiftLog> GiftLogs { get; }
+    DbSet<DiscountLog> DiscountLogs { get; }
 
     DatabaseFacade Database { get; }
 

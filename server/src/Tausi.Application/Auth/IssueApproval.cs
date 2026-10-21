@@ -1,5 +1,6 @@
 using Tausi.Application.Abstractions;
 using Tausi.Application.Auditing;
+using Tausi.Application.Common;
 using Tausi.Application.Security;
 using Tausi.Domain.People;
 
@@ -25,6 +26,9 @@ public sealed class IssueApproval(
             throw new Domain.Common.DomainException("Unknown permission.");
 
         var approver = await pins.Authenticate(terminal.TerminalId, request.Pin ?? "", ct);
+        // The supervisor's PIN, never the requester's own (rule: nobody approves their own action).
+        if (session.User is { } requester && requester.UserId == approver.Id)
+            throw new ForbiddenException("You can't approve your own request. Ask a supervisor for their PIN.", "own_request");
         var approverSession = new SessionUser(
             approver.Id, approver.Name, approver.RoleId, approver.Role!.Name, terminal.TerminalId, terminal.Name);
         if (await permissions.Check(approverSession, request.PermissionKey!, ct) != PermissionValue.Allowed)

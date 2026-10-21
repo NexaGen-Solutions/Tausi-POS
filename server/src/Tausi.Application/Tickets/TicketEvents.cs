@@ -21,6 +21,8 @@ public sealed class TableMapVersion
 /// <summary>Publishes the table map's live events.</summary>
 public sealed class TicketEvents(IPosEvents events, TableMapVersion version)
 {
+    public IPosEvents Events => events;
+
     public Task Changed(Ticket ticket, Guid? tableId, CancellationToken ct) =>
         events.Publish(PosEventNames.TicketChanged,
             new { ticketId = ticket.Id, tableId, status = ticket.Status.ToString(), version = version.Next() }, ct);
