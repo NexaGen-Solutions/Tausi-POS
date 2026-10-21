@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FluentAssertions;
+using Tausi.Domain.Service;
 using Tausi.Application.Printing;
 using Tausi.Domain.Devices;
 using Tausi.Domain.Money;
@@ -87,6 +88,42 @@ public class SlipsTests
     [InlineData(32)]
     public void Bill_1_adds_up_identical_lines_wraps_long_names_and_shows_vat_per_rate(int columns) =>
         Golden($"bill-1-{columns}", Slips.Bill(SampleBill(), new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_void_slip_has_the_header_item_options_reason_and_who(int columns) =>
+        Golden($"void-{columns}", Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At,
+            [Line(1, "Guiness", 300m, "Cold", shortName: "Guiness")], "Wrong item", "edna", "MAU"), new SlipStyle(columns, true, null)));
+
+    /// <summary>
+    /// Bill 3 after a void (1 of 2 Tusker), a gift (1 Guiness) and a 10% discount, built the way the
+    /// server builds it: from order lines with their discount shares and VAT after the discount.
+    /// </summary>
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_corrected_bill_leaves_voids_off_shows_gifts_and_the_discount(int columns)
+    {
+        OrderLine L(string name, decimal qty, decimal price, string? options = null, bool exempt = false)
+        {
+            var line = new OrderLine { Name = name, ShortName = name, Options = options, UnitPrice = price, VatRate = exempt ? 0 : 16m, VatExempt = exempt, Status = OrderLineStatus.Printed };
+            line.SetQuantity(qty);
+            return line;
+        }
+        var tusker = L("Tusker Lager", 1, 250m, "Cold");
+        var voided = L("Tusker Lager", 1, 250m, "Cold");
+        voided.Status = OrderLineStatus.Voided;
+        var gift = L("Guiness", 1, 300m, "Cold");
+        gift.IsGift = true;
+        var ticket = new Ticket { Number = 1042, Lines = [tusker, voided, L("Guiness", 1, 300m, "Cold"), gift, L("Pineapple Punch", 1, 270m), L("Mau's Water 1L", 1, 100m, exempt: true)] };
+        ticket.SetDiscount(DiscountKind.Percent, 10m, "Regular customer");
+
+        var slip = new BillSlip(Mau, 3, 1042, false, "Table 7", "edna", "Pillar 1", At,
+            ticket.Lines.Where(l => l.Counts).Select(Tausi.Application.Tickets.TicketPrints.ToSlipLine).ToList(),
+            Corrected: true, DiscountLabel: Tausi.Application.Tickets.TicketPrints.DiscountLabel(ticket));
+        Golden($"bill-corrected-{columns}", Slips.Bill(slip, new SlipStyle(columns, true, null)));
+    }
 
     [Fact]
     public void A_zero_rated_item_is_in_the_vat_lines_at_0_percent_and_only_exempt_items_say_vat_exempt()
@@ -180,8 +217,8 @@ public class SlipsTests
     public void Void_receipt_and_cash_up_slips_render()
     {
         var style = new SlipStyle(42, true, null);
-        Slips.Void(new VoidSlip("Counter A", "Table 7", "1042", [new(1, "Guiness", null, 300m)], "Wrong item", "edna", "MAU", At), style)
-            .Text.Should().Contain("VOID").And.Contain("Wrong item").And.Contain("Approved by: MAU");
+        Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At, [new(1, "Guiness", null, 300m)], "Wrong item", "edna", "MAU"), style)
+            .Text.Should().Contain("VOID").And.Contain("Wrong item").And.Contain("By: edna · Approved: MAU");
         var receipt = Slips.Receipt(new ReceiptSlip(SampleBill(), [("M-Pesa", "SJK3XXXXX", 500m), ("Cash", null, 300m)], 30m, "CAROL"), style);
         receipt.Text.Should().Contain("M-Pesa SJK3XXXXX").And.Contain("Change").And.Contain("Served by CAROL");
         receipt.Text.Should().NotContain(Slips.NotAReceiptText);

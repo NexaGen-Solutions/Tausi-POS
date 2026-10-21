@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ApiError, api } from '../../shared/api/client';
+import { ApiError, RequestSentError, api } from '../../shared/api/client';
 import type { Brand, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { isOffline } from '../../shared/connection/status';
@@ -64,10 +64,17 @@ export function TablesPage() {
   const groups = data ? groupByArea(data.areas, shown) : [];
   const idleLimit = data?.tableIdleMinutes ?? 30;
 
-  const fail = (error: unknown) =>
+  const fail = (error: unknown) => {
+    // Sent to a supervisor instead: the approval pad already said so.
+    if (error instanceof RequestSentError) {
+      setMoving(null);
+      setMerging(false);
+      return;
+    }
     toast(error instanceof ApiError ? error.message : t('common.somethingWrong'), {
       tone: 'warning',
     });
+  };
 
   const openTicket = (ticket: TicketSummary) =>
     navigate(`/pos/ticket/${ticket.id}${ticket.tableId ? `?table=${ticket.tableId}` : ''}`);
@@ -83,6 +90,7 @@ export function TablesPage() {
       await api(`/api/pos/tickets/${ticket.id}/move`, {
         method: 'POST',
         body: { toTableId: table.id },
+        approval: { kind: 'Move', ticketId: ticket.id, payload: { toTableId: table.id } },
       });
       toast(t('pos.map.moved', { number: ticket.number, table: tableLabel(table.name) }));
       setMoving(null);
@@ -101,6 +109,11 @@ export function TablesPage() {
       const kept = await api<TicketSummary>('/api/pos/tickets/merge', {
         method: 'POST',
         body: { ticketIds: otherIds, intoTicketId: intoId },
+        approval: {
+          kind: 'Merge',
+          ticketId: intoId,
+          payload: { ticketIds: otherIds, intoTicketId: intoId },
+        },
       });
       toast(t('pos.map.merged', { number: kept.number }));
       setMerging(false);

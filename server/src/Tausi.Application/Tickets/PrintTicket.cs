@@ -33,7 +33,7 @@ public static class PrintCodes
 /// </summary>
 public sealed class PrintTicket(
     ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
-    PrintQueue queue, ILogoProvider logos, IAuditLog audit, TicketEvents events, TimeProvider clock, BusinessClock businessClock)
+    TicketPrints prints, IAuditLog audit, TicketEvents events, TimeProvider clock)
 {
     public Task<TicketDetailDto> Print(Guid id, CancellationToken ct) => Run(id, bill: true, dispense: true, ct);
 
@@ -54,21 +54,11 @@ public sealed class PrintTicket(
     {
         await using var edit = await editing.Open(id, ct);
         var grant = await permissions.Require(edit.User, PermissionKeys.TicketReprint, approval.ApprovalToken, ct);
-        var ticket = edit.Ticket;
-        if (!ticket.Lines.Any(l => l.Counts)) throw new DomainException("There is nothing on this ticket to bill.");
-        var terminal = await TerminalWithPrinters(edit.TerminalId, ct);
-        var receipt = Usable(terminal.ReceiptPrinter, terminal.Name, "receipt");
-        var now = clock.GetUtcNow();
-
-        ticket.BillNumber++;
-        ticket.BillPrintedAt = now;
-        var job = queue.Enqueue(receipt, PrintJobKind.Bill, await BillDocument(ticket, terminal, receipt, reprint: true, now, ct), ticket.Id);
-        audit.Write(new AuditRecord(AuditActions.BillReprinted, nameof(Ticket), ticket.Id.ToString(), null,
-            new { ticket = ticket.Number, bill = ticket.BillNumber, total = ticket.Total, printJobId = job.Id }, grant.ApprovedByUserId));
+        await prints.Reprint(edit.Ticket, edit.TerminalId, grant.ApprovedByUserId, ct);
         await db.SaveChangesAsync(ct);
         await edit.Transaction.CommitAsync(ct);
-        await events.Changed(ticket, ticket.TableId, ct);
-        return await TicketDetails.Mine(db, ticket, edit.User, ct);
+        await events.Changed(edit.Ticket, edit.Ticket.TableId, ct);
+        return await TicketDetails.Mine(db, edit.Ticket, edit.User, ct);
     }
 
     private async Task<TicketDetailDto> Run(Guid id, bool bill, bool dispense, CancellationToken ct)
@@ -82,12 +72,12 @@ public sealed class PrintTicket(
         if (!dispense && !ticket.Lines.Any(l => l.Counts))
             throw new DomainException("There is nothing on this ticket to bill.");
 
-        var terminal = await TerminalWithPrinters(edit.TerminalId, ct);
-        var receipt = bill ? Usable(terminal.ReceiptPrinter, terminal.Name, "receipt") : null;
-        var dispensePrinter = dispense ? Usable(terminal.DispensePrinter, terminal.Name, "dispense") : null;
+        var terminal = await prints.TerminalWithPrinters(edit.TerminalId, ct);
+        var receipt = bill ? TicketPrints.Usable(terminal.ReceiptPrinter, terminal.Name, "receipt") : null;
+        var dispensePrinter = dispense ? TicketPrints.Usable(terminal.DispensePrinter, terminal.Name, "dispense") : null;
         var now = clock.GetUtcNow();
 
-        if (dispense)
+        if (dispensePrinter is not null)
         {
             ticket.PrintRound++;
             foreach (var line in fresh)
@@ -95,6 +85,8 @@ public sealed class PrintTicket(
                 line.Status = OrderLineStatus.Printed;
                 line.PrintRound = ticket.PrintRound;
                 line.PrintedAt = now;
+                // The round's printer, so a void goes back to the bar that poured it.
+                line.DispensePrinterId = dispensePrinter.Id;
             }
         }
         var jobs = new List<PrintJob>();
@@ -104,10 +96,10 @@ public sealed class PrintTicket(
             ticket.BillNumber++;
             ticket.BilledRound = ticket.PrintRound;
             ticket.BillPrintedAt = now;
-            jobs.Add(queue.Enqueue(receipt, PrintJobKind.Bill, await BillDocument(ticket, terminal, receipt, reprint: false, now, ct), ticket.Id));
+            jobs.Add(await prints.Bill(ticket, terminal, receipt, reprint: false, corrected: false, now, ct));
         }
         if (dispensePrinter is not null)
-            jobs.Add(queue.Enqueue(dispensePrinter, PrintJobKind.Dispense, await DispenseDocument(ticket, terminal, dispensePrinter, fresh, now, ct), ticket.Id));
+            jobs.Add(await prints.Dispense(ticket, terminal, dispensePrinter, fresh, now, ct));
         ticket.Touch(now);
 
         audit.Write(new AuditRecord(AuditActions.TicketPrinted, nameof(Ticket), ticket.Id.ToString(), null,
@@ -126,10 +118,73 @@ public sealed class PrintTicket(
         return await TicketDetails.Mine(db, ticket, edit.User, ct);
     }
 
-    private Task<Terminal> TerminalWithPrinters(Guid terminalId, CancellationToken ct) =>
+    /// <summary>"Table 7", "Pool 1", "Takeaway · Otieno" or "Takeaway".</summary>
+    public static string Where(Ticket ticket) => TicketPrints.Where(ticket);
+}
+
+/// <summary>
+/// The ticket's printouts, shared by printing, voids, gifts, discounts, price changes and approved
+/// requests: bills (also reprints and corrected bills), dispense slips and VOID slips. Jobs are
+/// added to the queue in the caller's transaction.
+/// </summary>
+public sealed class TicketPrints(
+    ITausiDb db, PrintQueue queue, ILogoProvider logos, IAuditLog audit, TimeProvider clock, BusinessClock businessClock)
+{
+    /// <summary>The bill again, marked REPRINT, on this terminal's receipt printer.</summary>
+    public async Task<PrintJob> Reprint(Ticket ticket, Guid terminalId, Guid? approvedBy, CancellationToken ct)
+    {
+        if (!ticket.Lines.Any(l => l.Counts)) throw new DomainException("There is nothing on this ticket to bill.");
+        var terminal = await TerminalWithPrinters(terminalId, ct);
+        var receipt = Usable(terminal.ReceiptPrinter, terminal.Name, "receipt");
+        var now = clock.GetUtcNow();
+        ticket.BillNumber++;
+        ticket.BillPrintedAt = now;
+        var job = await Bill(ticket, terminal, receipt, reprint: true, corrected: false, now, ct);
+        audit.Write(new AuditRecord(AuditActions.BillReprinted, nameof(Ticket), ticket.Id.ToString(), null,
+            new { ticket = ticket.Number, bill = ticket.BillNumber, total = ticket.Total, printJobId = job.Id }, approvedBy));
+        return job;
+    }
+
+    /// <summary>
+    /// After a void, gift, discount or price change on a ticket that has had a bill: a corrected bill
+    /// with the next number, on the requesting terminal's receipt printer. Without a usable printer
+    /// nothing prints (the change still stands) and null comes back.
+    /// </summary>
+    public async Task<PrintJob?> CorrectedBillIfBilled(Ticket ticket, Guid terminalId, CancellationToken ct)
+    {
+        if (ticket.BillNumber == 0) return null;
+        var terminal = await TerminalWithPrinters(terminalId, ct);
+        if (terminal.ReceiptPrinter is not { Active: true } receipt) return null;
+        var now = clock.GetUtcNow();
+        ticket.BillNumber++;
+        ticket.BillPrintedAt = now;
+        return await Bill(ticket, terminal, receipt, reprint: false, corrected: true, now, ct);
+    }
+
+    /// <summary>
+    /// A VOID slip to the dispense printer that printed the line (else the requesting terminal's).
+    /// Without a usable printer nothing prints and null comes back.
+    /// </summary>
+    public async Task<PrintJob?> VoidSlip(Ticket ticket, OrderLine voided, Guid terminalId, string reason,
+        string requestedBy, string approvedBy, CancellationToken ct)
+    {
+        var terminal = await TerminalWithPrinters(terminalId, ct);
+        var printer = voided.DispensePrinterId is { } id
+            ? await db.Printers.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct)
+            : terminal.DispensePrinter;
+        if (printer is not { Active: true }) return null;
+        var header = printer.DispenseHeader
+            ?? await db.Terminals.AsNoTracking().Where(t => t.DispensePrinterId == printer.Id).Select(t => t.DispenseHeader ?? t.Name).FirstOrDefaultAsync(ct)
+            ?? printer.Name;
+        var slip = new Printing.VoidSlip(header, Where(ticket), ticket.Number, BusinessClock.ToLocal(clock.GetUtcNow(), await businessClock.Zone(ct)),
+            [ToSlipLine(voided)], reason, requestedBy, approvedBy);
+        return queue.Enqueue(printer, PrintJobKind.Void, Slips.Void(slip, SlipStyle.For(printer, null)), ticket.Id);
+    }
+
+    public Task<Terminal> TerminalWithPrinters(Guid terminalId, CancellationToken ct) =>
         db.Terminals.AsNoTracking().Include(t => t.ReceiptPrinter).Include(t => t.DispensePrinter).FirstAsync(t => t.Id == terminalId, ct);
 
-    private static Printer Usable(Printer? printer, string terminal, string role)
+    public static Printer Usable(Printer? printer, string terminal, string role)
     {
         if (printer is null)
             throw new DomainException($"{terminal} has no {role} printer. Set one in the admin site under Terminals and printers.", PrintCodes.NoPrinter);
@@ -138,7 +193,7 @@ public sealed class PrintTicket(
         return printer;
     }
 
-    private async Task<PrintDocument> BillDocument(Ticket ticket, Terminal terminal, Printer printer, bool reprint, DateTimeOffset now, CancellationToken ct)
+    public async Task<PrintJob> Bill(Ticket ticket, Terminal terminal, Printer printer, bool reprint, bool corrected, DateTimeOffset now, CancellationToken ct)
     {
         var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct) ?? new BusinessSettings();
         var settings = PrintSettings.From(business.OtherJson);
@@ -148,11 +203,13 @@ public sealed class PrintTicket(
             new BusinessInfo(business.Name, business.Address, business.Phone, business.ReceiptFooter),
             ticket.BillNumber, ticket.Number, reprint, Where(ticket), waiter, terminal.Name,
             BusinessClock.ToLocal(now, BusinessTimeZone.Find(business.TimeZone)),
-            ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList());
-        return Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
+            ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList(),
+            corrected, DiscountLabel(ticket));
+        var document = Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
+        return queue.Enqueue(printer, PrintJobKind.Bill, document, ticket.Id);
     }
 
-    private async Task<PrintDocument> DispenseDocument(
+    public async Task<PrintJob> Dispense(
         Ticket ticket, Terminal terminal, Printer printer, IReadOnlyList<OrderLine> lines, DateTimeOffset now, CancellationToken ct)
     {
         var groups = new List<DispenseGroup>();
@@ -161,13 +218,22 @@ public sealed class PrintTicket(
         var header = terminal.DispenseHeader ?? printer.DispenseHeader ?? terminal.Name;
         var at = BusinessClock.ToLocal(now, await businessClock.Zone(ct));
         var slip = new DispenseSlip(header, Where(ticket), ticket.Number, at, groups, string.IsNullOrWhiteSpace(ticket.Note) ? null : ticket.Note);
-        return Slips.Dispense(slip, SlipStyle.For(printer, null));
+        return queue.Enqueue(printer, PrintJobKind.Dispense, Slips.Dispense(slip, SlipStyle.For(printer, null)), ticket.Id);
     }
 
-    private static SlipLine ToSlipLine(OrderLine l) =>
-        new(l.Quantity, l.Name, l.Options, l.Gross, l.UnitPrice, l.VatRate, l.Vat, string.IsNullOrEmpty(l.ShortName) ? l.Name : l.ShortName, l.Note, l.VatExempt);
+    /// <summary>"Discount 10% (Regular customer)" or "Discount (Promotion)".</summary>
+    public static string? DiscountLabel(Ticket ticket) => ticket.DiscountKind switch
+    {
+        null => null,
+        DiscountKind.Percent => $"Discount {ticket.DiscountValue:0.##}%" + (ticket.DiscountReason is { } r ? $" ({r})" : ""),
+        _ => "Discount" + (ticket.DiscountReason is { } r ? $" ({r})" : ""),
+    };
 
-    private async Task<string> UserName(Guid id, CancellationToken ct) =>
+    public static SlipLine ToSlipLine(OrderLine l) =>
+        new(l.Quantity, l.Name, l.Options, l.Gross, l.UnitPrice, l.VatRate, l.Vat, string.IsNullOrEmpty(l.ShortName) ? l.Name : l.ShortName,
+            l.Note, l.VatExempt, l.IsGift, l.Discount);
+
+    public async Task<string> UserName(Guid id, CancellationToken ct) =>
         await db.Users.AsNoTracking().Where(u => u.Id == id).Select(u => u.Name).FirstOrDefaultAsync(ct) ?? "?";
 
     /// <summary>"Table 7", "Pool 1", "Takeaway · Otieno" or "Takeaway".</summary>

@@ -63,7 +63,7 @@ export interface OrderLine {
   quantity: number;
   unitPrice: number;
   gross: number;
-  status: 'New' | 'Printed' | 'Cancelled';
+  status: 'New' | 'Printed' | 'Cancelled' | 'Voided';
   printRound: number | null;
   addedById: string;
   addedBy: string;
@@ -71,6 +71,23 @@ export interface OrderLine {
   addedAt: string;
   printedAt: string | null;
   voided: boolean;
+  /** Given free: shown as 0 with the price struck through. */
+  isGift?: boolean;
+  /** The price before a change on this ticket ("Price changed"). */
+  originalUnitPrice?: number | null;
+  /** This line's share of the ticket discount. */
+  discount?: number;
+  voidReason?: string | null;
+  /** A request waiting for approval: "Void pending". */
+  pending?: PendingRequest | null;
+}
+
+export interface PendingRequest {
+  id: string;
+  kind: 'Void' | 'Gift' | 'Discount' | 'PriceChange' | 'Reprint' | 'Move' | 'Merge';
+  summary: string;
+  requestedBy: string;
+  mine: boolean;
 }
 
 export interface FailedJob {
@@ -98,6 +115,11 @@ export interface TicketDetail {
   billNumber: number;
   newLines: number;
   failedJobs: FailedJob[];
+  subtotal?: number;
+  discountTotal?: number;
+  discountLabel?: string | null;
+  /** Ticket-level requests waiting: "Discount pending", "Reprint pending". */
+  pending?: PendingRequest[];
 }
 
 export interface LockState {

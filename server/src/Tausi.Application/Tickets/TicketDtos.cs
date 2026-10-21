@@ -57,7 +57,15 @@ public sealed record OrderLineDto(
     string AddedOn,
     DateTimeOffset AddedAt,
     DateTimeOffset? PrintedAt,
-    bool Voided);
+    bool Voided,
+    bool IsGift = false,
+    decimal? OriginalUnitPrice = null,
+    decimal Discount = 0,
+    string? VoidReason = null,
+    PendingRequestDto? Pending = null);
+
+/// <summary>A request waiting for approval: "Void pending" on its line, or "Discount pending" on the ticket.</summary>
+public sealed record PendingRequestDto(Guid Id, string Kind, string Summary, string RequestedBy, bool Mine);
 
 /// <summary>A print job for this ticket that gave up (the order screen offers Retry).</summary>
 public sealed record FailedJobDto(Guid Id, string Kind, string PrinterName, string? Error);
@@ -79,4 +87,8 @@ public sealed record TicketDetailDto(
     long RowVersion,
     int BillNumber = 0,
     int NewLines = 0,
-    IReadOnlyList<FailedJobDto>? FailedJobs = null);
+    IReadOnlyList<FailedJobDto>? FailedJobs = null,
+    decimal Subtotal = 0,
+    decimal DiscountTotal = 0,
+    string? DiscountLabel = null,
+    IReadOnlyList<PendingRequestDto>? Pending = null);

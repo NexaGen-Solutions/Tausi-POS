@@ -29,7 +29,6 @@ public static class AuditActions
     public const string StaffPinReset = "staff.pin_reset";
     public const string StaffDeactivated = "staff.deactivated";
     public const string StaffReactivated = "staff.reactivated";
-    public const string DevVoidProbe = "dev.void_probe";
     public const string TicketMoved = "ticket.moved";
     public const string TicketMerged = "ticket.merged";
     public const string TicketPrinted = "ticket.printed";
@@ -39,6 +38,15 @@ public static class AuditActions
     public const string AreaChanged = "tables.area_changed";
     public const string TableChanged = "tables.table_changed";
     public const string TablesAdded = "tables.added";
+    public const string LineVoided = "order.voided";
+    public const string LineGifted = "order.gifted";
+    public const string DiscountChanged = "order.discount";
+    public const string LinePriceChanged = "order.price_changed";
+    public const string ApprovalRequested = "approval.requested";
+    public const string ApprovalApproved = "approval.approved";
+    public const string ApprovalRejected = "approval.rejected";
+    public const string ApprovalCancelled = "approval.cancelled";
+    public const string ApprovalExpired = "approval.expired";
 }
 
 /// <summary>

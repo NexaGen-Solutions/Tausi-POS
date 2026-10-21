@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { api } from '../../shared/api/client';
+import { api, type ApprovalKind } from '../../shared/api/client';
 import type { Brand, DeviceInfo, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { isOffline } from '../../shared/connection/status';
@@ -9,20 +9,43 @@ import { useConnection } from '../../shared/connection/useConnection';
 import { formatAmount, formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { Banner, Button, TopBar } from '../../shared/ui';
+import { ApprovalsButton } from '../approvals/ApprovalsButton';
 import { tableLabel } from '../tables/tableState';
-import type { TableMap } from '../tables/types';
+import type { OrderLine, PendingRequest, TableMap } from '../tables/types';
 import { tableMapKey } from '../tables/useTableMap';
 import { useTicketLock } from '../ticket/useTicketLock';
 import { usePinSession } from '../usePinSession';
+import {
+  DiscountDialog,
+  GiftDialog,
+  PriceDialog,
+  VoidDialog,
+  type ActionHandlers,
+  type PermissionValue,
+} from './ActionDialogs';
 import { LeaveDialog } from './LeaveDialog';
 import { needsChoice, search, type PosItem, type PosMenu } from './menu';
 import { NoteDialog } from './NoteDialog';
 import { OptionsDialog } from './OptionsDialog';
 import { useOrder, type ShownLine } from './useOrder';
+import { useToast } from '../../shared/ui';
 import './order.css';
 
 const time = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+/** What a line's badge says: Saving, New, Printed, Voided, Gift, or "Void pending". */
+function badge(line: ShownLine): { text: string; tone: string } {
+  if (line.saving) return { text: t('pos.order.saving'), tone: 'new' };
+  if (line.pending) return { text: t(`pos.actions.pending.${line.pending.kind}`), tone: 'pending' };
+  if (line.status === 'Voided') return { text: t('pos.order.voided'), tone: 'voided' };
+  if (line.isGift) return { text: t('pos.order.giftBadge'), tone: 'gift' };
+  return line.status === 'New'
+    ? { text: t('pos.order.new'), tone: 'new' }
+    : { text: t('pos.order.printed'), tone: 'printed' };
+}
+
+type Action = { type: 'void' | 'gift' | 'price'; line: OrderLine } | { type: 'discount' };
 
 /** Wireframe 3: the order screen, where waiters add items all night and press Print. */
 export function OrderPage() {
@@ -59,11 +82,13 @@ export function OrderPage() {
   const [choosing, setChoosing] = useState<PosItem | null>(null);
   const [leaving, setLeaving] = useState<null | (() => void)>(null);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [action, setAction] = useState<Action | null>(null);
+  const toast = useToast();
 
   const currency = brand.data?.currency ?? 'KES';
   const printing = device.data?.printing ?? null;
   const sendAndBill = printing?.mode === 'SendAndBill';
-  const permission = (key: string) => me.data?.permissions[key] ?? 'NotAllowed';
+  const permission = (key: string): PermissionValue => me.data?.permissions[key] ?? 'NotAllowed';
   const readOnly = lock !== null && !lock.editable;
   const closed = ticket !== null && ticket.status !== 'Open';
   const disabled = readOnly || closed || offline;
@@ -74,11 +99,19 @@ export function OrderPage() {
   const items = query.trim() && menu.data ? search(menu.data, query) : (category?.items ?? []);
   const lines = order.lines;
   const newCount = lines.filter((l) => l.status === 'New').length;
-  const total = lines.reduce((sum, l) => sum + l.gross, 0);
-  const selected = lines.find((l) => l.id === selectedId) ?? null;
+  const counted = lines.filter((l) => l.status !== 'Voided');
+  const subtotal = counted.reduce((sum, l) => sum + l.gross, 0);
+  const discount = counted.reduce((sum, l) => sum + (l.discount ?? 0), 0);
+  const total = subtotal - discount;
+  const selected = lines.find((l) => l.id === selectedId && l.status !== 'Voided') ?? null;
+  const ticketPending = ticket?.pending ?? [];
   const canReprint = permission('ticket.reprint') !== 'NotAllowed';
   const canCancel = permission('order.cancel_unprinted') !== 'NotAllowed';
   const canSettle = permission('ticket.settle') !== 'NotAllowed';
+  const canVoid = permission('order.void') !== 'NotAllowed';
+  const canGift = permission('order.gift') !== 'NotAllowed';
+  const canDiscount = permission('order.discount') !== 'NotAllowed';
+  const canChangePrice = permission('order.change_price') !== 'NotAllowed';
 
   const tapItem = (item: PosItem) => {
     if (disabled) return;
@@ -90,7 +123,36 @@ export function OrderPage() {
   const print = () => order.write('/print', 'POST');
   const send = () => order.write('/send', 'POST');
   const printBill = () => order.write('/print-bill', 'POST');
-  const reprint = () => order.write('/reprint-bill', 'POST');
+  // With a supervisor elsewhere, the approval pad can send a reprint request instead.
+  const reprint = () =>
+    order.write('/reprint-bill', 'POST', undefined, {
+      approval: { kind: 'Reprint', ticketId: order.ticketId!, payload: { reason: null } },
+    });
+
+  /** Void, gift, price change and discount: done now (maybe with a PIN token), or sent as a request. */
+  const handlers = (kind: ApprovalKind, path: string, lineId: string | null): ActionHandlers => ({
+    onDo: async (body, approvalToken) => {
+      await order.write(path, 'POST', body, { approvalToken });
+      setAction(null);
+    },
+    onSend: async (body, preferredApproverId) => {
+      const sent = await api<{ summary: string }>('/api/pos/approvals', {
+        method: 'POST',
+        body: { kind, ticketId: order.ticketId, lineId, payload: body, preferredApproverId },
+      });
+      toast(t('approval.requestSent', { what: sent.summary }));
+      setAction(null);
+      await queries.invalidateQueries({ queryKey: ['ticket', order.ticketId] });
+      await queries.invalidateQueries({ queryKey: ['approvals'] });
+    },
+    onCancel: () => setAction(null),
+  });
+  const cancelRequest = (request: PendingRequest) =>
+    act(async () => {
+      await api(`/api/pos/approvals/${request.id}/cancel`, { method: 'POST' });
+      await queries.invalidateQueries({ queryKey: ['ticket', order.ticketId] });
+      await queries.invalidateQueries({ queryKey: ['approvals'] });
+    });
   const setQuantity = (line: ShownLine, quantity: number) =>
     order.write(`/lines/${line.id}`, 'PATCH', { quantity });
   const remove = (line: ShownLine) => order.write(`/lines/${line.id}`, 'DELETE');
@@ -166,13 +228,16 @@ export function OrderPage() {
           )
         }
         end={
-          <span className="order-who">
-            {t('pos.whoWhere', {
-              terminal: session?.user.terminalName ?? '',
-              name: session?.user.name ?? '',
-              role,
-            })}
-          </span>
+          <>
+            <ApprovalsButton />
+            <span className="order-who">
+              {t('pos.whoWhere', {
+                terminal: session?.user.terminalName ?? '',
+                name: session?.user.name ?? '',
+                role,
+              })}
+            </span>
+          </>
         }
       />
       <OfflineBanner />
@@ -202,40 +267,63 @@ export function OrderPage() {
         <section className="order-ticket" aria-label={t('pos.order.ticket')}>
           <ul className="order-lines">
             {lines.length === 0 && <li className="order-lines__empty">{t('pos.order.empty')}</li>}
-            {lines.map((line) => (
-              <li key={line.id}>
-                <button
-                  type="button"
-                  className={`order-line${line.id === selectedId ? ' order-line--selected' : ''}${line.pending ? ' order-line--pending' : ''}`}
-                  aria-pressed={line.id === selectedId}
-                  disabled={line.pending}
-                  onClick={() => setSelectedId(line.id === selectedId ? null : line.id)}
-                >
-                  <span className="order-line__qty">{line.quantity}</span>
-                  <span className="order-line__main">
-                    <span className="order-line__name">{line.name}</span>
-                    <span className="order-line__meta">
-                      {[line.options, line.note, line.addedBy, time(line.addedAt)]
-                        .filter(Boolean)
-                        .join(' · ')}
+            {lines.map((line) => {
+              const voided = line.status === 'Voided';
+              const shown = badge(line);
+              return (
+                <li key={line.id}>
+                  <button
+                    type="button"
+                    className={`order-line${line.id === selectedId ? ' order-line--selected' : ''}${line.saving ? ' order-line--saving' : ''}${voided ? ' order-line--voided' : ''}`}
+                    aria-pressed={line.id === selectedId}
+                    disabled={line.saving || voided}
+                    onClick={() => setSelectedId(line.id === selectedId ? null : line.id)}
+                  >
+                    <span className="order-line__qty">{line.quantity}</span>
+                    <span className="order-line__main">
+                      <span className="order-line__name">{line.name}</span>
+                      <span className="order-line__meta">
+                        {[
+                          line.options,
+                          line.note,
+                          voided ? line.voidReason : null,
+                          line.addedBy,
+                          time(line.addedAt),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                      {line.originalUnitPrice != null && !voided && (
+                        <span className="order-line__changed">{t('pos.order.priceChanged')}</span>
+                      )}
                     </span>
-                  </span>
-                  <span className="order-line__right">
-                    <span className="order-line__amount">{formatAmount(line.gross)}</span>
-                    <span className={`order-badge order-badge--${line.status.toLowerCase()}`}>
-                      {line.pending
-                        ? t('pos.order.saving')
-                        : line.status === 'New'
-                          ? t('pos.order.new')
-                          : t('pos.order.printed')}
+                    <span className="order-line__right">
+                      <span className="order-line__amount">
+                        {line.isGift && (
+                          <s className="order-line__was">
+                            {formatAmount(line.unitPrice * line.quantity)}
+                          </s>
+                        )}
+                        {formatAmount(line.gross)}
+                      </span>
+                      <span className={`order-badge order-badge--${shown.tone}`}>{shown.text}</span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                  {line.pending?.mine && (
+                    <button
+                      type="button"
+                      className="order-line__cancel"
+                      onClick={() => void cancelRequest(line.pending!)}
+                    >
+                      {t('approval.cancelRequest')}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
 
-          {selected && !selected.pending && (
+          {selected && !selected.saving && (
             <div className="order-selected">
               <span className="order-selected__label">
                 {t('pos.order.selected', {
@@ -246,7 +334,9 @@ export function OrderPage() {
                       : t('pos.order.statePrinted'),
                 })}
               </span>
-              {selected.status === 'New' ? (
+              {selected.pending ? (
+                <p className="order-selected__waiting">{t('pos.actions.waiting')}</p>
+              ) : selected.status === 'New' ? (
                 <div className="order-selected__actions">
                   <Button
                     size="lg"
@@ -271,20 +361,83 @@ export function OrderPage() {
                   >
                     {t('pos.order.remove')}
                   </Button>
+                  {canGift && !selected.isGift && (
+                    <Button
+                      size="lg"
+                      disabled={disabled}
+                      onClick={() => setAction({ type: 'gift', line: selected })}
+                    >
+                      {t('pos.order.gift')}
+                    </Button>
+                  )}
+                  {canChangePrice && !selected.isGift && (
+                    <Button
+                      size="lg"
+                      disabled={disabled}
+                      onClick={() => setAction({ type: 'price', line: selected })}
+                    >
+                      {t('pos.order.changePrice')}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="order-selected__actions">
-                  <Button size="lg" disabled title={t('pos.order.comesWithVoids')}>
-                    {t('pos.order.void')}
-                  </Button>
-                  <Button size="lg" disabled title={t('pos.order.comesWithVoids')}>
-                    {t('pos.order.gift')}
-                  </Button>
+                  {canVoid && (
+                    <Button
+                      size="lg"
+                      disabled={disabled}
+                      onClick={() => setAction({ type: 'void', line: selected })}
+                    >
+                      {t('pos.order.void')}
+                    </Button>
+                  )}
+                  {canGift && !selected.isGift && (
+                    <Button
+                      size="lg"
+                      disabled={disabled}
+                      onClick={() => setAction({ type: 'gift', line: selected })}
+                    >
+                      {t('pos.order.gift')}
+                    </Button>
+                  )}
+                  {canChangePrice && !selected.isGift && (
+                    <Button
+                      size="lg"
+                      disabled={disabled}
+                      onClick={() => setAction({ type: 'price', line: selected })}
+                    >
+                      {t('pos.order.changePrice')}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           )}
 
+          {ticketPending.map((p) => (
+            <div key={p.id} className="order-pending" role="status">
+              <span>
+                {t('pos.actions.ticketPending', { what: p.summary, name: p.requestedBy })}
+              </span>
+              {p.mine && (
+                <button
+                  type="button"
+                  className="order-line__cancel"
+                  onClick={() => void cancelRequest(p)}
+                >
+                  {t('approval.cancelRequest')}
+                </button>
+              )}
+            </div>
+          ))}
+          {discount > 0 && (
+            <div className="order-subtotals">
+              <span>{t('pos.order.subtotal')}</span>
+              <span className="order-subtotals__amount">{formatMoney(subtotal, currency)}</span>
+              <span>{ticket?.discountLabel ?? t('pos.order.discount')}</span>
+              <span className="order-subtotals__amount">−{formatMoney(discount, currency)}</span>
+            </div>
+          )}
           <div className="order-total">
             <span>{t('pos.order.total')}</span>
             <span className="order-total__amount">{formatMoney(total, currency)}</span>
@@ -359,6 +512,16 @@ export function OrderPage() {
           <Button size="lg" block disabled={disabled || !ticket} onClick={() => setNoteOpen(true)}>
             {t('pos.order.ticketNote')}
           </Button>
+          {canDiscount && (
+            <Button
+              size="lg"
+              block
+              disabled={disabled || !ticket || ticketPending.some((p) => p.kind === 'Discount')}
+              onClick={() => setAction({ type: 'discount' })}
+            >
+              {t('pos.order.discount')}
+            </Button>
+          )}
           <Button size="lg" block disabled={disabled || !ticket || isTakeaway} onClick={moveTable}>
             {t('pos.order.moveTable')}
           </Button>
@@ -433,6 +596,39 @@ export function OrderPage() {
                 order.fail(error);
               });
           }}
+        />
+      )}
+      {action?.type === 'void' && (
+        <VoidDialog
+          line={action.line}
+          where={where}
+          dispenseName={printing?.dispenseName ?? ''}
+          permission={permission('order.void')}
+          handlers={handlers('Void', `/lines/${action.line.id}/void`, action.line.id)}
+        />
+      )}
+      {action?.type === 'gift' && (
+        <GiftDialog
+          line={action.line}
+          permission={permission('order.gift')}
+          handlers={handlers('Gift', `/lines/${action.line.id}/gift`, action.line.id)}
+        />
+      )}
+      {action?.type === 'price' && (
+        <PriceDialog
+          line={action.line}
+          currency={currency}
+          permission={permission('order.change_price')}
+          handlers={handlers('PriceChange', `/lines/${action.line.id}/price`, action.line.id)}
+        />
+      )}
+      {action?.type === 'discount' && ticket && (
+        <DiscountDialog
+          subtotal={subtotal - counted.filter((l) => l.isGift).reduce((s, l) => s + l.gross, 0)}
+          currency={currency}
+          hasDiscount={discount > 0}
+          permission={permission('order.discount')}
+          handlers={handlers('Discount', '/discount', null)}
         />
       )}
       {noteOpen && (

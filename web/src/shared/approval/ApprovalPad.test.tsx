@@ -9,7 +9,9 @@ function VoidButton({ onResult }: { onResult: (r: unknown) => void }) {
   return (
     <button
       onClick={() =>
-        api('/api/dev/void-probe', { method: 'POST' }).then(onResult, (e: unknown) => onResult(e))
+        api('/api/pos/tickets/k1/lines/l1/void', { method: 'POST' }).then(onResult, (e: unknown) =>
+          onResult(e),
+        )
       }
     >
       Void
@@ -41,9 +43,9 @@ describe('approval pad', () => {
       if (path.endsWith('/api/health')) return json(200, { server: 'POSSERVER2' });
       if (path.endsWith('/api/auth/approve'))
         return json(200, { approvalToken: 'tok-1', approvedByName: 'MAU' });
-      const retried = (calls('/api/dev/void-probe').at(-1)?.[1]?.headers as Headers).get(
-        'X-Approval-Token',
-      );
+      const retried = (
+        calls('/api/pos/tickets/k1/lines/l1/void').at(-1)?.[1]?.headers as Headers
+      ).get('X-Approval-Token');
       return retried ? json(200, { ok: true }) : json(403, approvalNeeded);
     });
     const onResult = vi.fn();
@@ -89,7 +91,7 @@ describe('approval pad', () => {
 
     expect(await screen.findByText(/Not approved/)).toBeInTheDocument();
     await waitFor(() => expect(onResult).toHaveBeenCalled());
-    expect(calls('/api/dev/void-probe')).toHaveLength(1);
+    expect(calls('/api/pos/tickets/k1/lines/l1/void')).toHaveLength(1);
   });
 
   it('wrong PIN keeps the pad open with a message', async () => {

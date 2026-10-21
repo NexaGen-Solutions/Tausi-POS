@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ApiError, api } from '../api/client';
+import { ApiError, api, type ApprovalContext, type SentRequest } from '../api/client';
 import { permissionLabel, t } from '../i18n/i18n';
 import { Button, Keypad, Modal, PinDots } from '../ui';
+import { ApprovalChoices } from './ApprovalChoices';
 
 export interface ApprovalIssued {
   approvalToken: string;
@@ -12,12 +13,47 @@ export interface ApprovalPadProps {
   permission: string;
   /** The approval token, or null when cancelled or refused. */
   onDone: (token: string | null, refusedBy?: string) => void;
+  /** When given, "Option 2 · supervisor elsewhere" is offered too. */
+  context?: ApprovalContext;
+  /** Option 2 was used: the request that was sent. */
+  onRequested?: (request: SentRequest) => void;
 }
 
 const maxPin = 6;
 
 /** A supervisor types their PIN to approve one action (single-use, valid for 60 seconds). */
-export function ApprovalPad({ permission, onDone }: ApprovalPadProps) {
+export function ApprovalPad({ permission, onDone, context, onRequested }: ApprovalPadProps) {
+  if (context && onRequested)
+    return (
+      <Modal
+        title={t('approval.title')}
+        subtitle={t('approval.subtitle', { action: permissionLabel(permission) })}
+        onClose={() => onDone(null)}
+        width={480}
+      >
+        <ApprovalChoices
+          permission={permission}
+          kind={context.kind}
+          sendLabel={t('approval.sendRequest')}
+          onToken={async (token) => onDone(token)}
+          onSend={async (preferredApproverId) =>
+            onRequested(
+              await api<SentRequest>('/api/pos/approvals', {
+                method: 'POST',
+                body: { ...context, lineId: context.lineId ?? null, preferredApproverId },
+              }),
+            )
+          }
+        />
+        <Button block onClick={() => onDone(null)}>
+          {t('common.cancel')}
+        </Button>
+      </Modal>
+    );
+  return <PinOnly permission={permission} onDone={onDone} />;
+}
+
+function PinOnly({ permission, onDone }: Pick<ApprovalPadProps, 'permission' | 'onDone'>) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

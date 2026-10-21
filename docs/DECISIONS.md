@@ -172,12 +172,32 @@ Each entry: date, decision, reason.
 | 2026-10-21 | The order screen has no logout button; logging out is on the table map. The leave check covers Tables and Move table. | Matches wireframe 3. |
 | 2026-10-21 | The ticket note can be set once the ticket is saved (after its first item). | A draft has nothing to attach it to. |
 
+## Voids and approvals (task 7)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-21 | The prompt's "Manager" column is the seeded **Admin** role (user Administrator); the defaults already matched the grid, so the seed and migration change nothing. | There is no Manager role; Admin is the one above Supervisor. |
+| 2026-10-21 | An **approved request runs without the requester's edit lock**: the ticket row is locked for the transaction, so it can't race another change, while the requester's screen (which may still show the ticket) updates live. Requests themselves don't need the lock either (move and merge are asked from the map). Direct actions and PIN approvals still need it, as every order-screen change does. | Otherwise a supervisor couldn't approve while the waiter still has the ticket open. |
+| 2026-10-21 | Two supervisors approving at once: the request is claimed with a conditional update (Pending → Approved) inside the transaction, after the ticket rows are locked; the second gets 409 `already_decided`. If the action no longer fits, the transaction rolls back and the request becomes Expired with the reason. | Exactly one wins on both providers (tested on PostgreSQL and SQL Server). |
+| 2026-10-21 | Amounts after a discount: `Gross` stays quantity × price (0 for a gift), each line stores its `Discount` share, and `Net` + `Vat` are worked out on Gross − Discount. Shares are rounded to the cent and the leftover goes on the largest line. An amount discount larger than what is left after a void is capped at it. | VAT stays right per rate, and the shares are there for the ledger and ERPNext. |
+| 2026-10-21 | Merging a ticket that has its own discount is refused ("remove it first"); the kept ticket's discount covers merged-in lines. | Two discounts can't be combined into the one-per-ticket rule silently. |
+| 2026-10-21 | The dispense printer is stored on each printed line (`DispensePrinterId`, set by its print round). Lines printed before this task have none; their VOID slip goes to the requesting terminal's dispense printer. | The VOID slip goes back to the bar that poured it. |
+| 2026-10-21 | Corrected bills print on the requesting terminal's receipt printer; with no usable printer the change still stands and nothing prints. A VOID slip without a usable printer is skipped the same way. | Print failures never undo a business action (rule 9). |
+| 2026-10-21 | A printed gift can still be voided (e.g. the gifted drink was spilt), but it can't be gifted again or have its price changed. | Stock still needs the void; money is 0 either way. |
+| 2026-10-21 | Users who are Allowed get 409 `approval_not_needed` when they try to send a request; NotAllowed users get 403. Nobody approves their own action: the PIN pad refuses the requester's PIN (`own_request`), the token check refuses it again, and the list never lets a requester decide. | The rules in Part A. |
+| 2026-10-21 | `approval.requested` and `approval.resolved` go to the whole `business` group with small payloads; each terminal refetches the list, which the server filters to what that user may decide (or asked). | Same pattern as the other events; nothing sensitive is in the payload. |
+| 2026-10-21 | Reasons are stored and printed as the chosen text, or "Other: the note". "Spilled or broken" always records "was poured"; other void reasons ask (default No). | What Task 11's stock needs, and what the slips show. |
+| 2026-10-21 | The chime is two short tones made with Web Audio after the first tap or key press, so there is no sound file and no autoplay block. | Browsers block sound before the user interacts. |
+| 2026-10-21 | The price pop-up's number pad takes whole units (no decimal key); the API accepts cents. | Bars price in whole shillings; the pad stays simple. |
+| 2026-10-21 | "Earlier this shift" lists the current work period's decided requests (latest 100), including Expired and Cancelled ones. | The supervisor sees why a request vanished. |
+| 2026-10-21 | The **Approvals** button shows for users Allowed to void, gift, discount, change prices or reprint, and for anyone with a request waiting for them. Move and merge alone don't count: waiters are Allowed to move by default, so the button would sit on every waiter's screen. They can still decide move requests (the rule is unchanged). | Less noise on the waiters' screens. |
+| 2026-10-21 | The temporary `/api/dev/void-probe` is removed; its tests now use the real void endpoint. | As planned in Task 1. |
+
 ## Follow-ups
 
 - **Powered-by footer toggle:** add `print.poweredByFooter` to Settings → Printing when that screen is built (it is set in the settings JSON until then).
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
 - **Updater:** the updater plugin is installed but has no public key or endpoint yet (`plugins.updater` in `tauri.conf.json`). Generate signing keys, publish `latest.json`, turn on `createUpdaterArtifacts`.
-- **Remove `/api/dev/void-probe`** and `DevVoidProbe` when the real void task lands.
 - **Real-hardware check:** `print_raw` on the Windows spooler and server-side Windows share printing compile in CI but are untested against a real printer until the owner runs RUNNING.md "Testing on real hardware".
 - **Redirect across paper widths:** a job stores its printed bytes, so a slip sent from a 58 mm printer to an 80 mm one keeps the 58 mm layout (and the other way, an 80 mm slip wraps on 58 mm paper). Rebuilding the slip for the new printer needs the slip data stored with the job; consider it with the order screen.
 - **Updater address in the lock-down:** add the update server's origin to the terminal's allowed origins once the updater has an endpoint.
@@ -199,3 +219,9 @@ Each entry: date, decision, reason.
 - **Draft ticket note:** allow a note before the first item if waiters ask for it.
 - **Time zone in Settings:** add `timeZone` to the settings screen when it is built (set through the settings API until then).
 - **On-screen times:** the terminal and admin screens show times in the browser's time zone; format them in the business's zone if a terminal's clock is ever set differently.
+- **Settle (Task 8):** call `SettleChecks.EnsureNoPendingRequests` before settling, and expire the ticket's pending requests when it closes (the sweeper also does within seconds).
+- **Stock (Task 11):** use `VoidLog.WasPoured` (poured voids still use stock) and `GiftLog` (gifts count as sold).
+- **Ledger and ERPNext (Task 8+):** post discounts from each line's `Discount` share; gifts at 0 with their `UnitPrice` kept for reports.
+- **Approvals on the admin site:** decide requests from the admin site too, if supervisors work there.
+- **Approval sound setting:** let a business switch the chime off or choose its volume.
+

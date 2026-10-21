@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ApiError, api } from '../../shared/api/client';
+import { ApiError, RequestSentError, api, type RequestOptions } from '../../shared/api/client';
 import { onPosEvent } from '../../shared/connection/hub';
 import { t } from '../../shared/i18n/i18n';
 import { useToast } from '../../shared/ui';
@@ -19,9 +19,9 @@ interface PendingAdd {
   options: string | null;
 }
 
-/** A line as the screen shows it: saved, or still being saved (pending). */
+/** A line as the screen shows it: saved, or still being saved. */
 export interface ShownLine extends OrderLine {
-  pending: boolean;
+  saving: boolean;
 }
 
 export const ticketKey = (id: string | null) => ['ticket', id] as const;
@@ -71,10 +71,13 @@ export function useOrder(routeId: string, tableId: string | null, draftCustomer:
   }, [ticketId, queries]);
 
   const fail = useCallback(
-    (error: unknown) =>
+    (error: unknown) => {
+      // A request was sent to a supervisor instead: not a failure (the pad already said so).
+      if (error instanceof RequestSentError) return;
       toast(error instanceof ApiError ? error.message : t('common.somethingWrong'), {
         tone: 'warning',
-      }),
+      });
+    },
     [toast],
   );
 
@@ -137,12 +140,18 @@ export function useOrder(routeId: string, tableId: string | null, draftCustomer:
 
   /** A write on the saved ticket that returns it (line changes, printing, the note). */
   const write = useCallback(
-    (path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown) =>
+    (
+      path: string,
+      method: 'POST' | 'PATCH' | 'DELETE',
+      body?: unknown,
+      options: Pick<RequestOptions, 'approvalToken' | 'approval'> = {},
+    ) =>
       enqueue(async () => {
         if (!idRef.current) return null;
         const detail = await api<TicketDetail>(`/api/pos/tickets/${idRef.current}${path}`, {
           method,
           body,
+          ...options,
         });
         saved(detail);
         return detail;
@@ -176,11 +185,13 @@ export function withPending(
   userName: string,
   terminal: string,
 ): ShownLine[] {
-  const shown: ShownLine[] = saved.map((l) => ({ ...l, pending: false }));
+  const shown: ShownLine[] = saved.map((l) => ({ ...l, saving: false }));
   for (const p of pending) {
     const same = shown.find(
       (l) =>
         l.status === 'New' &&
+        !l.isGift &&
+        !l.pending &&
         l.menuItemId === p.item.id &&
         l.options === p.options &&
         l.unitPrice === p.unitPrice &&
@@ -190,7 +201,7 @@ export function withPending(
     if (same) {
       same.quantity += p.quantity;
       same.gross += p.unitPrice * p.quantity;
-      same.pending = true;
+      same.saving = true;
       continue;
     }
     shown.push({
@@ -211,7 +222,7 @@ export function withPending(
       addedAt: new Date().toISOString(),
       printedAt: null,
       voided: false,
-      pending: true,
+      saving: true,
     });
   }
   return shown;

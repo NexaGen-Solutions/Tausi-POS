@@ -30,6 +30,10 @@ public sealed class PermissionService(ITausiDb db, TimeProvider clock) : IPermis
         if (grant is null || !grant.IsUsable(permissionKey, now))
             throw new ApprovalRequiredException(permissionKey, "The approval has expired or was already used. Ask again.");
 
+        // Nobody approves their own action, with a PIN or otherwise.
+        if (grant.ApprovedByUserId == user.UserId)
+            throw new ApprovalRequiredException(permissionKey, "You can't approve your own action. Ask a supervisor.");
+
         // The approver must still be active and still allowed to do this themselves.
         var approver = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == grant.ApprovedByUserId, ct);
         if (approver is null || !approver.Active || await CheckRole(approver.RoleId, permissionKey, ct) != PermissionValue.Allowed)

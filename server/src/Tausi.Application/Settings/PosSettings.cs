@@ -8,12 +8,18 @@ namespace Tausi.Application.Settings;
 
 /// <summary>
 /// Terminal behaviour settings, kept in BusinessSettings.OtherJson under "pos":
-/// <code>{ "pos": { "idleLogoutMinutes": 10, "logoutAfterSettle": false, "tableIdleMinutes": 30 } }</code>
+/// <code>{ "pos": { "idleLogoutMinutes": 10, "logoutAfterSettle": false, "tableIdleMinutes": 30, "approvalExpiryMinutes": 30 } }</code>
 /// Missing values fall back to the defaults. <see cref="TableIdleMinutes"/> is how long a table's
 /// open ticket can go without activity before the table map shows it as unpaid and idle.
+/// <see cref="ApprovalExpiryMinutes"/> is how long an approval request waits before it expires.
 /// </summary>
-public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, int TableIdleMinutes = PosSettings.DefaultTableIdleMinutes)
+public sealed record PosSettings(
+    int IdleLogoutMinutes, bool LogoutAfterSettle, int TableIdleMinutes = PosSettings.DefaultTableIdleMinutes,
+    int ApprovalExpiryMinutes = PosSettings.DefaultApprovalExpiryMinutes)
 {
+    public const int DefaultApprovalExpiryMinutes = 30;
+    public const int MaxApprovalExpiryMinutes = 24 * 60;
+
     public const int DefaultIdleLogoutMinutes = 10;
     public const int MaxIdleLogoutMinutes = 24 * 60;
     public const int DefaultTableIdleMinutes = 30;
@@ -25,6 +31,8 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, 
 
     public TimeSpan TableIdleLimit => TimeSpan.FromMinutes(TableIdleMinutes);
 
+    public TimeSpan ApprovalExpiry => TimeSpan.FromMinutes(ApprovalExpiryMinutes);
+
     public static PosSettings From(string? otherJson)
     {
         if (string.IsNullOrWhiteSpace(otherJson)) return Default;
@@ -34,8 +42,10 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, 
             var idle = pos?["idleLogoutMinutes"]?.GetValue<int>() ?? DefaultIdleLogoutMinutes;
             var afterSettle = pos?["logoutAfterSettle"]?.GetValue<bool>() ?? false;
             var tableIdle = pos?["tableIdleMinutes"]?.GetValue<int>() ?? DefaultTableIdleMinutes;
+            var approvalExpiry = pos?["approvalExpiryMinutes"]?.GetValue<int>() ?? DefaultApprovalExpiryMinutes;
             return new PosSettings(
-                Math.Clamp(idle, 1, MaxIdleLogoutMinutes), afterSettle, Math.Clamp(tableIdle, 1, MaxTableIdleMinutes));
+                Math.Clamp(idle, 1, MaxIdleLogoutMinutes), afterSettle, Math.Clamp(tableIdle, 1, MaxTableIdleMinutes),
+                Math.Clamp(approvalExpiry, 1, MaxApprovalExpiryMinutes));
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
@@ -59,6 +69,10 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, 
             && (tableIdle.ValueKind != JsonValueKind.Number || !tableIdle.TryGetInt32(out var tableMinutes)
                 || tableMinutes is < 1 or > MaxTableIdleMinutes))
             throw new DomainException($"pos.tableIdleMinutes must be a whole number from 1 to {MaxTableIdleMinutes}.");
+        if (pos.TryGetProperty("approvalExpiryMinutes", out var expiry)
+            && (expiry.ValueKind != JsonValueKind.Number || !expiry.TryGetInt32(out var expiryMinutes)
+                || expiryMinutes is < 1 or > MaxApprovalExpiryMinutes))
+            throw new DomainException($"pos.approvalExpiryMinutes must be a whole number from 1 to {MaxApprovalExpiryMinutes}.");
     }
 
     public static async Task<PosSettings> Load(ITausiDb db, CancellationToken ct) =>
@@ -68,7 +82,11 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, 
     public static string DefaultJson =>
         JsonSerializer.Serialize(new
         {
-            pos = new { idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false, tableIdleMinutes = DefaultTableIdleMinutes },
+            pos = new
+            {
+                idleLogoutMinutes = DefaultIdleLogoutMinutes, logoutAfterSettle = false, tableIdleMinutes = DefaultTableIdleMinutes,
+                approvalExpiryMinutes = DefaultApprovalExpiryMinutes,
+            },
             print = new { logoOnBill = true, poweredByFooter = false },
         });
 }

@@ -1,4 +1,6 @@
+using Tausi.Application.Approvals;
 using Tausi.Application.Tables;
+using Tausi.Domain.Service;
 using Tausi.Application.Tickets;
 
 namespace Tausi.Api.Endpoints;
@@ -38,6 +40,25 @@ public static class TicketEndpoints
         pos.MapPost("/tickets/{id:guid}/send", (Guid id, PrintTicket print, CancellationToken ct) => print.Send(id, ct));
         pos.MapPost("/tickets/{id:guid}/print-bill", (Guid id, PrintTicket print, CancellationToken ct) => print.PrintBill(id, ct));
         pos.MapPost("/tickets/{id:guid}/reprint-bill", (Guid id, PrintTicket print, CancellationToken ct) => print.Reprint(id, ct));
+        // Void, gift, price change and discount, done now (Allowed, or with a supervisor's PIN token).
+        pos.MapPost("/tickets/{id:guid}/lines/{lineId:guid}/void", (Guid id, Guid lineId, VoidLineRequest r, TicketActionCommands act, CancellationToken ct) =>
+            act.Void(id, lineId, r, ct));
+        pos.MapPost("/tickets/{id:guid}/lines/{lineId:guid}/gift", (Guid id, Guid lineId, GiftLineRequest r, TicketActionCommands act, CancellationToken ct) =>
+            act.Gift(id, lineId, r, ct));
+        pos.MapPost("/tickets/{id:guid}/lines/{lineId:guid}/price", (Guid id, Guid lineId, ChangePriceRequest r, TicketActionCommands act, CancellationToken ct) =>
+            act.ChangePrice(id, lineId, r, ct));
+        pos.MapPost("/tickets/{id:guid}/discount", (Guid id, DiscountRequest r, TicketActionCommands act, CancellationToken ct) =>
+            act.Discount(id, r, ct));
+
+        // Approval requests ("Option 2 · supervisor elsewhere") and the approvals screen.
+        pos.MapPost("/approvals", (CreateApprovalRequestDto r, CreateApprovalRequest create, CancellationToken ct) => create.Execute(r, ct));
+        pos.MapGet("/approvals", (string? status, ListApprovals list, CancellationToken ct) => list.Execute(status, ct));
+        pos.MapGet("/approvals/approvers", (ApprovalKind kind, Approvers approvers, CancellationToken ct) => approvers.Execute(kind, ct));
+        pos.MapPost("/approvals/{id:guid}/approve", (Guid id, ApproveRequest approve, CancellationToken ct) => approve.Execute(id, ct));
+        pos.MapPost("/approvals/{id:guid}/reject", (Guid id, RejectApprovalRequestDto? r, RejectRequest reject, CancellationToken ct) =>
+            reject.Execute(id, r ?? new RejectApprovalRequestDto(null), ct));
+        pos.MapPost("/approvals/{id:guid}/cancel", (Guid id, CancelRequest cancel, CancellationToken ct) => cancel.Execute(id, ct));
+
         pos.MapPost("/tickets/{id:guid}/print-jobs/{jobId:guid}/retry", async (Guid id, Guid jobId, RetryTicketPrint retry, CancellationToken ct) =>
         {
             await retry.Execute(id, jobId, ct);

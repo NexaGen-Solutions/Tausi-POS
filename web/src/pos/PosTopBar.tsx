@@ -4,10 +4,11 @@ import { api } from '../shared/api/client';
 import type { Brand } from '../shared/api/types';
 import { t } from '../shared/i18n/i18n';
 import { Button, TopBar } from '../shared/ui';
+import { ApprovalsButton } from './approvals/ApprovalsButton';
 import { useLogout } from './useLogout';
 import { usePinSession } from './usePinSession';
 
-/** Business name, "<terminal> · <user> (<role>)", optional buttons (e.g. My sales) and Log out. */
+/** Business name, "<terminal> · <user> (<role>)", Approvals (for approvers), optional buttons (e.g. My sales) and Log out. */
 export function PosTopBar({ extra }: { extra?: ReactNode } = {}) {
   const session = usePinSession();
   const logout = useLogout();
@@ -23,6 +24,7 @@ export function PosTopBar({ extra }: { extra?: ReactNode } = {}) {
       }
       end={
         <>
+          <ApprovalsButton />
           {extra}
           <Button variant="ghost-dark" onClick={() => void logout()}>
             {t('common.logOut')}

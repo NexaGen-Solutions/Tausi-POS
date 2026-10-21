@@ -2,6 +2,12 @@ using Tausi.Domain.Common;
 
 namespace Tausi.Domain.Service;
 
+public enum DiscountKind
+{
+    Percent,
+    Amount,
+}
+
 public enum TicketStatus
 {
     Open,
@@ -52,13 +58,78 @@ public class Ticket : VersionedEntity
     public Guid? LockSessionId { get; set; }
     public DateTimeOffset? LockExpiresAt { get; set; }
 
+    /// <summary>The ticket discount (one per ticket): a percent, or an amount in the currency.</summary>
+    public DiscountKind? DiscountKind { get; set; }
+    public decimal DiscountValue { get; set; }
+    /// <summary>"Regular customer", "Promotion", "Compensation" or "Other: …", printed on the bill.</summary>
+    public string? DiscountReason { get; set; }
+
     public List<OrderLine> Lines { get; set; } = [];
 
     public bool IsOpen => Status == TicketStatus.Open;
 
+    /// <summary>What the customer pays: the lines after their discount shares.</summary>
     public decimal Total => TotalOf(Lines);
 
-    public static decimal TotalOf(IEnumerable<OrderLine> lines) => lines.Where(l => l.Counts).Sum(l => l.Gross);
+    /// <summary>The lines before the discount.</summary>
+    public decimal Subtotal => Lines.Where(l => l.Counts).Sum(l => l.Gross);
+
+    public decimal DiscountTotal => Lines.Where(l => l.Counts).Sum(l => l.Discount);
+
+    public static decimal TotalOf(IEnumerable<OrderLine> lines) => lines.Where(l => l.Counts).Sum(l => l.Payable);
+
+    /// <summary>The lines a discount applies to: counted, not gifts.</summary>
+    public IEnumerable<OrderLine> DiscountableLines => Lines.Where(l => l.Counts && !l.IsGift && l.Gross > 0);
+
+    /// <summary>Sets (or with null, removes) the discount and spreads it over the lines.</summary>
+    public void SetDiscount(DiscountKind? kind, decimal value, string? reason)
+    {
+        if (kind is null)
+        {
+            DiscountKind = null;
+            DiscountValue = 0;
+            DiscountReason = null;
+        }
+        else
+        {
+            var basis = DiscountableLines.Sum(l => l.Gross);
+            if (value <= 0) throw new DomainException("The discount must be more than 0.");
+            if (kind == Service.DiscountKind.Percent && value > 100) throw new DomainException("A discount can be at most 100%.");
+            if (kind == Service.DiscountKind.Amount && value > basis)
+                throw new DomainException($"The discount can't be more than the total of {basis:#,##0.##}.");
+            DiscountKind = kind;
+            DiscountValue = value;
+            DiscountReason = reason;
+        }
+        SpreadDiscount();
+    }
+
+    /// <summary>
+    /// Spreads the discount over the lines in proportion to their amounts, so VAT stays right per
+    /// rate. Each share is rounded to the cent and the rounding leftover goes on the largest line,
+    /// so the shares add up exactly. Called again whenever lines change. An amount larger than
+    /// what is left (after a void) is capped at it.
+    /// </summary>
+    public void SpreadDiscount()
+    {
+        // Amounts first (a price or quantity may just have changed), then the shares on them.
+        foreach (var line in Lines)
+        {
+            line.Discount = 0;
+            line.Recalculate();
+        }
+        var lines = DiscountableLines.ToList();
+        var basis = lines.Sum(l => l.Gross);
+        var target = DiscountKind switch
+        {
+            Service.DiscountKind.Percent => Money.MoneyMath.Round(basis * DiscountValue / 100m),
+            Service.DiscountKind.Amount => Math.Min(DiscountValue, basis),
+            _ => 0m,
+        };
+        var shares = DiscountSpread.Spread(target, lines.Select(l => l.Gross).ToList());
+        for (var i = 0; i < lines.Count; i++) lines[i].Discount = shares[i];
+        foreach (var line in Lines) line.Recalculate();
+    }
 
     public int NewLineCount => Lines.Count(l => l.Status == OrderLineStatus.New);
 
@@ -99,6 +170,8 @@ public class Ticket : VersionedEntity
             if (other.Id == Id) throw new DomainException("A ticket can't be merged into itself.");
             if (!other.IsOpen) throw new DomainException($"#{other.Number} is not open.");
             if (other.TableId != TableId) throw new DomainException("Only tickets on the same table can be merged.");
+            if (other.DiscountKind is not null)
+                throw new DomainException($"#{other.Number} has its own discount. Remove it first, then merge.");
         }
 
         foreach (var other in others)
@@ -114,6 +187,9 @@ public class Ticket : VersionedEntity
             other.ClearLock();
             other.Touch(now);
         }
+
+        // The kept ticket's discount (if any) now covers the merged-in lines too.
+        SpreadDiscount();
 
         var notes = new[] { this }.Concat(others).Select(t => t.Note.Trim()).Where(n => n.Length > 0);
         Note = string.Join(" / ", notes);

@@ -89,6 +89,7 @@ public sealed class AddLine(
             edit.User.UserId, edit.TerminalId, now);
         // Ids are made in code, so EF would take a new line reached through a saved ticket for an existing row.
         if (created) db.OrderLines.Add(line);
+        edit.Ticket.SpreadDiscount();
         edit.Ticket.Touch(now);
         await db.SaveChangesAsync(ct);
         await edit.Transaction.CommitAsync(ct);
@@ -99,7 +100,7 @@ public sealed class AddLine(
 
 /// <summary>
 /// Changes a New line's quantity. Taking it to 0 cancels it, which needs
-/// <c>order.cancel_unprinted</c>. Printed lines can't change here (voids come with Task 7).
+/// <c>order.cancel_unprinted</c>. Printed lines change only through a void, gift or price change.
 /// </summary>
 public sealed class ChangeLine(
     ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
@@ -110,6 +111,7 @@ public sealed class ChangeLine(
         if (request.Quantity < 0) throw new DomainException("The quantity can't be below 0.");
         await using var edit = await editing.Open(ticketId, ct);
         var line = NewLine(edit.Ticket, lineId);
+        await PendingRequests.EnsureNoneOnLine(db, ticketId, lineId, ct);
         if (request.Quantity == 0)
             await Cancel(edit, line, ct);
         else
@@ -124,7 +126,9 @@ public sealed class ChangeLine(
     public async Task<TicketDetailDto> Remove(Guid ticketId, Guid lineId, CancellationToken ct)
     {
         await using var edit = await editing.Open(ticketId, ct);
-        await Cancel(edit, NewLine(edit.Ticket, lineId), ct);
+        var line = NewLine(edit.Ticket, lineId);
+        await PendingRequests.EnsureNoneOnLine(db, ticketId, lineId, ct);
+        await Cancel(edit, line, ct);
         return await Save(edit, ct);
     }
 
@@ -151,6 +155,7 @@ public sealed class ChangeLine(
 
     private async Task<TicketDetailDto> Save(EditableTicket edit, CancellationToken ct)
     {
+        edit.Ticket.SpreadDiscount();
         edit.Ticket.Touch(clock.GetUtcNow());
         await db.SaveChangesAsync(ct);
         await edit.Transaction.CommitAsync(ct);

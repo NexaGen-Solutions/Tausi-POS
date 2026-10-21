@@ -65,6 +65,7 @@ public sealed class GetPriceLog(ITausiDb db, MenuAccess access)
     {
         await access.RequireView(ct);
         var rows = await db.PriceChangeLogs.AsNoTracking()
+            .Where(l => l.Kind == PriceChangeKind.Menu)
             .Where(l => itemId == null || l.MenuItemId == itemId)
             .OrderByDescending(l => l.At)
             .Take(Math.Clamp(take, 1, 500))

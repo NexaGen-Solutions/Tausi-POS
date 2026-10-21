@@ -86,7 +86,7 @@ public class PinLoginScreenTests(TausiApp app)
         var login = await (await terminal.LoginWithPin("6284")).Json();
         login.GetProperty("mustChangePin").GetBoolean().Should().BeTrue();
 
-        var blocked = await terminal.Http.PostAsync("/api/dev/void-probe", null);
+        var blocked = await terminal.Http.PostAsync("/api/day/open", null);
         blocked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await blocked.Json()).GetProperty("code").GetString().Should().Be("pin_change_required");
 
@@ -100,8 +100,8 @@ public class PinLoginScreenTests(TausiApp app)
         (await Change("6284")).Should().Be("pin_unchanged");
         (await Change("50719")).Should().BeNull();
 
-        (await terminal.Http.PostAsync("/api/dev/void-probe", null)).StatusCode
-            .Should().Be(HttpStatusCode.Forbidden, "now it is the normal approval rule, not the PIN gate");
+        (await terminal.Http.PostAsync("/api/day/open", null)).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden, "now it is the normal permission rule, not the PIN gate");
         (await new TerminalClient(terminal.Http, terminal.DeviceToken, terminal.TerminalId, terminal.Name).LoginWithPin("50719"))
             .StatusCode.Should().Be(HttpStatusCode.OK);
     }

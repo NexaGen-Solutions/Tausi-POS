@@ -6,7 +6,9 @@ import { Outlet, useNavigate } from 'react-router';
 import { onPosEvent } from '../shared/connection/hub';
 import { LiveUpdates } from '../shared/connection/LiveUpdates';
 import { endPinSession, onPinSessionChange, pinSession } from '../shared/session/session';
+import { ApprovalsWatcher } from './approvals/ApprovalsWatcher';
 import { IdleWatcher } from './IdleWatcher';
+import { usePinSession } from './usePinSession';
 import './pos.css';
 
 /**
@@ -18,6 +20,7 @@ import './pos.css';
 export function PosLayout() {
   const navigate = useNavigate();
   const queries = useQueryClient();
+  const session = usePinSession();
 
   useEffect(
     () =>
@@ -60,6 +63,7 @@ export function PosLayout() {
     <>
       <LiveUpdates />
       <IdleWatcher />
+      {session && <ApprovalsWatcher />}
       <Outlet />
     </>
   );

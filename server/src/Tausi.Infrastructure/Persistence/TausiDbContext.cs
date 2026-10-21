@@ -52,6 +52,10 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
     public DbSet<DiningTable> Tables => Set<DiningTable>();
     public DbSet<Ticket> Tickets => Set<Ticket>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
+    public DbSet<VoidLog> VoidLogs => Set<VoidLog>();
+    public DbSet<GiftLog> GiftLogs => Set<GiftLog>();
+    public DbSet<DiscountLog> DiscountLogs => Set<DiscountLog>();
 
     /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -87,6 +91,10 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         b.Properties<AccountType>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<TicketStatus>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<OrderLineStatus>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<DiscountKind>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<ApprovalKind>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<ApprovalStatus>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<PriceChangeKind>().HaveConversion<string>().HaveMaxLength(20);
     }
 
     protected override void OnModelCreating(ModelBuilder m)
@@ -301,6 +309,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         m.Entity<PriceChangeLog>(e =>
         {
             e.Property(x => x.Source).HasMaxLength(20);
+            e.HasIndex(x => x.TicketId);
             e.Property(x => x.OldPrice).HasPrecision(18, 2);
             e.Property(x => x.NewPrice).HasPrecision(18, 2);
             e.HasIndex(x => new { x.MenuItemId, x.At });
@@ -336,7 +345,11 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.Property(x => x.Note).HasMaxLength(Ticket.MaxNoteLength);
             e.Ignore(x => x.IsOpen);
             e.Ignore(x => x.Total);
+            e.Ignore(x => x.Subtotal);
+            e.Ignore(x => x.DiscountTotal);
+            e.Ignore(x => x.DiscountableLines);
             e.Ignore(x => x.NewLineCount);
+            e.Property(x => x.DiscountReason).HasMaxLength(ApprovalRequest.MaxNoteLength + 30);
             e.HasOne(x => x.Table).WithMany().HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OpenedByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
@@ -356,12 +369,57 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.Property(x => x.VatRate).HasPrecision(5, 2);
             e.Ignore(x => x.IsVoided);
             e.Ignore(x => x.Counts);
+            e.Ignore(x => x.Payable);
+            e.Ignore(x => x.IsChangeable);
+            e.Property(x => x.VoidReason).HasMaxLength(VoidLog.MaxReasonLength + 30);
+            e.HasOne<Printer>().WithMany().HasForeignKey(x => x.DispensePrinterId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => new { x.TicketId, x.Status });
             e.HasIndex(x => x.TicketId);
             // Who added a line and where are required (AGENTS.md rule 3).
             e.HasOne<User>().WithMany().HasForeignKey(x => x.AddedByUserId).OnDelete(DeleteBehavior.Restrict).IsRequired();
             e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.AddedTerminalId).OnDelete(DeleteBehavior.Restrict).IsRequired();
             e.HasOne<MenuItem>().WithMany().HasForeignKey(x => x.MenuItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<ApprovalRequest>(e =>
+        {
+            e.Property(x => x.PayloadJson).Unbounded();
+            e.Property(x => x.Summary).HasMaxLength(300);
+            e.Property(x => x.Reason).HasMaxLength(ApprovalRequest.MaxNoteLength + 30);
+            e.Property(x => x.DecisionNote).HasMaxLength(ApprovalRequest.MaxNoteLength);
+            e.Ignore(x => x.IsPending);
+            e.HasIndex(x => new { x.Status, x.RequestedAt });
+            e.HasIndex(x => new { x.TicketId, x.Status });
+            e.HasIndex(x => x.WorkPeriodId);
+            e.HasOne<Ticket>().WithMany().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<VoidLog>(e =>
+        {
+            e.Property(x => x.ItemName).HasMaxLength(MenuItem.MaxNameLength);
+            e.Property(x => x.Quantity).HasPrecision(18, 3);
+            e.Property(x => x.Reason).HasMaxLength(VoidLog.MaxReasonLength);
+            e.HasIndex(x => x.TicketId);
+            e.HasIndex(x => x.At);
+        });
+
+        m.Entity<GiftLog>(e =>
+        {
+            e.Property(x => x.ItemName).HasMaxLength(MenuItem.MaxNameLength);
+            e.Property(x => x.Quantity).HasPrecision(18, 3);
+            e.Property(x => x.Reason).HasMaxLength(VoidLog.MaxReasonLength);
+            e.HasIndex(x => x.TicketId);
+            e.HasIndex(x => x.At);
+        });
+
+        m.Entity<DiscountLog>(e =>
+        {
+            e.Property(x => x.Value).HasPrecision(18, 2);
+            e.Property(x => x.OldValue).HasPrecision(18, 2);
+            e.Property(x => x.Reason).HasMaxLength(VoidLog.MaxReasonLength);
+            e.HasIndex(x => x.TicketId);
         });
 
         // Every editable entity carries an optimistic concurrency token.

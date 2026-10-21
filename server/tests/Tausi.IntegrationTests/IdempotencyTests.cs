@@ -45,27 +45,6 @@ public class IdempotencyTests(TausiApp app)
     }
 
     [Fact]
-    public async Task Failed_requests_are_not_stored_so_a_retry_runs_again()
-    {
-        var terminal = await app.PairTerminal();
-        await terminal.LoginWithPin(app.Pins["edna"]);
-        var key = Guid.NewGuid().ToString();
-
-        (await terminal.Http.SendAsync(Post("/api/dev/void-probe", key))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-
-        var token = (await (await terminal.Http.PostAsJsonAsync("/api/auth/approve",
-            new { pin = app.Pins["MAU"], permissionKey = "order.void" })).Json()).GetProperty("approvalToken").GetString();
-        var retry = Post("/api/dev/void-probe", key);
-        retry.Headers.Add("X-Approval-Token", token);
-        (await terminal.Http.SendAsync(retry)).StatusCode.Should().Be(HttpStatusCode.OK);
-
-        // And now the success is what a repeat gets back.
-        var repeat = await terminal.Http.SendAsync(Post("/api/dev/void-probe", key));
-        repeat.StatusCode.Should().Be(HttpStatusCode.OK);
-        repeat.Headers.Contains("Idempotency-Replayed").Should().BeTrue();
-    }
-
-    [Fact]
     public async Task Requests_without_a_key_are_not_affected()
     {
         var client = app.CreateClient();

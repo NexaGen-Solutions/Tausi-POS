@@ -589,6 +589,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid>("ChangedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<Guid?>("MenuItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -603,8 +608,15 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("OrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("PriceListId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -614,9 +626,14 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid?>("TerminalId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("At");
+
+                    b.HasIndex("TicketId");
 
                     b.HasIndex("MenuItemId", "At");
 
@@ -1033,6 +1050,89 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.ToTable("PrintJobs");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Service.ApprovalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("OrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("PreferredApproverId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(230)
+                        .HasColumnType("nvarchar(230)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WorkPeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("TerminalId");
+
+                    b.HasIndex("WorkPeriodId");
+
+                    b.HasIndex("Status", "RequestedAt");
+
+                    b.HasIndex("TicketId", "Status");
+
+                    b.ToTable("ApprovalRequests");
+                });
+
             modelBuilder.Entity("Tausi.Domain.Service.Area", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1096,6 +1196,130 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.ToTable("Tables", (string)null);
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Service.DiscountLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ApprovalRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OldKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("OldValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("DiscountLogs");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Service.GiftLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ApprovalRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<Guid?>("MenuItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("GiftLogs");
+                });
+
             modelBuilder.Entity("Tausi.Domain.Service.OrderLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1117,9 +1341,19 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid?>("CancelledByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal>("Discount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("DispensePrinterId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("Gross")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsGift")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("MenuItemId")
                         .HasColumnType("uniqueidentifier");
@@ -1145,6 +1379,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<string>("Options")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("OriginalUnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("PrintRound")
                         .HasColumnType("int");
@@ -1184,6 +1422,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(230)
+                        .HasColumnType("nvarchar(230)");
+
                     b.Property<DateTimeOffset?>("VoidedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1195,6 +1437,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.HasIndex("AddedByUserId");
 
                     b.HasIndex("AddedTerminalId");
+
+                    b.HasIndex("DispensePrinterId");
 
                     b.HasIndex("MenuItemId");
 
@@ -1223,6 +1467,18 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<string>("CustomerName")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("DiscountKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("DiscountReason")
+                        .HasMaxLength(230)
+                        .HasColumnType("nvarchar(230)");
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("datetimeoffset");
@@ -1295,6 +1551,74 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.HasIndex("Status", "TableId");
 
                     b.ToTable("Tickets");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Service.VoidLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ApprovalRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<Guid?>("MenuItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrderLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("WasPoured")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("VoidLogs");
                 });
 
             modelBuilder.Entity("Tausi.Domain.Service.WorkPeriod", b =>
@@ -1577,6 +1901,27 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Navigation("Printer");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Service.ApprovalRequest", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Devices.Terminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.Ticket", null)
+                        .WithMany()
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Tausi.Domain.Service.DiningTable", b =>
                 {
                     b.HasOne("Tausi.Domain.Service.Area", "Area")
@@ -1601,6 +1946,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasForeignKey("AddedTerminalId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Devices.Printer", null)
+                        .WithMany()
+                        .HasForeignKey("DispensePrinterId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Tausi.Domain.Menu.MenuItem", null)
                         .WithMany()
