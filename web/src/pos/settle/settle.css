@@ -205,3 +205,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Cash: the fields on the left, the number pad beside them, so Change and Add stay in view. */
+.settle-cash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--space-4);
+}
+.settle-cash__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.settle-cash__pad {
+  align-self: end;
+}
+@media (max-width: 1100px) {
+  .settle-cash {
+    grid-template-columns: 1fr;
+  }
+}

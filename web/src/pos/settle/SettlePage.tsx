@@ -374,59 +374,65 @@ export function SettlePage() {
 
           <div className="settle-form">
             {type === 'Cash' && (
-              <>
-                <h3 className="settle-form__title">
-                  {t('pos.settle.cashFor', { amount: formatMoney(remaining, currency) })}
-                </h3>
-                <div className="settle-quick">
-                  {quickCash(remaining).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className="settle-quick__button"
+              <div className="settle-cash">
+                <div className="settle-cash__main">
+                  <h3 className="settle-form__title">
+                    {t('pos.settle.cashFor', { amount: formatMoney(remaining, currency) })}
+                  </h3>
+                  <div className="settle-quick">
+                    {quickCash(remaining).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className="settle-quick__button"
+                        disabled={disabled}
+                        onClick={() => setReceived(String(v))}
+                      >
+                        {formatAmount(v)}
+                      </button>
+                    ))}
+                  </div>
+                  {broughtBySelect(t('pos.settle.cashBroughtBy'))}
+                  <label className="settle-field">
+                    <span>{t('pos.settle.cashReceived')}</span>
+                    <input
+                      className="settle-money-input"
+                      inputMode="decimal"
+                      value={received}
+                      onChange={(e) => setReceived(e.target.value.replace(/[^\d.]/g, ''))}
                       disabled={disabled}
-                      onClick={() => setReceived(String(v))}
-                    >
-                      {formatAmount(v)}
-                    </button>
-                  ))}
+                    />
+                  </label>
+                  <div className="settle-change">
+                    <span>{t('pos.settle.change')}</span>
+                    <span className="settle-change__amount" aria-live="polite">
+                      {formatAmount(change)}
+                    </span>
+                  </div>
+                  <Button
+                    variant="dark"
+                    size="lg"
+                    block
+                    disabled={disabled || receivedValue <= 0 || remaining <= 0}
+                    onClick={() => void addCash()}
+                  >
+                    {t('pos.settle.addCash')}
+                  </Button>
                 </div>
-                {broughtBySelect(t('pos.settle.cashBroughtBy'))}
-                <label className="settle-field">
-                  <span>{t('pos.settle.cashReceived')}</span>
-                  <input
-                    className="settle-money-input"
-                    inputMode="decimal"
-                    value={received}
-                    onChange={(e) => setReceived(e.target.value.replace(/[^\d.]/g, ''))}
+                <div className="settle-cash__pad">
+                  <Keypad
+                    variant="compact"
+                    onDigit={(d) =>
+                      setReceived((r) => (r.length < 8 ? (r === '0' ? d : r + d) : r))
+                    }
+                    onClear={() => setReceived('')}
+                    onEnter={() => setReceived((r) => r.slice(0, -1))}
+                    enterLabel={t('pos.actions.backspace')}
+                    enterDisabled={received === '' || disabled}
                     disabled={disabled}
                   />
-                </label>
-                <Keypad
-                  variant="compact"
-                  onDigit={(d) => setReceived((r) => (r.length < 8 ? (r === '0' ? d : r + d) : r))}
-                  onClear={() => setReceived('')}
-                  onEnter={() => setReceived((r) => r.slice(0, -1))}
-                  enterLabel={t('pos.actions.backspace')}
-                  enterDisabled={received === '' || disabled}
-                  disabled={disabled}
-                />
-                <div className="settle-change">
-                  <span>{t('pos.settle.change')}</span>
-                  <span className="settle-change__amount" aria-live="polite">
-                    {formatAmount(change)}
-                  </span>
                 </div>
-                <Button
-                  variant="dark"
-                  size="lg"
-                  block
-                  disabled={disabled || receivedValue <= 0 || remaining <= 0}
-                  onClick={() => void addCash()}
-                >
-                  {t('pos.settle.addCash')}
-                </Button>
-              </>
+              </div>
             )}
             {type === 'Mpesa' && (
               <>
