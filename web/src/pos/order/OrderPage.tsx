@@ -107,7 +107,8 @@ export function OrderPage() {
   const ticketPending = ticket?.pending ?? [];
   const canReprint = permission('ticket.reprint') !== 'NotAllowed';
   const canCancel = permission('order.cancel_unprinted') !== 'NotAllowed';
-  const canSettle = permission('ticket.settle') !== 'NotAllowed';
+  // Settling can't be approved for someone else: only Allowed counts.
+  const canSettle = permission('ticket.settle') === 'Allowed';
   const canVoid = permission('order.void') !== 'NotAllowed';
   const canGift = permission('order.gift') !== 'NotAllowed';
   const canDiscount = permission('order.discount') !== 'NotAllowed';
@@ -485,7 +486,7 @@ export function OrderPage() {
             <Button
               size="lg"
               disabled={!canSettle || !ticket || disabled}
-              onClick={() => navigate(`/pos/settle/${order.ticketId}`)}
+              onClick={() => navigate(`/pos/ticket/${order.ticketId}/settle`)}
             >
               {canSettle ? t('pos.order.settle') : t('pos.order.settleCashierOnly')}
             </Button>
@@ -641,27 +642,6 @@ export function OrderPage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-/** For the Settle button until Task 8. */
-export function SettlePlaceholder() {
-  const navigate = useNavigate();
-  const { id } = useParams();
-  return (
-    <div className="pos-screen">
-      <TopBar
-        start={
-          <Button variant="ghost-dark" onClick={() => navigate(`/pos/ticket/${id}`)}>
-            {t('pos.order.backToTicket')}
-          </Button>
-        }
-        title={t('pos.order.settle')}
-      />
-      <main className="pos-center">
-        <p className="pos-center__text">{t('pos.order.settleComing')}</p>
-      </main>
     </div>
   );
 }

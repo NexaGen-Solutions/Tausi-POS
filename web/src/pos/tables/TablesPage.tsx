@@ -14,12 +14,13 @@ import { MergeDialog } from './MergeDialog';
 import { TablePanel } from './TablePanel';
 import { TableTileButton } from './TableTileButton';
 import { groupByArea, isMyTable, tableLabel, tileState } from './tableState';
+import { SettledList } from './SettledList';
 import { TakeawayList } from './TakeawayList';
 import type { TableTile, TicketSummary } from './types';
 import { useServerNow, useTableMap, useTakeaway } from './useTableMap';
 import './tables.css';
 
-type Tab = 'all' | 'mine' | 'takeaway';
+type Tab = 'all' | 'mine' | 'takeaway' | 'settled';
 
 /** A second tap on the same table within this time opens it. */
 export const doubleTapMs = 400;
@@ -58,6 +59,8 @@ export function TablesPage() {
   const can = (key: string) => permission(key) !== 'NotAllowed';
   const dayOpen = data?.dayOpen ?? true;
   const canAdd = can('order.add');
+  // Settling can't be approved for someone else, so only Allowed counts.
+  const canSettle = permission('ticket.settle') === 'Allowed';
   const selected = data?.tables.find((table) => table.id === selectedId) ?? null;
   const chosen = selected?.tickets.find((k) => k.id === chosenId) ?? selected?.tickets[0] ?? null;
   const shown = data ? (tab === 'mine' ? data.tables.filter(isMyTable) : data.tables) : [];
@@ -174,7 +177,10 @@ export function TablesPage() {
         <main className="map-main">
           <div className="map-toolbar">
             <div className="map-tabs" role="group" aria-label={t('pos.map.tabs')}>
-              {(['all', 'mine', 'takeaway'] as const).map((key) => (
+              {(canSettle
+                ? (['all', 'mine', 'takeaway', 'settled'] as const)
+                : (['all', 'mine', 'takeaway'] as const)
+              ).map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -187,12 +193,14 @@ export function TablesPage() {
                       ? 'pos.map.allTables'
                       : key === 'mine'
                         ? 'pos.map.myTables'
-                        : 'pos.map.takeaway',
+                        : key === 'settled'
+                          ? 'pos.settled.title'
+                          : 'pos.map.takeaway',
                   )}
                 </button>
               ))}
             </div>
-            {tab !== 'takeaway' && (
+            {(tab === 'all' || tab === 'mine') && (
               <ul className="map-legend" aria-label="Legend">
                 <li>
                   <span className="map-swatch map-swatch--free" aria-hidden="true" />
@@ -217,7 +225,9 @@ export function TablesPage() {
             </div>
           )}
 
-          {tab === 'takeaway' ? (
+          {tab === 'settled' ? (
+            <SettledList currency={currency} disabled={offline} />
+          ) : tab === 'takeaway' ? (
             <TakeawayList
               tickets={takeaway.data ?? []}
               now={now}

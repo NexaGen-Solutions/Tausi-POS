@@ -17,6 +17,7 @@ export const posEvents = [
   'approval.requested',
   'approval.resolved',
   'print.failed',
+  'day.closed',
   'printer.status',
   'menu.changed',
   'settings.changed',
