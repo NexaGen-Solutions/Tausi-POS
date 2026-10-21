@@ -186,8 +186,8 @@ item and gets its number then.
   does (waiters need a supervisor PIN for it in the demo). Each print is a new bill number; from
   bill 2 the bill says "Replaces earlier bills".
 - In development the demo printers write to files: `server/src/Tausi.Api/print-output/` gets
-  `…-Ticket Printer 1-Bill-….txt` and then `…-Ticket Printer 1-Dispense-….txt` (Counter A prints
-  both on Ticket Printer 1). The file names start with the time, so they list in print order.
+  `…-Ticket-Printer-1-Bill-….txt` and `…-Ticket-Printer-1-Dispense-….txt` (Counter A prints both
+  on Ticket Printer 1). Each file starts with a header line naming the printer and job.
 - **Tables** with unprinted lines asks "Print now / Leave them unprinted / Stay"; a table left with
   unprinted lines shows "2 not printed" on its tile. **Move table** goes to the map to tap the new
   table.
