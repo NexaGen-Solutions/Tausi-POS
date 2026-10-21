@@ -26,6 +26,24 @@ public static class TicketEndpoints
             move.Execute(id, r, ct));
         pos.MapPost("/tickets/merge", (MergeTicketsRequest r, MergeTickets merge, CancellationToken ct) => merge.Execute(r, ct));
 
+        // The order screen: every change is saved as it happens and needs this terminal's edit lock.
+        pos.MapPatch("/tickets/{id:guid}", (Guid id, UpdateTicketRequest r, UpdateTicket update, CancellationToken ct) =>
+            update.Execute(id, r, ct));
+        pos.MapPost("/tickets/{id:guid}/lines", (Guid id, AddLineRequest r, AddLine add, CancellationToken ct) => add.Execute(id, r, ct));
+        pos.MapPatch("/tickets/{id:guid}/lines/{lineId:guid}", (Guid id, Guid lineId, ChangeLineRequest r, ChangeLine change, CancellationToken ct) =>
+            change.Quantity(id, lineId, r, ct));
+        pos.MapDelete("/tickets/{id:guid}/lines/{lineId:guid}", (Guid id, Guid lineId, ChangeLine change, CancellationToken ct) =>
+            change.Remove(id, lineId, ct));
+        pos.MapPost("/tickets/{id:guid}/print", (Guid id, PrintTicket print, CancellationToken ct) => print.Print(id, ct));
+        pos.MapPost("/tickets/{id:guid}/send", (Guid id, PrintTicket print, CancellationToken ct) => print.Send(id, ct));
+        pos.MapPost("/tickets/{id:guid}/print-bill", (Guid id, PrintTicket print, CancellationToken ct) => print.PrintBill(id, ct));
+        pos.MapPost("/tickets/{id:guid}/reprint-bill", (Guid id, PrintTicket print, CancellationToken ct) => print.Reprint(id, ct));
+        pos.MapPost("/tickets/{id:guid}/print-jobs/{jobId:guid}/retry", async (Guid id, Guid jobId, RetryTicketPrint retry, CancellationToken ct) =>
+        {
+            await retry.Execute(id, jobId, ct);
+            return Results.NoContent();
+        });
+
         var admin = app.MapGroup("/api/admin/tables").WithTags("Tables").RequireAuthorization();
         admin.MapGet("/", (GetTablesAdmin get, CancellationToken ct) => get.Execute(ct));
         admin.MapPost("/", async (TableRequest r, SaveTable save, CancellationToken ct) =>

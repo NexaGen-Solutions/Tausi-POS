@@ -97,6 +97,13 @@ public static class DependencyInjection
         services.AddScoped<StartTicket>();
         services.AddScoped<MoveTicket>();
         services.AddScoped<MergeTickets>();
+        services.AddScoped<MenuPricing>();
+        services.AddScoped<TicketEditing>();
+        services.AddScoped<AddLine>();
+        services.AddScoped<ChangeLine>();
+        services.AddScoped<UpdateTicket>();
+        services.AddScoped<PrintTicket>();
+        services.AddScoped<RetryTicketPrint>();
         services.AddScoped<TableAdmin>();
         services.AddScoped<GetTablesAdmin>();
         services.AddScoped<SaveArea>();

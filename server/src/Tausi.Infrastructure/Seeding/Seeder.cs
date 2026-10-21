@@ -142,6 +142,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         await SeedDevices(filePrinters, ct);
         await db.SaveChangesAsync(ct);
         await SeedDemoMenu(ct);
+        await SeedDemoTemperature(ct);
         await SeedDemoTables(ct);
         await SeedDemoTickets(ct);
         return created;
@@ -196,6 +197,8 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
             ("Pool 1", "MAU", "Counter B", 35, 2, [("Pool Table", 6)]),
             ("Bar 1", "Ruth", "Counter B", 20, 5, [("Tusker Lager", 1), ("Delmonte", 1)]),
         };
+        var beersId = await db.Categories.Where(c => c.Name == "Beers").Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+        var coldOption = await db.ModifierOptions.FirstOrDefaultAsync(o => o.Name == "Cold", ct);
         var open = await db.Tickets.Where(k => k.Status == TicketStatus.Open && k.TableId != null)
             .Select(k => new { TableId = k.TableId!.Value, k.OpenedByUserId }).ToListAsync(ct);
         var wanted = new Dictionary<(Guid, Guid), int>();
@@ -218,6 +221,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 TerminalId = terminal.Id,
                 WorkPeriodId = day.Id,
                 LastActivityAt = now.AddMinutes(-idle),
+                PrintRound = 1,
             };
             foreach (var (itemName, qty) in lines)
             {
@@ -225,11 +229,15 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 var price = item.Prices[0].Price;
                 var rate = item.EffectiveVatRate(vat);
                 var amounts = VatCalculator.ForLine(price, qty, rate);
+                var cold = item.CategoryId == beersId ? coldOption : null;
                 ticket.Lines.Add(new OrderLine
                 {
-                    TicketId = ticket.Id, MenuItemId = item.Id, Name = item.Name, Quantity = qty, UnitPrice = price,
+                    TicketId = ticket.Id, MenuItemId = item.Id, Name = item.Name, ShortName = item.ShortName,
+                    Options = cold?.Name, OptionIds = cold?.Id.ToString() ?? "",
+                    Quantity = qty, UnitPrice = price,
                     VatRate = rate, Gross = amounts.Gross, Net = amounts.Net, Vat = amounts.Vat,
                     AddedByUserId = user.Id, AddedTerminalId = terminal.Id, AddedAt = opened, PrintedAt = opened,
+                    Status = OrderLineStatus.Printed, PrintRound = 1,
                 });
             }
             db.Tickets.Add(ticket);
@@ -384,14 +392,38 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
             db.MenuItems.Add(item);
         }
 
-        var temperature = new ModifierGroup { Name = "Temperature", MinSelect = 1, MaxSelect = 1, SortOrder = 10 };
-        temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Cold", SortOrder = 10 });
-        temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Warm", SortOrder = 20 });
-        db.ModifierGroups.Add(temperature);
-        foreach (var category in new[] { "Beers", "Soft drinks" })
-            db.ModifierGroupAssignments.Add(new ModifierGroupAssignment { GroupId = temperature.Id, CategoryId = categories[category].Id });
-
         await db.SaveChangesAsync(ct);
+        await SeedDemoTemperature(ct);
         return true;
+    }
+
+    /// <summary>
+    /// Beers ask Temperature (Cold / Warm, choose 1, Cold chosen already); water, sodas and spirits
+    /// don't. Also brings a menu seeded earlier (which asked it for soft drinks too) into line.
+    /// </summary>
+    public async Task SeedDemoTemperature(CancellationToken ct)
+    {
+        var beers = await db.Categories.FirstOrDefaultAsync(c => c.Name == "Beers", ct);
+        if (beers is null) return;
+        var temperature = await db.ModifierGroups.Include(g => g.Options).FirstOrDefaultAsync(g => g.Name == "Temperature", ct);
+        if (temperature is null)
+        {
+            temperature = new ModifierGroup { Name = "Temperature", MinSelect = 1, MaxSelect = 1, SortOrder = 10 };
+            temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Cold", SortOrder = 10, IsDefault = true });
+            temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Warm", SortOrder = 20 });
+            db.ModifierGroups.Add(temperature);
+        }
+        else if (!temperature.Options.Any(o => o.IsDefault) && temperature.Options.FirstOrDefault(o => o.Name == "Cold") is { } cold)
+        {
+            cold.IsDefault = true;
+        }
+
+        var assigned = await db.ModifierGroupAssignments.Where(a => a.GroupId == temperature.Id).ToListAsync(ct);
+        if (!assigned.Any(a => a.CategoryId == beers.Id))
+            db.ModifierGroupAssignments.Add(new ModifierGroupAssignment { GroupId = temperature.Id, CategoryId = beers.Id });
+        var softDrinks = await db.Categories.Where(c => c.Name == "Soft drinks").Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+        foreach (var extra in assigned.Where(a => a.CategoryId is not null && a.CategoryId == softDrinks))
+            db.ModifierGroupAssignments.Remove(extra);
+        await db.SaveChangesAsync(ct);
     }
 }

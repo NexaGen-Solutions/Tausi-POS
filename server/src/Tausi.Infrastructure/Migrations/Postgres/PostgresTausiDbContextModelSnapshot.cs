@@ -545,6 +545,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -1100,6 +1103,12 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid>("AddedTerminalId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CancelledByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("Gross")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -1116,9 +1125,21 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OptionIds")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<string>("Options")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("PrintRound")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("PrintedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1126,6 +1147,16 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("character varying(18)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<Guid>("TicketId")
                         .HasColumnType("uuid");
@@ -1158,6 +1189,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("TicketId");
 
+                    b.HasIndex("TicketId", "Status");
+
                     b.ToTable("OrderLines");
                 });
 
@@ -1167,8 +1200,14 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("BillNumber")
+                        .HasColumnType("integer");
+
                     b.Property<DateTimeOffset?>("BillPrintedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("BilledRound")
+                        .HasColumnType("integer");
 
                     b.Property<string>("CustomerName")
                         .HasMaxLength(60)
@@ -1205,6 +1244,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.Property<Guid>("OpenedByUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("PrintRound")
+                        .HasColumnType("integer");
 
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()

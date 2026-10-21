@@ -37,6 +37,9 @@ public class ModifierOption : Entity
 
     public int SortOrder { get; set; }
     public bool Active { get; set; } = true;
+
+    /// <summary>Chosen already when the item's pop-up opens (e.g. Cold).</summary>
+    public bool IsDefault { get; set; }
 }
 
 /// <summary>Gives a group to a category (all its items) or to one item: exactly one of the two.</summary>

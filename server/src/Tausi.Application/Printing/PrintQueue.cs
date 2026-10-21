@@ -11,9 +11,19 @@ namespace Tausi.Application.Printing;
 /// </summary>
 public sealed class PrintQueue(ITausiDb db, TimeProvider clock)
 {
+    private DateTimeOffset _last = DateTimeOffset.MinValue;
+
+    /// <summary>
+    /// Jobs queued together keep their order: each gets a later time than the one before, so a bill
+    /// queued before its dispense slip always prints first (ids made in the same millisecond don't
+    /// sort in creation order).
+    /// </summary>
     public PrintJob Enqueue(Printer printer, PrintJobKind kind, PrintDocument document, Guid? ticketId = null)
     {
         var now = clock.GetUtcNow();
+        // A millisecond, not a tick: databases keep microseconds (PostgreSQL) or less.
+        if (now <= _last) now = _last.AddMilliseconds(1);
+        _last = now;
         var job = new PrintJob
         {
             PrinterId = printer.Id,
