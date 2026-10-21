@@ -20,7 +20,7 @@ public sealed record TestPrintQueued(Guid PrintJobId);
 /// </summary>
 public sealed class TestPrint(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    PrintQueue queue, ILogoProvider logos, IAuditLog audit, TimeProvider clock)
+    PrintQueue queue, ILogoProvider logos, IAuditLog audit, BusinessClock businessClock)
 {
     public async Task<TestPrintQueued> Execute(Guid printerId, CancellationToken ct)
     {
@@ -28,13 +28,13 @@ public sealed class TestPrint(
         var printer = await db.Printers.Include(p => p.OwningTerminal).FirstOrDefaultAsync(p => p.Id == printerId, ct)
             ?? throw new NotFoundException("Printer not found.");
         if (!printer.Active) throw new DomainException("This printer is not active.");
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
 
         var logo = await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct);
         var settings = PrintSettings.From(business?.OtherJson);
         var document = Slips.Test(
             new TestSlip(business?.Name ?? "", printer.Name, printer.ConnectionText(printer.OwningTerminal?.Name),
-                printer.PaperWidthMm, business?.VatRate ?? 16m, clock.GetLocalNow()),
+                printer.PaperWidthMm, business?.VatRate ?? 16m, await businessClock.Now(ct)),
             SlipStyle.For(printer, logo, business?.Currency ?? "KES", settings.PoweredByFooter));
 
         var job = queue.Enqueue(printer, PrintJobKind.Test, document);

@@ -45,6 +45,7 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton<IApprovalTokenSource>(Approval);
         services.AddSingleton<IPosEvents>(Events);
         services.AddSingleton<IPinHasher>(Hasher);
+        services.AddSingleton<Tausi.Application.Printing.ILogoProvider, NoLogo>();
         _services = services.BuildServiceProvider();
     }
 
@@ -111,7 +112,7 @@ public sealed class TicketsFixture : IAsyncDisposable
     {
         var tableId = table is null ? (Guid?)null : Table(table).Id;
         var request = new StartTicketRequest(tableId, null,
-            (lines.Length == 0 ? [("Tusker Lager", 1m)] : lines).Select(l => new NewLineRequest(Item(l.Item), l.Qty)).ToList());
+            (lines.Length == 0 ? [("Tusker Lager", 1m)] : lines).Select(l => new NewLineRequest(Item(l.Item), l.Qty, DefaultOptions(l.Item))).ToList());
         return await Get<StartTicket>().Execute(request, CancellationToken.None);
     }
 
@@ -139,6 +140,31 @@ public sealed class TicketsFixture : IAsyncDisposable
         Db.ChangeTracker.Clear();
         return token;
     }
+
+    private sealed class NoLogo : Tausi.Application.Printing.ILogoProvider
+    {
+        public Task<Tausi.Application.Printing.MonoBitmap?> GetLogo(int maxWidthDots, CancellationToken ct = default) =>
+            Task.FromResult<Tausi.Application.Printing.MonoBitmap?>(null);
+    }
+
+    /// <summary>Beers ask Temperature; the pop-up chooses Cold by default.</summary>
+    public IReadOnlyList<Guid> DefaultOptions(string item)
+    {
+        using var db = Read();
+        var beers = db.Categories.Single(c => c.Name == "Beers").Id;
+        return db.MenuItems.Single(i => i.Name == item).CategoryId == beers ? [Option("Cold")] : [];
+    }
+
+    public Guid Option(string name) => Read().ModifierOptions.Single(o => o.Name == name).Id;
+
+    /// <summary>Adds an item to a saved ticket as the current user (who must hold its edit lock).</summary>
+    public Task<TicketDetailDto> Add(Guid ticketId, string item, decimal qty = 1, string[]? options = null, string? note = null) =>
+        Get<AddLine>().Execute(ticketId, new AddLineRequest(Item(item), (options ?? []).Select(Option).ToList(), qty, note), CancellationToken.None);
+
+    /// <summary>Saves a new ticket whose first line is this item (with options).</summary>
+    public Task<TicketDetailDto> Start(string? table, string item, decimal qty = 1, params string[] options) =>
+        Get<StartTicket>().Execute(new StartTicketRequest(table is null ? null : Table(table).Id, null,
+            [new NewLineRequest(Item(item), qty, options.Select(Option).ToList())]), CancellationToken.None);
 
     public async ValueTask DisposeAsync()
     {

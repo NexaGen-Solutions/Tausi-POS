@@ -21,7 +21,7 @@ public sealed class ExportMenu(ITausiDb db, MenuAccess access)
 
         var rows = new List<IReadOnlyList<string>>
         {
-            new[] { "category", "name", "short_name", "vat_rate", "active" }
+            new[] { "category", "name", "short_name", "vat_rate", "vat_exempt", "active" }
                 .Concat(lists.Select(l => l.Name)).Concat(["option_groups", "erpnext_item_code"]).ToList(),
         };
         foreach (var i in items.OrderBy(i => categories[i.CategoryId].SortOrder).ThenBy(i => i.SortOrder).ThenBy(i => i.Name))
@@ -29,7 +29,7 @@ public sealed class ExportMenu(ITausiDb db, MenuAccess access)
             rows.Add(new[]
                 {
                     categories[i.CategoryId].Name, i.Name, i.ShortName,
-                    i.VatRate is { } v ? MenuCsv.Money(v) : "", i.Active ? "yes" : "no",
+                    i.VatRate is { } v ? MenuCsv.Money(v) : "", i.VatExempt ? "yes" : "no", i.Active ? "yes" : "no",
                 }
                 .Concat(lists.Select(l => MenuRules.PriceOn(i, l.Id) is { } p ? MenuCsv.Money(p) : ""))
                 .Concat([

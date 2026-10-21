@@ -8,7 +8,12 @@ interface PrintFailed {
   printJobId: string;
   printerName: string;
   kind: string;
+  ticketId: string | null;
 }
+
+/** The order screen shows its own ticket's failures with Retry, so they aren't repeated here. */
+const onItsOrderScreen = (job: PrintFailed) =>
+  job.ticketId !== null && window.location.pathname === `/pos/ticket/${job.ticketId}`;
 
 /**
  * Keeps the live-update connection open while mounted (inside signed-in screens), refreshes
@@ -35,9 +40,10 @@ export function LiveUpdates() {
       ),
       onPosEvent('day.opened', () => void queries.invalidateQueries({ queryKey: ['device'] })),
       onPosEvent('menu.changed', () => void queries.invalidateQueries({ queryKey: ['pos-menu'] })),
-      onPosEvent('print.failed', (payload) =>
-        setFailed((list) => [...list, payload as PrintFailed]),
-      ),
+      onPosEvent('print.failed', (payload) => {
+        const job = payload as PrintFailed;
+        if (!onItsOrderScreen(job)) setFailed((list) => [...list, job]);
+      }),
       // After a reconnect anything may have changed while we were away.
       onPosEvent('reconnected', () => void queries.invalidateQueries()),
     ];

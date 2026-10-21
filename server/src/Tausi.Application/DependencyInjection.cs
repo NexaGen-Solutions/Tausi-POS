@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<PinRules>();
         services.AddScoped<StaffAccess>();
         services.AddScoped<MenuAccess>();
+        services.AddScoped<Settings.BusinessClock>();
 
         // Use cases: one class per action.
         services.AddScoped<PinLogin>();
@@ -97,6 +98,13 @@ public static class DependencyInjection
         services.AddScoped<StartTicket>();
         services.AddScoped<MoveTicket>();
         services.AddScoped<MergeTickets>();
+        services.AddScoped<MenuPricing>();
+        services.AddScoped<TicketEditing>();
+        services.AddScoped<AddLine>();
+        services.AddScoped<ChangeLine>();
+        services.AddScoped<UpdateTicket>();
+        services.AddScoped<PrintTicket>();
+        services.AddScoped<RetryTicketPrint>();
         services.AddScoped<TableAdmin>();
         services.AddScoped<GetTablesAdmin>();
         services.AddScoped<SaveArea>();

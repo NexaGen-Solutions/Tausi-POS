@@ -17,6 +17,8 @@ export interface TicketSummary {
   lastActivityAt: string;
   mine: boolean;
   lock: LockInfo | null;
+  /** Lines saved but not yet printed. */
+  newLines: number;
 }
 
 export interface Area {
@@ -53,16 +55,29 @@ export interface TableEvent {
 
 export interface OrderLine {
   id: string;
+  menuItemId: string | null;
   name: string;
+  shortName: string;
   options: string | null;
+  note: string | null;
   quantity: number;
   unitPrice: number;
   gross: number;
+  status: 'New' | 'Printed' | 'Cancelled';
+  printRound: number | null;
+  addedById: string;
   addedBy: string;
   addedOn: string;
   addedAt: string;
-  printed: boolean;
+  printedAt: string | null;
   voided: boolean;
+}
+
+export interface FailedJob {
+  id: string;
+  kind: 'Bill' | 'Dispense' | string;
+  printerName: string;
+  error: string | null;
 }
 
 export interface TicketDetail {
@@ -80,6 +95,9 @@ export interface TicketDetail {
   lines: OrderLine[];
   lock: LockInfo | null;
   rowVersion: number;
+  billNumber: number;
+  newLines: number;
+  failedJobs: FailedJob[];
 }
 
 export interface LockState {

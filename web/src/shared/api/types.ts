@@ -16,6 +16,16 @@ export interface DeviceInfo {
   businessName: string;
   logoFileId: string | null;
   workPeriod: WorkPeriod | null;
+  printing?: DevicePrinting | null;
+}
+
+/** Where this terminal prints, and which print buttons the order screen shows. */
+export interface DevicePrinting {
+  mode: 'OneButton' | 'SendAndBill';
+  receiptPrinter: string | null;
+  dispensePrinter: string | null;
+  /** "Dispense A" (the dispense printer's template) or the printer's name. */
+  dispenseName: string | null;
 }
 
 export interface Me {

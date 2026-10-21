@@ -354,3 +354,11 @@
     grid-template-columns: 1fr;
   }
 }
+.map-tile__unprinted {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+  font-size: 14px;
+  font-weight: 600;
+}

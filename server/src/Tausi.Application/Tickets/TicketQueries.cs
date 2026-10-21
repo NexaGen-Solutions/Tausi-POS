@@ -55,13 +55,14 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
                     .Select(k => new TicketRow(
                         k.Id, k.Number, k.TableId, k.CustomerName, k.OpenedByUserId,
                         db.Users.Where(u => u.Id == k.OpenedByUserId).Select(u => u.Name).FirstOrDefault(),
-                        k.Lines.Where(l => l.VoidedAt == null).Select(l => l.Gross).ToList(),
+                        k.Lines.Where(l => l.VoidedAt == null && l.Status != OrderLineStatus.Cancelled).Select(l => l.Gross).ToList(),
                         k.OpenedAt, k.LastActivityAt,
                         k.OpenedByUserId == me.UserId || k.Lines.Any(l => l.AddedByUserId == me.UserId),
                         k.LockTerminalId, k.LockUserId, k.LockExpiresAt,
                         db.UserSessions.Any(s => s.Id == k.LockSessionId && s.EndedAt == null),
                         db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
-                        db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault()))
+                        db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault(),
+                        k.Lines.Count(l => l.Status == OrderLineStatus.New)))
                     .ToList(),
             })
             .ToListAsync(ct);
@@ -92,13 +93,14 @@ public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, Tim
             .Select(k => new TicketRow(
                 k.Id, k.Number, k.TableId, k.CustomerName, k.OpenedByUserId,
                 db.Users.Where(u => u.Id == k.OpenedByUserId).Select(u => u.Name).FirstOrDefault(),
-                k.Lines.Where(l => l.VoidedAt == null).Select(l => l.Gross).ToList(),
+                k.Lines.Where(l => l.VoidedAt == null && l.Status != OrderLineStatus.Cancelled).Select(l => l.Gross).ToList(),
                 k.OpenedAt, k.LastActivityAt,
                 k.OpenedByUserId == me.UserId || k.Lines.Any(l => l.AddedByUserId == me.UserId),
                 k.LockTerminalId, k.LockUserId, k.LockExpiresAt,
                 db.UserSessions.Any(s => s.Id == k.LockSessionId && s.EndedAt == null),
                 db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
-                db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault()))
+                db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault(),
+                k.Lines.Count(l => l.Status == OrderLineStatus.New)))
             .ToListAsync(ct);
         return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now)).ToList();
     }
@@ -113,29 +115,43 @@ public sealed class GetTicket(ITausiDb db, ICurrentSession session, TicketLocks 
         var ticket = await db.Tickets.AsNoTracking().Include(k => k.Lines).Include(k => k.Table)
             .FirstOrDefaultAsync(k => k.Id == id, ct)
             ?? throw new NotFoundException("Ticket not found.");
-        return await Detail(db, ticket, await locks.Holder(ticket, ct), ct);
+        return await TicketDetails.Build(db, ticket, await locks.Holder(ticket, ct), ct);
     }
+}
 
-    public static async Task<TicketDetailDto> Detail(ITausiDb db, Ticket ticket, LockHolder? holder, CancellationToken ct)
+/// <summary>The order screen's view of a ticket: cancelled lines are left out, failed print jobs included.</summary>
+public static class TicketDetails
+{
+    /// <summary>For the terminal that has just changed the ticket (it holds the lock).</summary>
+    public static Task<TicketDetailDto> Mine(ITausiDb db, Ticket ticket, SessionUser user, CancellationToken ct) =>
+        Build(db, ticket, new LockHolder(user.TerminalId!.Value, user.TerminalName ?? "", user.UserId, user.Name), ct);
+
+    public static async Task<TicketDetailDto> Build(ITausiDb db, Ticket ticket, LockHolder? holder, CancellationToken ct)
     {
-        var userIds = ticket.Lines.Select(l => l.AddedByUserId).Append(ticket.OpenedByUserId).Distinct().ToList();
-        var terminalIds = ticket.Lines.Select(l => l.AddedTerminalId).Distinct().ToList();
+        var shown = ticket.Lines.Where(l => l.Status != OrderLineStatus.Cancelled).ToList();
+        var userIds = shown.Select(l => l.AddedByUserId).Append(ticket.OpenedByUserId).Distinct().ToList();
+        var terminalIds = shown.Select(l => l.AddedTerminalId).Distinct().ToList();
         var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Name, ct);
         var terminals = await db.Terminals.AsNoTracking().Where(t => terminalIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
         var tableName = ticket.Table?.Name
             ?? (ticket.TableId is { } tableId ? await db.Tables.AsNoTracking().Where(t => t.Id == tableId).Select(t => t.Name).FirstOrDefaultAsync(ct) : null);
+        var failed = await db.PrintJobs.AsNoTracking()
+            .Where(j => j.TicketId == ticket.Id && j.Status == Domain.Printing.PrintJobStatus.Failed)
+            .OrderBy(j => j.CreatedAt)
+            .Select(j => new FailedJobDto(j.Id, j.Kind.ToString(), j.Printer!.Name, j.LastError))
+            .ToListAsync(ct);
 
-        var lines = ticket.Lines.OrderBy(l => l.AddedAt).ThenBy(l => l.Id).Select(l => new OrderLineDto(
-            l.Id, l.Name, l.Options, l.Quantity, l.UnitPrice, l.Gross,
-            users.GetValueOrDefault(l.AddedByUserId, "?"), terminals.GetValueOrDefault(l.AddedTerminalId, "?"),
-            l.AddedAt, l.PrintedAt is not null, l.IsVoided)).ToList();
+        var lines = shown.OrderBy(l => l.AddedAt).ThenBy(l => l.Id).Select(l => new OrderLineDto(
+            l.Id, l.MenuItemId, l.Name, l.ShortName, l.Options, l.Note, l.Quantity, l.UnitPrice, l.Gross, l.Status.ToString(),
+            l.PrintRound, l.AddedByUserId, users.GetValueOrDefault(l.AddedByUserId, "?"),
+            terminals.GetValueOrDefault(l.AddedTerminalId, "?"), l.AddedAt, l.PrintedAt, l.IsVoided)).ToList();
 
         return new TicketDetailDto(
             ticket.Id, ticket.Number, ticket.Status.ToString(), ticket.TableId, tableName, ticket.CustomerName,
             users.GetValueOrDefault(ticket.OpenedByUserId, "?"), ticket.OpenedAt, ticket.LastActivityAt, ticket.Note,
             ticket.Total, lines,
             holder is null ? null : new LockDto(holder.TerminalId, holder.TerminalName, holder.UserId, holder.UserName),
-            ticket.RowVersion);
+            ticket.RowVersion, ticket.BillNumber, ticket.NewLineCount, failed);
     }
 }
 
@@ -144,7 +160,7 @@ internal sealed record TicketRow(
     Guid Id, long Number, Guid? TableId, string? CustomerName, Guid OpenedById, string? OpenedBy,
     List<decimal> LineAmounts, DateTimeOffset OpenedAt, DateTimeOffset LastActivityAt, bool Mine,
     Guid? LockTerminalId, Guid? LockUserId, DateTimeOffset? LockExpiresAt, bool LockSessionLive,
-    string? LockTerminal, string? LockUser)
+    string? LockTerminal, string? LockUser, int NewLines)
 {
     public TicketSummaryDto ToDto(DateTimeOffset now)
     {
@@ -152,7 +168,7 @@ internal sealed record TicketRow(
             ? new LockDto(terminal, LockTerminal ?? "another terminal", user, LockUser ?? "someone")
             : null;
         return new TicketSummaryDto(Id, Number, TableId, CustomerName, OpenedById, OpenedBy ?? "?",
-            LineAmounts.Sum(), OpenedAt, LastActivityAt, Mine, locked);
+            LineAmounts.Sum(), OpenedAt, LastActivityAt, Mine, locked, NewLines);
     }
 }
 

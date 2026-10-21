@@ -86,6 +86,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         b.Properties<PrintJobStatus>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<AccountType>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<TicketStatus>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<OrderLineStatus>().HaveConversion<string>().HaveMaxLength(20);
     }
 
     protected override void OnModelCreating(ModelBuilder m)
@@ -94,6 +95,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         {
             e.Property(x => x.VatRate).HasPrecision(5, 2);
             e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.TimeZone).HasMaxLength(BusinessTimeZone.MaxLength);
             e.Property(x => x.Address).HasMaxLength(500);
             e.Property(x => x.ReceiptFooter).HasMaxLength(1000);
             e.Property(x => x.OtherJson).Unbounded();
@@ -334,6 +336,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.Property(x => x.Note).HasMaxLength(Ticket.MaxNoteLength);
             e.Ignore(x => x.IsOpen);
             e.Ignore(x => x.Total);
+            e.Ignore(x => x.NewLineCount);
             e.HasOne(x => x.Table).WithMany().HasForeignKey(x => x.TableId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OpenedByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
@@ -346,9 +349,14 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         {
             e.Property(x => x.Name).HasMaxLength(MenuItem.MaxNameLength);
             e.Property(x => x.Options).HasMaxLength(200);
+            e.Property(x => x.ShortName).HasMaxLength(MenuItem.MaxShortNameLength);
+            e.Property(x => x.OptionIds).HasMaxLength(1000);
+            e.Property(x => x.Note).HasMaxLength(OrderLine.MaxNoteLength);
             e.Property(x => x.Quantity).HasPrecision(18, 3);
             e.Property(x => x.VatRate).HasPrecision(5, 2);
             e.Ignore(x => x.IsVoided);
+            e.Ignore(x => x.Counts);
+            e.HasIndex(x => new { x.TicketId, x.Status });
             e.HasIndex(x => x.TicketId);
             // Who added a line and where are required (AGENTS.md rule 3).
             e.HasOne<User>().WithMany().HasForeignKey(x => x.AddedByUserId).OnDelete(DeleteBehavior.Restrict).IsRequired();

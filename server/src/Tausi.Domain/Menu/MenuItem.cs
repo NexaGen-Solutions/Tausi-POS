@@ -18,8 +18,14 @@ public class MenuItem : VersionedEntity
     public Category? Category { get; set; }
     public int SortOrder { get; set; }
 
-    /// <summary>The item's own VAT rate; null uses the business default; 0 for exempt items.</summary>
+    /// <summary>The item's own VAT rate; null uses the business default; 0 for zero-rated items.</summary>
     public decimal? VatRate { get; set; }
+
+    /// <summary>
+    /// Exempt from VAT (not the same as zero-rated): no VAT whatever the rate, and bills list it
+    /// as "VAT exempt". A zero-rated item has <see cref="VatRate"/> 0 and is not exempt.
+    /// </summary>
+    public bool VatExempt { get; set; }
 
     public bool Active { get; set; } = true;
 
@@ -34,7 +40,8 @@ public class MenuItem : VersionedEntity
         return (trimmed.Length <= MaxShortNameLength ? trimmed : trimmed[..MaxShortNameLength]).TrimEnd();
     }
 
-    public decimal EffectiveVatRate(decimal businessDefault) => VatRate ?? businessDefault;
+    /// <summary>The rate a new line copies: 0 when exempt, else the item's rate or the business default.</summary>
+    public decimal EffectiveVatRate(decimal businessDefault) => VatExempt ? 0m : VatRate ?? businessDefault;
 }
 
 /// <summary>An item's price (including VAT) on one price list.</summary>

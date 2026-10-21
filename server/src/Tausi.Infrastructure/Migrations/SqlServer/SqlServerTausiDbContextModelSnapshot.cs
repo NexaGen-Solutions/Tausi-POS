@@ -429,6 +429,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
+                    b.Property<bool>("VatExempt")
+                        .HasColumnType("bit");
+
                     b.Property<decimal?>("VatRate")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
@@ -547,6 +550,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1105,6 +1111,12 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid>("AddedTerminalId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("CancelledByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("Gross")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -1121,9 +1133,21 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OptionIds")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Options")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("PrintRound")
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("PrintedAt")
                         .HasColumnType("datetimeoffset");
@@ -1131,6 +1155,16 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("nvarchar(18)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<Guid>("TicketId")
                         .HasColumnType("uniqueidentifier");
@@ -1142,6 +1176,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<decimal>("Vat")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("VatExempt")
+                        .HasColumnType("bit");
 
                     b.Property<decimal>("VatRate")
                         .HasPrecision(5, 2)
@@ -1163,6 +1200,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("TicketId");
 
+                    b.HasIndex("TicketId", "Status");
+
                     b.ToTable("OrderLines");
                 });
 
@@ -1172,8 +1211,14 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("BillNumber")
+                        .HasColumnType("int");
+
                     b.Property<DateTimeOffset?>("BillPrintedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("BilledRound")
+                        .HasColumnType("int");
 
                     b.Property<string>("CustomerName")
                         .HasMaxLength(60)
@@ -1210,6 +1255,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<Guid>("OpenedByUserId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("PrintRound")
+                        .HasColumnType("int");
 
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
@@ -1342,6 +1390,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<decimal>("VatRate")
                         .HasPrecision(5, 2)

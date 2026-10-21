@@ -37,21 +37,34 @@ public class MenuImportTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_vat_exempt_column_marks_items_exempt()
+    {
+        var csv = "category,name,vat_rate,vat_exempt,price\r\nWater & juice,Mau's Water 1L,0,yes,50\r\n";
+
+        var preview = await Preview(Utf8(csv));
+        preview.Rows.Single().Changes.Should().Contain(c => c.Field == "VAT exempt" && c.Old == "no" && c.New == "yes");
+        await Apply(Utf8(csv));
+
+        _f.Item("Mau's Water 1L").VatExempt.Should().BeTrue();
+        (await Export()).Should().Contain("Mau's Water 1L,Mau's Water 1L,0,yes,yes,");
+    }
+
+    [Fact]
     public async Task Export_has_the_agreed_columns()
     {
         var header = (await Export()).Split("\r\n")[0];
-        header.Should().Be("category,name,short_name,vat_rate,active,Standard,Price 2,option_groups,erpnext_item_code");
+        header.Should().Be("category,name,short_name,vat_rate,vat_exempt,active,Standard,Price 2,option_groups,erpnext_item_code");
         // Option groups are the item's own; Temperature comes from the Beers category, so it is not repeated.
-        (await Export()).Should().Contain("Beers,Tusker Lager,Tusker Lager,,yes,250,,,\r\n");
+        (await Export()).Should().Contain("Beers,Tusker Lager,Tusker Lager,,no,yes,250,,,\r\n");
     }
 
     [Fact]
     public async Task Two_price_changes_and_one_new_item_preview_and_apply()
     {
         var csv = (await Export())
-            .Replace("Beers,Tusker Lager,Tusker Lager,,yes,250,", "Beers,Tusker Lager,Tusker Lager,,yes,260,")
-            .Replace("Spirits,Gilbeys 350ml,Gilbeys 350ml,,yes,900,", "Spirits,Gilbeys 350ml,Gilbeys 350ml,,yes,950,")
-            + "Food,Chips,Chips,,yes,150,,,\r\n";
+            .Replace("Beers,Tusker Lager,Tusker Lager,,no,yes,250,", "Beers,Tusker Lager,Tusker Lager,,no,yes,260,")
+            .Replace("Spirits,Gilbeys 350ml,Gilbeys 350ml,,no,yes,900,", "Spirits,Gilbeys 350ml,Gilbeys 350ml,,no,yes,950,")
+            + "Food,Chips,Chips,,no,yes,150,,,\r\n";
 
         var preview = await Preview(Utf8(csv));
         (preview.New, preview.Updated, preview.Unchanged, preview.Errors).Should().Be((1, 2, 11, 0));

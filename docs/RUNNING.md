@@ -147,11 +147,9 @@ tickets are open, so demo tickets only go into an open day:
    Table 5 with no activity for 48 minutes, and others). The map shows them at once.
 
 - **Tap** a table to see its tickets on the right; **tap twice** to open it (a free table opens a
-  new draft, a table with one ticket opens that ticket). The ticket screen is a placeholder until
-  Task 6: it shows the lines read-only and **Back to tables**. Tickets are saved with their first
-  line, which comes with Task 6 (`POST /api/pos/tickets` already exists for it).
+  new draft, a table with one ticket opens that ticket) in the order screen (below).
 - **Locks:** open the same ticket on two browser terminals. The second shows "Open on Counter A by
-  edna. You can view it but not change it." Press Back to tables on the first; the second becomes
+  edna. You can view it but not change it." Press Tables on the first; the second becomes
   editable within two seconds. A lock not renewed for 90 seconds, or whose user logs out or is
   logged out for being idle, is released within 5 seconds.
 - **Merge** on Table 7: Merge tickets, tick both, confirm "Merge #… into #…?". The oldest is kept and
@@ -172,6 +170,51 @@ the cash-up will, it refuses while tickets are open and lists them:
 ```bash
 dotnet run --project src/Tausi.Api -- close-day
 ```
+
+### Order screen
+
+Log in as a waiter (e.g. edna) and tap a free table twice. A new ticket is saved with its first
+item and gets its number then.
+
+- Tap an item to add 1. Beers open the **Cold / Warm** pop-up with Cold chosen; set the quantity
+  and press **Add 2 × Tusker (Cold) · KSh 500**. Search finds items in every category by name or
+  short name.
+- Tap a line to select it: a New line has −, + and Remove; a Printed line has Void and Gift
+  (disabled until voids and approvals come).
+- **Print (n new)** sends the customer's bill with every line first, then the dispense slip with
+  only the new lines. With nothing new it reads **Print** and reprints the bill, as **Reprint bill**
+  does (waiters need a supervisor PIN for it in the demo). Each print is a new bill number; from
+  bill 2 the bill says "Replaces earlier bills".
+- In development the demo printers write to files: `server/src/Tausi.Api/print-output/` gets
+  `…-Ticket-Printer-1-Bill-….txt` and `…-Ticket-Printer-1-Dispense-….txt` (Counter A prints both
+  on Ticket Printer 1). Each file starts with a header line naming the printer and job.
+- **Tables** with unprinted lines asks "Print now / Leave them unprinted / Stay"; a table left with
+  unprinted lines shows "2 not printed" on its tile. **Move table** goes to the map to tap the new
+  table.
+- **Settle** is for cashiers (`ticket.settle`); it opens a placeholder until the settle screen.
+- To see a failed print: edit Ticket Printer 1 to a Network printer at `127.0.0.1:9`, press Print,
+  and after about 15 s the order screen shows "Bill not printed on Ticket Printer 1 · Retry". Set
+  it back to File and press Retry.
+
+**Send and bill mode** (two buttons: **Send (n new)** prints only the dispense slip, **Print
+bill** prints the bill): set `printMode` in the business settings, as for idle logout above:
+
+```bash
+curl -s -b /tmp/nx.cookies http://localhost:5080/api/settings/business > /tmp/settings.json
+# change "printMode": "OneButton" to "printMode": "SendAndBill"
+curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/settings.json \
+  http://localhost:5080/api/settings/business
+```
+
+Reload the terminal to pick it up.
+
+**Time zone:** bills and slips print the business's time (`timeZone`, an IANA name; the demo is
+`Africa/Nairobi`), whatever zone the server runs in. Change it the same way: set `"timeZone"` in
+`/tmp/settings.json` (for example `"Africa/Kampala"`) and PUT it back. Unknown names are refused.
+
+**VAT on bills:** an item marked **VAT exempt** (admin site → Menu → item → VAT rate) is listed as
+"VAT exempt: KSh …"; a **Zero-rated (0%)** item is in the VAT lines as "Total includes VAT 0%:
+KSh 0.00".
 
 ### Admin site
 

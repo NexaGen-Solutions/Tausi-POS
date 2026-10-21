@@ -14,6 +14,8 @@ export interface MenuItem {
   categoryId: string;
   sortOrder: number;
   vatRate: number | null;
+  /** Exempt from VAT (bills say "VAT exempt"); a rate of 0 without it is zero-rated. */
+  vatExempt: boolean;
   active: boolean;
   erpItemCode: string | null;
   prices: Record<string, number>;

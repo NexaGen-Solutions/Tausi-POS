@@ -40,6 +40,13 @@ public class Ticket : VersionedEntity
     public string Note { get; set; } = "";
     public Guid? MergedIntoTicketId { get; set; }
 
+    /// <summary>Bills printed so far ("Bill 1", "Bill 2", …; reprints count too).</summary>
+    public int BillNumber { get; set; }
+    /// <summary>Print rounds so far: each sends the New lines to the dispense printer.</summary>
+    public int PrintRound { get; set; }
+    /// <summary>The print round the last bill covered; a bill again with nothing printed since is a reprint.</summary>
+    public int BilledRound { get; set; }
+
     public Guid? LockTerminalId { get; set; }
     public Guid? LockUserId { get; set; }
     public Guid? LockSessionId { get; set; }
@@ -51,7 +58,9 @@ public class Ticket : VersionedEntity
 
     public decimal Total => TotalOf(Lines);
 
-    public static decimal TotalOf(IEnumerable<OrderLine> lines) => lines.Where(l => !l.IsVoided).Sum(l => l.Gross);
+    public static decimal TotalOf(IEnumerable<OrderLine> lines) => lines.Where(l => l.Counts).Sum(l => l.Gross);
+
+    public int NewLineCount => Lines.Count(l => l.Status == OrderLineStatus.New);
 
     /// <summary>The lock as stored, if it has not run out. Whether its session still lives is checked by the caller.</summary>
     public TicketLock? LockAt(DateTimeOffset now) =>

@@ -16,7 +16,7 @@ public sealed class SkiaLogoProvider(ITausiDb db, IFileStorage files, ILogger<Sk
 
     public async Task<MonoBitmap?> GetLogo(int maxWidthDots, CancellationToken ct = default)
     {
-        var fileId = await db.BusinessSettings.AsNoTracking().Select(s => s.LogoFileId).FirstOrDefaultAsync(ct);
+        var fileId = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).Select(s => s.LogoFileId).FirstOrDefaultAsync(ct);
         if (fileId is not { } id) return null;
         return Cache.GetOrAdd((id, maxWidthDots), key => Load(key.Item1, key.Item2));
     }

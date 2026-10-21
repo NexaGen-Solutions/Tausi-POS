@@ -300,6 +300,18 @@ public class MenuTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_item_is_either_zero_rated_or_vat_exempt()
+    {
+        var food = _f.Category("Food").Id;
+        await _f.Get<SaveItem>().Execute(null, new ItemRequest("Unga 2kg", null, food, 0m, true, null, null), CancellationToken.None);
+        await _f.Get<SaveItem>().Execute(null, new ItemRequest("Bottled water", null, food, 16m, true, null, null, VatExempt: true), CancellationToken.None);
+
+        _f.Item("Unga 2kg").Should().Match<Tausi.Domain.Menu.MenuItem>(i => i.VatRate == 0m && !i.VatExempt);
+        _f.Item("Bottled water").Should().Match<Tausi.Domain.Menu.MenuItem>(i => i.VatRate == 0m && i.VatExempt, "an exempt item keeps no rate");
+        _f.Item("Bottled water").EffectiveVatRate(16m).Should().Be(0m);
+    }
+
+    [Fact]
     public async Task Short_names_default_to_18_characters_and_are_checked()
     {
         var food = _f.Category("Food").Id;

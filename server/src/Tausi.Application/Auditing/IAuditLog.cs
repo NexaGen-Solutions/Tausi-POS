@@ -32,6 +32,10 @@ public static class AuditActions
     public const string DevVoidProbe = "dev.void_probe";
     public const string TicketMoved = "ticket.moved";
     public const string TicketMerged = "ticket.merged";
+    public const string TicketPrinted = "ticket.printed";
+    public const string BillReprinted = "ticket.bill_reprinted";
+    public const string LineCancelled = "order.cancelled_unprinted";
+    public const string PrintJobRetried = "print.job_retried";
     public const string AreaChanged = "tables.area_changed";
     public const string TableChanged = "tables.table_changed";
     public const string TablesAdded = "tables.added";

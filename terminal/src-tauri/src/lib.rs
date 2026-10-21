@@ -257,7 +257,10 @@ pub fn run() {
                         .remote(format!("{origin}/*"))
                         .window(MAIN_WINDOW)
                         .permission("core:default")
-                        .permission("store:default"),
+                        .permission("store:default")
+                        // The order screen gives back its ticket's edit lock when the window
+                        // closes, then closes the window itself.
+                        .permission("core:window:allow-destroy"),
                 )?;
             }
             app.manage(AllowedServer(Mutex::new(server_origin)));

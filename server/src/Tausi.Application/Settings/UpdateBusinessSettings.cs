@@ -12,7 +12,10 @@ using Tausi.Domain.Settings;
 
 namespace Tausi.Application.Settings;
 
-/// <summary><c>RowVersion</c> is the version the editor loaded; a newer saved version wins and this save is refused.</summary>
+/// <summary>
+/// <c>RowVersion</c> is the version the editor loaded; a newer saved version wins and this save is refused.
+/// <c>TimeZone</c> is an IANA name such as "Africa/Nairobi"; null keeps the current one.
+/// </summary>
 public sealed record UpdateBusinessSettingsRequest(
     string Name,
     string Address,
@@ -23,7 +26,8 @@ public sealed record UpdateBusinessSettingsRequest(
     string ReceiptFooter,
     PrintMode PrintMode,
     string? OtherJson,
-    long RowVersion);
+    long RowVersion,
+    string? TimeZone = null);
 
 public sealed class UpdateBusinessSettings(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
@@ -34,7 +38,7 @@ public sealed class UpdateBusinessSettings(
         var grant = await permissions.Require(session.RequireUser(), PermissionKeys.SettingsManage, approval.ApprovalToken, ct);
         Validate(request);
 
-        var settings = await db.BusinessSettings.FirstOrDefaultAsync(ct)
+        var settings = await db.BusinessSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("The business has not been set up yet.");
         if (settings.RowVersion != request.RowVersion)
             throw new ConflictException("Someone else changed the settings. Reload and try again.");
@@ -49,6 +53,7 @@ public sealed class UpdateBusinessSettings(
         settings.ReceiptFooter = request.ReceiptFooter?.Trim() ?? "";
         settings.PrintMode = request.PrintMode;
         settings.OtherJson = string.IsNullOrWhiteSpace(request.OtherJson) ? "{}" : request.OtherJson;
+        if (request.TimeZone is not null) settings.TimeZone = request.TimeZone.Trim();
 
         audit.Write(new AuditRecord(
             AuditActions.SettingsChanged, nameof(BusinessSettings), settings.Id.ToString(),
@@ -65,6 +70,8 @@ public sealed class UpdateBusinessSettings(
         if (r.VatRate is < 0m or >= 100m) throw new DomainException("The VAT rate must be from 0 to below 100.");
         if (string.IsNullOrWhiteSpace(r.Currency) || r.Currency.Trim().Length != 3)
             throw new DomainException("The currency must be a 3-letter code, e.g. KES.");
+        if (r.TimeZone is not null && !BusinessTimeZone.IsValid(r.TimeZone))
+            throw new DomainException("The time zone must be a name such as Africa/Nairobi.");
         if (!string.IsNullOrWhiteSpace(r.OtherJson))
         {
             try

@@ -18,7 +18,8 @@ public sealed record AdminItemDto(
     IReadOnlyDictionary<Guid, decimal> Prices,
     IReadOnlyList<Guid> OwnGroupIds,
     IReadOnlyList<Guid> InheritedGroupIds,
-    long RowVersion);
+    long RowVersion,
+    bool VatExempt);
 
 public sealed record AdminPriceListDto(Guid Id, string Name, bool Active, bool IsDefault, long RowVersion);
 
@@ -84,7 +85,8 @@ public sealed record ItemRequest(
     string? ErpItemCode,
     IReadOnlyList<Guid>? GroupIds,
     int? SortOrder = null,
-    long RowVersion = 0);
+    long RowVersion = 0,
+    bool VatExempt = false);
 
 /// <summary>Prices by price list id (including VAT); null removes a price from a non-default list.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -114,7 +116,7 @@ public sealed record PriceListRequest(string Name, bool Active = true, long RowV
 
 // ---- Terminal view ----
 
-public sealed record PosOptionDto(Guid Id, string Name, decimal PriceAddOn);
+public sealed record PosOptionDto(Guid Id, string Name, decimal PriceAddOn, bool IsDefault = false);
 
 public sealed record PosGroupDto(Guid Id, string Name, int MinSelect, int MaxSelect, IReadOnlyList<PosOptionDto> Options);
 

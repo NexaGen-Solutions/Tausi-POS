@@ -155,13 +155,29 @@ Each entry: date, decision, reason.
 | 2026-10-21 | **A day can't close while any ticket is open** (the owner's choice, as in SambaPOS): the cashier settles, moves or merges everything first, so every sale belongs to exactly one day. Open tickets do not carry over. `DayClosing.EnsureNoOpenTickets` holds the rule (it lists the open tickets); the development `close-day` command uses it now and the cash-up will. Accordingly `seed --demo` adds demo tickets only into an open day, and says so when none is open. | Clean daily figures. Replaces the closed demo day above. |
 | 2026-10-20 | Tables admin (`/admin/tables`, `settings.manage`): names are unique ignoring case; quick add takes an optional name before the number ("Pool" gives Pool 1, Pool 2); a table with open tickets can't be switched off (the error lists them); a table with ticket history can only be switched off, not deleted; an area must be empty to be deleted. Changes are audited and publish `tables.changed`. | Tickets keep their table in history. |
 
+## Order screen (task 6)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-21 | The edit lock is given back with `fetch(..., {keepalive: true})` on unmount and `pagehide`, and in the terminal app on the window's close request (then the window is destroyed). | `sendBeacon` can't send the session and device headers or a DELETE; keepalive can. |
+| 2026-10-21 | Every ticket write, printing included, needs this terminal's edit lock. | One terminal changes a ticket at a time, so a print never races another terminal's adds. |
+| 2026-10-21 | `POST /print` refuses with `nothing_new` when no line is New; the screen then calls `/reprint-bill`, which needs `ticket.reprint`. | A reprint is checked and audited as one, never slipped through Print. |
+| 2026-10-21 | Send-and-bill mode uses its own endpoints, `/send` (dispense slip only) and `/print-bill`. `/print-bill` with nothing changed since the last bill counts as a reprint. | Each button maps to one action and one permission. |
+| 2026-10-21 | The order screen retries its failed jobs through `POST /api/pos/tickets/{id}/print-jobs/{jobId}/retry`, guarded by `ticket.print` (the admin retry stays `devices.manage`). The global "print failed" banner skips jobs of the ticket on screen, which shows its own with Retry. | Waiters can't have `devices.manage`, and must be able to retry their own slips. |
+| 2026-10-21 | Jobs created in one request get creation times at least 1 ms apart, in order. | The queue orders by creation time; equal times (lost to database precision) could print the slip before the bill. |
+| 2026-10-21 | **Zero-rated and exempt are told apart** (the owner's choice): menu items have a `VatExempt` flag, copied onto each order line. Exempt items carry no VAT whatever their rate (the rate is stored as 0) and bills list them as "VAT exempt: KSh …". A 0% item that isn't exempt is zero-rated and is part of the VAT lines: "Total includes VAT 0%: KSh 0.00". The admin VAT choice is Business default / Zero-rated (0%) / VAT exempt / Custom rate, and the CSV has a `vat_exempt` column (yes/no). Items saved as "Exempt (0%)" before the flag existed became zero-rated; mark the truly exempt ones again. | KRA treats zero-rated and exempt supplies differently, and receipts must show which. |
+| 2026-10-21 | VAT and exempt amounts on bills always show cents ("KSh 0.00", "KSh 100.00"); item and total amounts still drop ".00". | VAT figures read as tax amounts. |
+| 2026-10-21 | **Business time zone** `TimeZone` on BusinessSettings (`timeZone` in the settings API), an IANA name such as Africa/Nairobi. A new settings row takes the server's zone (Windows ids converted to IANA); rows from before the setting are empty and also mean the server's zone; `seed --demo` sets Africa/Nairobi. Only IANA names known to the server are accepted, so the value works on Linux and Windows. Every printed time goes through `BusinessClock` (bills, dispense slips, test print; receipts, cash-ups and reports must use it too). | A server set to UTC (common on Linux) must still print the bar's local time. |
+| 2026-10-21 | Modifier options have `IsDefault`; the pop-up pre-selects defaults. The seed makes Cold the default Temperature, on beers only. | Fewest taps for the usual order. |
+| 2026-10-21 | The order screen has no logout button; logging out is on the table map. The leave check covers Tables and Move table. | Matches wireframe 3. |
+| 2026-10-21 | The ticket note can be set once the ticket is saved (after its first item). | A draft has nothing to attach it to. |
+
 ## Follow-ups
 
 - **Powered-by footer toggle:** add `print.poweredByFooter` to Settings → Printing when that screen is built (it is set in the settings JSON until then).
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
 - **Updater:** the updater plugin is installed but has no public key or endpoint yet (`plugins.updater` in `tauri.conf.json`). Generate signing keys, publish `latest.json`, turn on `createUpdaterArtifacts`.
 - **Remove `/api/dev/void-probe`** and `DevVoidProbe` when the real void task lands.
-- **"Not printed · Retry":** the retry endpoints exist (`/api/admin/print-jobs/{id}/retry`); the POS banner should use them with the order screen. Waiters lack `devices.manage`, so decide which permission the POS retry needs.
 - **Real-hardware check:** `print_raw` on the Windows spooler and server-side Windows share printing compile in CI but are untested against a real printer until the owner runs RUNNING.md "Testing on real hardware".
 - **Redirect across paper widths:** a job stores its printed bytes, so a slip sent from a 58 mm printer to an 80 mm one keeps the 58 mm layout (and the other way, an 80 mm slip wraps on 58 mm paper). Rebuilding the slip for the new printer needs the slip data stored with the job; consider it with the order screen.
 - **Updater address in the lock-down:** add the update server's origin to the terminal's allowed origins once the updater has an endpoint.
@@ -171,11 +187,15 @@ Each entry: date, decision, reason.
 - **Server installer:** a Windows installer for Tausi Server (service + SQL Server Express) and a Linux package.
 - **Edit roles and permissions** (Permissions screen): until then, added roles can only be created in the database.
 - **Approvals on the admin site:** an action that needs approval can't be approved there yet (the approval pad needs a terminal).
-- **Remove the test menu list** (`web/src/pos/TestMenu.tsx`, now on the ticket placeholder) with the order-screen task.
 - **Optional move slip to the dispense printer** when a ticket moves tables (nothing is printed now).
 - **Settings → POS:** add `pos.tableIdleMinutes` to the settings screen when it is built (set in the settings JSON until then).
 - **Remove the `close-day` development command** when cash-up closes days.
-- **Closing the browser or app while a ticket is open** leaves its lock until it expires (90 s); a release on page unload could shorten that.
 - **CI runner image:** GitHub notes that `ubuntu-latest` moves to Ubuntu 26 from 19 Oct 2026; pin `ubuntu-24.04` if that causes trouble.
 - **Close the day:** `WorkPeriod` has the closing fields; closing comes with cash-up.
 - **Logout after settle:** `pos.logoutAfterSettle` exists but is not acted on until settle is built.
+- **Default option in the admin menu:** let Menu → Modifiers set an option's `IsDefault` (seeded only for now).
+- **Printing mode setting:** add `printMode` to Settings → Printing when that screen is built (set in the settings JSON until then).
+- **Logout from the order screen:** if a logout is added there, it should run the same leave check.
+- **Draft ticket note:** allow a note before the first item if waiters ask for it.
+- **Time zone in Settings:** add `timeZone` to the settings screen when it is built (set through the settings API until then).
+- **On-screen times:** the terminal and admin screens show times in the browser's time zone; format them in the business's zone if a terminal's clock is ever set differently.

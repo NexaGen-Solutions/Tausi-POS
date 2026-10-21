@@ -62,7 +62,7 @@ public sealed record PosSettings(int IdleLogoutMinutes, bool LogoutAfterSettle, 
     }
 
     public static async Task<PosSettings> Load(ITausiDb db, CancellationToken ct) =>
-        From(await db.BusinessSettings.AsNoTracking().Select(s => s.OtherJson).FirstOrDefaultAsync(ct));
+        From(await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).Select(s => s.OtherJson).FirstOrDefaultAsync(ct));
 
     /// <summary>The OtherJson a new business starts with, so the settings are easy to find.</summary>
     public static string DefaultJson =>

@@ -75,6 +75,9 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
     /// Development: demo printers use the File connection, so prints land in print-output/.
     /// Otherwise they are Windows-share placeholders to be set on site.
     /// </param>
+    /// <summary>Mau's Village is in Kenya.</summary>
+    public const string DemoTimeZone = "Africa/Nairobi";
+
     public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false)
     {
         await SeedBase(ct);
@@ -90,7 +93,14 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 PrintMode = PrintMode.OneButton,
                 ReceiptFooter = "Thank you. Karibu tena!",
                 OtherJson = PosSettings.DefaultJson,
+                TimeZone = DemoTimeZone,
             });
+        }
+        else
+        {
+            // Settings from before the time-zone setting: the demo business is in Kenya.
+            var settings = await db.BusinessSettings.OrderBy(s => s.Id).FirstAsync(ct);
+            if (string.IsNullOrWhiteSpace(settings.TimeZone)) settings.TimeZone = DemoTimeZone;
         }
 
         var roles = await db.Roles.ToDictionaryAsync(r => r.Name, ct);
@@ -142,6 +152,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         await SeedDevices(filePrinters, ct);
         await db.SaveChangesAsync(ct);
         await SeedDemoMenu(ct);
+        await SeedDemoTemperature(ct);
         await SeedDemoTables(ct);
         await SeedDemoTickets(ct);
         return created;
@@ -166,17 +177,17 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
 
     /// <summary>
     /// A few open tickets with lines, so the demo map shows occupied tables, totals, two tickets on
-    /// Table 7 (to try merging) and an idle table. Only into a database with no tickets, and only
-    /// while a day is open (they belong to it); otherwise the seed adds none and says so.
+    /// Table 7 (to try merging) and an idle table. Only while a day is open (they belong to it).
+    /// Run again, it adds only the ones that are missing: a demo ticket counts as there when its
+    /// waiter already has that many open tickets on its table.
     /// </summary>
     public async Task<bool> SeedDemoTickets(CancellationToken ct)
     {
-        if (await db.Tickets.AnyAsync(ct)) return false;
         var tables = await db.Tables.ToDictionaryAsync(t => t.Name, ct);
         var users = await db.Users.ToDictionaryAsync(u => u.Name, ct);
         var terminals = await db.Terminals.ToDictionaryAsync(t => t.Name, ct);
         var items = await db.MenuItems.Include(i => i.Prices).ToDictionaryAsync(i => i.Name, ct);
-        var vat = (await db.BusinessSettings.FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
+        var vat = (await db.BusinessSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
         if (tables.Count == 0 || items.Count == 0 || !terminals.ContainsKey("Counter A")) return false;
 
         var now = DateTimeOffset.UtcNow;
@@ -196,10 +207,20 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
             ("Pool 1", "MAU", "Counter B", 35, 2, [("Pool Table", 6)]),
             ("Bar 1", "Ruth", "Counter B", 20, 5, [("Tusker Lager", 1), ("Delmonte", 1)]),
         };
+        var beersId = await db.Categories.Where(c => c.Name == "Beers").Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+        var coldOption = await db.ModifierOptions.FirstOrDefaultAsync(o => o.Name == "Cold", ct);
+        var open = await db.Tickets.Where(k => k.Status == TicketStatus.Open && k.TableId != null)
+            .Select(k => new { TableId = k.TableId!.Value, k.OpenedByUserId }).ToListAsync(ct);
+        var wanted = new Dictionary<(Guid, Guid), int>();
+        var added = 0;
         foreach (var (tableName, waiter, terminalName, minutesAgo, idle, lines) in demo)
         {
             if (!tables.TryGetValue(tableName, out var table) || !users.TryGetValue(waiter, out var user)
                 || !terminals.TryGetValue(terminalName, out var terminal)) continue;
+            var key = (table.Id, user.Id);
+            wanted[key] = wanted.GetValueOrDefault(key) + 1;
+            if (open.Count(o => o.TableId == table.Id && o.OpenedByUserId == user.Id) >= wanted[key]) continue;
+            added++;
             var opened = now.AddMinutes(-minutesAgo);
             var ticket = new Ticket
             {
@@ -210,22 +231,28 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 TerminalId = terminal.Id,
                 WorkPeriodId = day.Id,
                 LastActivityAt = now.AddMinutes(-idle),
+                PrintRound = 1,
             };
             foreach (var (itemName, qty) in lines)
             {
                 if (!items.TryGetValue(itemName, out var item) || item.Prices.Count == 0) continue;
                 var price = item.Prices[0].Price;
                 var rate = item.EffectiveVatRate(vat);
-                var amounts = VatCalculator.ForLine(price, qty, rate);
+                var amounts = VatCalculator.ForLine(price, qty, rate, item.VatExempt);
+                var cold = item.CategoryId == beersId ? coldOption : null;
                 ticket.Lines.Add(new OrderLine
                 {
-                    TicketId = ticket.Id, MenuItemId = item.Id, Name = item.Name, Quantity = qty, UnitPrice = price,
-                    VatRate = rate, Gross = amounts.Gross, Net = amounts.Net, Vat = amounts.Vat,
+                    TicketId = ticket.Id, MenuItemId = item.Id, Name = item.Name, ShortName = item.ShortName,
+                    Options = cold?.Name, OptionIds = cold?.Id.ToString() ?? "",
+                    Quantity = qty, UnitPrice = price,
+                    VatRate = rate, VatExempt = item.VatExempt, Gross = amounts.Gross, Net = amounts.Net, Vat = amounts.Vat,
                     AddedByUserId = user.Id, AddedTerminalId = terminal.Id, AddedAt = opened, PrintedAt = opened,
+                    Status = OrderLineStatus.Printed, PrintRound = 1,
                 });
             }
             db.Tickets.Add(ticket);
         }
+        if (added == 0) return false;
         await db.SaveChangesAsync(ct);
         return true;
     }
@@ -375,14 +402,38 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
             db.MenuItems.Add(item);
         }
 
-        var temperature = new ModifierGroup { Name = "Temperature", MinSelect = 1, MaxSelect = 1, SortOrder = 10 };
-        temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Cold", SortOrder = 10 });
-        temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Warm", SortOrder = 20 });
-        db.ModifierGroups.Add(temperature);
-        foreach (var category in new[] { "Beers", "Soft drinks" })
-            db.ModifierGroupAssignments.Add(new ModifierGroupAssignment { GroupId = temperature.Id, CategoryId = categories[category].Id });
-
         await db.SaveChangesAsync(ct);
+        await SeedDemoTemperature(ct);
         return true;
+    }
+
+    /// <summary>
+    /// Beers ask Temperature (Cold / Warm, choose 1, Cold chosen already); water, sodas and spirits
+    /// don't. Also brings a menu seeded earlier (which asked it for soft drinks too) into line.
+    /// </summary>
+    public async Task SeedDemoTemperature(CancellationToken ct)
+    {
+        var beers = await db.Categories.FirstOrDefaultAsync(c => c.Name == "Beers", ct);
+        if (beers is null) return;
+        var temperature = await db.ModifierGroups.Include(g => g.Options).FirstOrDefaultAsync(g => g.Name == "Temperature", ct);
+        if (temperature is null)
+        {
+            temperature = new ModifierGroup { Name = "Temperature", MinSelect = 1, MaxSelect = 1, SortOrder = 10 };
+            temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Cold", SortOrder = 10, IsDefault = true });
+            temperature.Options.Add(new ModifierOption { GroupId = temperature.Id, Name = "Warm", SortOrder = 20 });
+            db.ModifierGroups.Add(temperature);
+        }
+        else if (!temperature.Options.Any(o => o.IsDefault) && temperature.Options.FirstOrDefault(o => o.Name == "Cold") is { } cold)
+        {
+            cold.IsDefault = true;
+        }
+
+        var assigned = await db.ModifierGroupAssignments.Where(a => a.GroupId == temperature.Id).ToListAsync(ct);
+        if (!assigned.Any(a => a.CategoryId == beers.Id))
+            db.ModifierGroupAssignments.Add(new ModifierGroupAssignment { GroupId = temperature.Id, CategoryId = beers.Id });
+        var softDrinks = await db.Categories.Where(c => c.Name == "Soft drinks").Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+        foreach (var extra in assigned.Where(a => a.CategoryId is not null && a.CategoryId == softDrinks))
+            db.ModifierGroupAssignments.Remove(extra);
+        await db.SaveChangesAsync(ct);
     }
 }

@@ -10,6 +10,8 @@ public enum TextStyle
     Bold = 1,
     DoubleHeight = 2,
     Center = 4,
+    /// <summary>The printer's smaller font (font B), e.g. "This is not a receipt".</summary>
+    Small = 8,
 }
 
 /// <summary>
@@ -143,6 +145,7 @@ public sealed class ReceiptBuilder
         Write(0x1B, 0x61, (byte)(style.HasFlag(TextStyle.Center) ? 1 : 0));
         Write(0x1B, 0x45, (byte)(style.HasFlag(TextStyle.Bold) ? 1 : 0));
         Write(0x1D, 0x21, (byte)(style.HasFlag(TextStyle.DoubleHeight) ? 0x01 : 0x00));
+        Write(0x1B, 0x4D, (byte)(style.HasFlag(TextStyle.Small) ? 1 : 0));
     }
 
     private string CenterPad(string line) =>

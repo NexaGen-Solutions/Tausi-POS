@@ -63,6 +63,30 @@ public class SettingsTests(TausiApp app)
     }
 
     [Fact]
+    public async Task The_business_time_zone_is_seeded_and_must_be_an_iana_name()
+    {
+        var admin = await app.AdminClient();
+        var settings = await (await admin.GetAsync("/api/settings/business")).Json();
+        settings.GetProperty("timeZone").GetString().Should().Be("Africa/Nairobi");
+
+        var update = JsonSerializer.SerializeToElement(Update(settings, settings.GetProperty("name").GetString()!))
+            .Deserialize<Dictionary<string, object?>>()!;
+        update["timeZone"] = "Mars/Olympus";
+        var bad = await admin.PutAsJsonAsync("/api/settings/business", update);
+        bad.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await bad.Content.ReadAsStringAsync()).Should().Contain("Africa/Nairobi");
+
+        update["timeZone"] = "Africa/Kampala";
+        var good = await (await admin.PutAsJsonAsync("/api/settings/business", update)).Json();
+        good.GetProperty("timeZone").GetString().Should().Be("Africa/Kampala");
+
+        var back = JsonSerializer.SerializeToElement(Update(good, good.GetProperty("name").GetString()!))
+            .Deserialize<Dictionary<string, object?>>()!;
+        back["timeZone"] = "Africa/Nairobi";
+        (await admin.PutAsJsonAsync("/api/settings/business", back)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task The_powered_by_footer_setting_must_be_true_or_false()
     {
         var admin = await app.AdminClient();

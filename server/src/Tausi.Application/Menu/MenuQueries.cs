@@ -34,7 +34,7 @@ public sealed class GetAdminMenu(ITausiDb db, MenuAccess access)
         var lists = await db.PriceLists.AsNoTracking().OrderByDescending(l => l.IsDefault).ThenBy(l => l.Name).ToListAsync(ct);
         var groups = await db.ModifierGroups.AsNoTracking().Include(g => g.Options).OrderBy(g => g.SortOrder).ThenBy(g => g.Name).ToListAsync(ct);
         var assignments = await db.ModifierGroupAssignments.AsNoTracking().ToListAsync(ct);
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         var categoryOrder = categories.Select((c, i) => (c.Id, i)).ToDictionary(x => x.Id, x => x.i);
 
         return new AdminMenuDto(
@@ -45,7 +45,7 @@ public sealed class GetAdminMenu(ITausiDb db, MenuAccess access)
                 {
                     var (own, inherited) = MenuRules.GroupsOf(i, assignments);
                     return new AdminItemDto(i.Id, i.Name, i.ShortName, i.CategoryId, i.SortOrder, i.VatRate, i.Active,
-                        i.ErpItemCode, i.Prices.ToDictionary(p => p.PriceListId, p => p.Price), own, inherited, i.RowVersion);
+                        i.ErpItemCode, i.Prices.ToDictionary(p => p.PriceListId, p => p.Price), own, inherited, i.RowVersion, i.VatExempt);
                 }).ToList(),
             lists.Select(l => new AdminPriceListDto(l.Id, l.Name, l.Active, l.IsDefault, l.RowVersion)).ToList(),
             groups.Select(g => new AdminGroupDto(g.Id, g.Name, g.MinSelect, g.MaxSelect, g.SortOrder, g.Active,
@@ -103,7 +103,7 @@ public sealed class GetPosMenu(ITausiDb db, ICurrentSession session)
             ?? throw new ConflictException("There is no default price list.");
         var list = lists.FirstOrDefault(l => l.Id == terminal.PriceListId && l.Active) ?? defaultList;
 
-        var business = await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         var businessVat = business?.VatRate ?? 16m;
         var categories = await db.Categories.AsNoTracking().Where(c => c.Active)
             .OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync(ct);
@@ -116,7 +116,7 @@ public sealed class GetPosMenu(ITausiDb db, ICurrentSession session)
         PosGroupDto? Group(Guid id) => groups.TryGetValue(id, out var g)
             ? new PosGroupDto(g.Id, g.Name, g.MinSelect, g.MaxSelect,
                 g.Options.Where(o => o.Active).OrderBy(o => o.SortOrder).ThenBy(o => o.Name)
-                    .Select(o => new PosOptionDto(o.Id, o.Name, o.PriceAddOn)).ToList())
+                    .Select(o => new PosOptionDto(o.Id, o.Name, o.PriceAddOn, o.IsDefault)).ToList())
             : null;
 
         var result = new List<PosCategoryDto>();

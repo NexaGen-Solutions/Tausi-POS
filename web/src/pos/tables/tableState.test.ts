@@ -18,6 +18,7 @@ function ticket(extra: Partial<TicketSummary> = {}): TicketSummary {
     lastActivityAt: minutesAgo(5),
     mine: false,
     lock: null,
+    newLines: 0,
     ...extra,
   };
 }
@@ -57,6 +58,14 @@ describe('table tiles', () => {
     const tile = table('7', [ticket({ lock })]);
     expect(tileState(tile, now, 30, 'term-a').lockedElsewhere).toBe(true);
     expect(tileState(tile, now, 30, 'term-b').lockedElsewhere).toBe(false);
+  });
+
+  it('counts lines not printed yet on all its tickets, so they are not forgotten', () => {
+    const t7 = table('7', [ticket({ newLines: 2 }), ticket({ id: 'k2', newLines: 1 })]);
+    const state = tileState(t7, now, 30, 'term-a');
+    expect(state.notPrinted).toBe(3);
+    expect(tileLabel(t7, state)).toBe('7: edna · 2 tickets, 2,740, 3 not printed');
+    expect(tileState(table('8', [ticket()]), now, 30, 'term-a').notPrinted).toBe(0);
   });
 
   it('my tables are those with a ticket I opened or added a line to', () => {

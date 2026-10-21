@@ -29,7 +29,7 @@ public sealed class UploadBusinessLogo(
         if (upload.Length is <= 0 or > MaxBytes)
             throw new DomainException("The logo must be smaller than 2 MB.");
 
-        var settings = await db.BusinessSettings.FirstOrDefaultAsync(ct)
+        var settings = await db.BusinessSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("The business has not been set up yet.");
 
         var file = new StoredFile

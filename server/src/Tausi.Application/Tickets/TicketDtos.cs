@@ -15,7 +15,8 @@ public sealed record TicketSummaryDto(
     DateTimeOffset OpenedAt,
     DateTimeOffset LastActivityAt,
     bool Mine,
-    LockDto? Lock);
+    LockDto? Lock,
+    int NewLines = 0);
 
 public sealed record AreaDto(Guid Id, string Name, int SortOrder);
 
@@ -41,16 +42,25 @@ public sealed record TableMapDto(
 
 public sealed record OrderLineDto(
     Guid Id,
+    Guid? MenuItemId,
     string Name,
+    string ShortName,
     string? Options,
+    string? Note,
     decimal Quantity,
     decimal UnitPrice,
     decimal Gross,
+    string Status,
+    int? PrintRound,
+    Guid AddedById,
     string AddedBy,
     string AddedOn,
     DateTimeOffset AddedAt,
-    bool Printed,
+    DateTimeOffset? PrintedAt,
     bool Voided);
+
+/// <summary>A print job for this ticket that gave up (the order screen offers Retry).</summary>
+public sealed record FailedJobDto(Guid Id, string Kind, string PrinterName, string? Error);
 
 public sealed record TicketDetailDto(
     Guid Id,
@@ -66,4 +76,7 @@ public sealed record TicketDetailDto(
     decimal Total,
     IReadOnlyList<OrderLineDto> Lines,
     LockDto? Lock,
-    long RowVersion);
+    long RowVersion,
+    int BillNumber = 0,
+    int NewLines = 0,
+    IReadOnlyList<FailedJobDto>? FailedJobs = null);

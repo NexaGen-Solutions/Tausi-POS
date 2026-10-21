@@ -12,7 +12,7 @@ using Tausi.Domain.Service;
 
 namespace Tausi.Application.Tickets;
 
-public sealed record NewLineRequest(Guid MenuItemId, decimal Quantity);
+public sealed record NewLineRequest(Guid MenuItemId, decimal Quantity, IReadOnlyList<Guid>? OptionIds = null, string? Note = null);
 
 public sealed record StartTicketRequest(Guid? TableId, string? CustomerName, IReadOnlyList<NewLineRequest> Lines, string? Note = null);
 
@@ -28,7 +28,7 @@ public sealed record MergeTicketsRequest(IReadOnlyList<Guid> TicketIds, Guid Int
 /// </summary>
 public sealed class StartTicket(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    ITicketDatabase tickets, TicketEvents events, TimeProvider clock)
+    ITicketDatabase tickets, MenuPricing pricing, TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketDetailDto> Execute(StartTicketRequest request, CancellationToken ct)
     {
@@ -41,9 +41,6 @@ public sealed class StartTicket(
             ?? throw new DomainException("The day isn't open yet. A supervisor must open it first.", TicketCodes.DayClosed);
         if (request.Lines is not { Count: > 0 })
             throw new DomainException("A ticket needs at least one line.");
-        if (request.Lines.Any(l => l.Quantity <= 0 || l.Quantity > 999))
-            throw new DomainException("Each quantity must be more than 0 and at most 999.");
-
         DiningTable? table = null;
         if (request.TableId is { } tableId)
         {
@@ -56,14 +53,7 @@ public sealed class StartTicket(
             throw new DomainException($"The customer name can be at most {Ticket.MaxCustomerNameLength} characters.");
 
         var terminal = await db.Terminals.AsNoTracking().FirstAsync(t => t.Id == terminalId, ct);
-        var lists = await db.PriceLists.AsNoTracking().ToListAsync(ct);
-        var defaultList = lists.FirstOrDefault(l => l.IsDefault) ?? throw new ConflictException("There is no default price list.");
-        var list = lists.FirstOrDefault(l => l.Id == terminal.PriceListId && l.Active) ?? defaultList;
-        var businessVat = (await db.BusinessSettings.AsNoTracking().FirstOrDefaultAsync(ct))?.VatRate ?? 16m;
-        var itemIds = request.Lines.Select(l => l.MenuItemId).Distinct().ToList();
-        var items = await db.MenuItems.AsNoTracking().Include(i => i.Prices)
-            .Where(i => itemIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
-
+        var pricer = await pricing.For(terminalId, ct);
         var now = clock.GetUtcNow();
         var ticket = new Ticket
         {
@@ -78,27 +68,8 @@ public sealed class StartTicket(
         };
         foreach (var line in request.Lines)
         {
-            if (!items.TryGetValue(line.MenuItemId, out var item) || !item.Active)
-                throw new DomainException("An item on this ticket is no longer on the menu.");
-            var price = MenuRules.PriceOn(item, list.Id) ?? MenuRules.PriceOn(item, defaultList.Id)
-                ?? throw new DomainException($"{item.Name} has no price.");
-            var rate = item.EffectiveVatRate(businessVat);
-            var amounts = VatCalculator.ForLine(price, line.Quantity, rate);
-            ticket.Lines.Add(new OrderLine
-            {
-                TicketId = ticket.Id,
-                MenuItemId = item.Id,
-                Name = item.Name,
-                Quantity = line.Quantity,
-                UnitPrice = price,
-                VatRate = rate,
-                Gross = amounts.Gross,
-                Net = amounts.Net,
-                Vat = amounts.Vat,
-                AddedByUserId = user.UserId,
-                AddedTerminalId = terminalId,
-                AddedAt = now,
-            });
+            var priced = await pricer.Price(line.MenuItemId, line.OptionIds, ct);
+            TicketLines.Add(ticket, priced, line.Quantity, TicketLines.CleanNote(line.Note), user.UserId, terminalId, now);
         }
         ticket.TakeLock(terminalId, user.UserId, sessionId, now);
         ticket.Number = await tickets.NextNumber(ct);
@@ -106,8 +77,7 @@ public sealed class StartTicket(
         await db.SaveChangesAsync(ct);
 
         await events.Changed(ticket, ticket.TableId, ct);
-        var holder = new LockHolder(terminalId, terminal.Name, user.UserId, user.Name);
-        return await GetTicket.Detail(db, ticket, holder, ct);
+        return await TicketDetails.Build(db, ticket, new LockHolder(terminalId, terminal.Name, user.UserId, user.Name), ct);
     }
 }
 

@@ -35,6 +35,7 @@ function menu(extra: Partial<AdminMenu> = {}): AdminMenu {
         categoryId: 'c-beer',
         sortOrder: 10,
         vatRate: null,
+        vatExempt: false,
         active: true,
         erpItemCode: null,
         prices: { 'l-std': 250 },
@@ -49,6 +50,7 @@ function menu(extra: Partial<AdminMenu> = {}): AdminMenu {
         categoryId: 'c-beer',
         sortOrder: 20,
         vatRate: null,
+        vatExempt: false,
         active: true,
         erpItemCode: null,
         prices: { 'l-std': 300, 'l-p2': 320 },
@@ -63,6 +65,7 @@ function menu(extra: Partial<AdminMenu> = {}): AdminMenu {
         categoryId: 'c-soft',
         sortOrder: 10,
         vatRate: null,
+        vatExempt: false,
         active: true,
         erpItemCode: null,
         prices: { 'l-std': 100 },
@@ -195,6 +198,25 @@ describe('Menu and prices', () => {
       path: '/api/admin/menu/items/i-tusker/prices',
       body: { prices: { 'l-std': 260 }, allowZero: false, rowVersion: 4 },
     });
+  });
+
+  it('an item can be zero-rated or VAT exempt, and the two are told apart', async () => {
+    serve(menu());
+    renderRoutes(routes, '/admin/menu');
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Tusker Lager' }));
+    let panel = screen.getByRole('complementary', { name: 'Edit Tusker Lager' });
+    await userEvent.selectOptions(within(panel).getByLabelText('VAT rate'), 'Zero-rated (0%)');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toMatchObject({ vatRate: 0, vatExempt: false });
+
+    requests.length = 0;
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Tusker Lager' }));
+    panel = screen.getByRole('complementary', { name: 'Edit Tusker Lager' });
+    await userEvent.selectOptions(within(panel).getByLabelText('VAT rate'), 'VAT exempt');
+    await userEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toMatchObject({ vatRate: 0, vatExempt: true });
   });
 
   it('a price of 0 asks for confirmation first', async () => {
