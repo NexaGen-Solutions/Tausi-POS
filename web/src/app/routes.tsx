@@ -14,6 +14,7 @@ import { SetupPage } from '../pos/SetupPage';
 import { MySalesPage } from '../pos/MySalesPage';
 import { TablesPage } from '../pos/tables/TablesPage';
 import { OrderPage, SettlePlaceholder } from '../pos/order/OrderPage';
+import { ApprovalsPage } from '../pos/approvals/ApprovalsPage';
 import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { t } from '../shared/i18n/i18n';
 import { RootRedirect } from './RootRedirect';
@@ -49,6 +50,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireSession>
             <OrderPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'approvals',
+        element: (
+          <RequireSession>
+            <ApprovalsPage />
           </RequireSession>
         ),
       },

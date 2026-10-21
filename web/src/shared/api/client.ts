@@ -33,8 +33,46 @@ export class OfflineError extends Error {
   }
 }
 
-/** Asks a supervisor for approval; resolves to an approval token, or null if it was not given. */
-export type ApprovalHandler = (permission: string) => Promise<string | null>;
+export type ApprovalKind =
+  'Void' | 'Gift' | 'Discount' | 'PriceChange' | 'Reprint' | 'Move' | 'Merge';
+
+/**
+ * What to ask for instead, when no supervisor is at hand ("Option 2 · supervisor elsewhere"):
+ * the body of POST /api/pos/approvals without the preferred approver.
+ */
+export interface ApprovalContext {
+  kind: ApprovalKind;
+  ticketId: string;
+  lineId?: string | null;
+  payload: unknown;
+}
+
+/** A request for approval that was sent instead of doing the action now. */
+export interface SentRequest {
+  id: string;
+  kind: string;
+  summary: string;
+  status: string;
+}
+
+/** The action wasn't done: a request was sent to a supervisor instead (not an error to show). */
+export class RequestSentError extends Error {
+  readonly request: SentRequest;
+
+  constructor(request: SentRequest) {
+    super('Request sent.');
+    this.request = request;
+  }
+}
+
+/**
+ * Asks a supervisor for approval; resolves to an approval token, a request sent instead (when
+ * a context was given), or null if it was not given.
+ */
+export type ApprovalHandler = (
+  permission: string,
+  context?: ApprovalContext,
+) => Promise<string | { requested: SentRequest } | null>;
 
 let approvalHandler: ApprovalHandler | null = null;
 let baseUrl = '';
@@ -60,6 +98,10 @@ export interface RequestOptions {
   idempotencyKey?: string;
   /** Let the request finish while the page unloads (e.g. giving back a ticket's edit lock). */
   keepalive?: boolean;
+  /** A supervisor's approval token already in hand (their PIN typed in the action's own pop-up). */
+  approvalToken?: string;
+  /** Lets the approval pad offer "send a request" as well as the PIN. */
+  approval?: ApprovalContext;
 }
 
 /**
@@ -72,13 +114,19 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   const idempotencyKey =
     method === 'GET' ? undefined : (options.idempotencyKey ?? crypto.randomUUID());
 
-  let response = await send(path, method, options, idempotencyKey);
+  let response = await send(path, method, options, idempotencyKey, options.approvalToken);
   if (response.status === 403) {
     const problem = await readProblem(response);
-    if (problem.approvalRequired && problem.permission && approvalHandler) {
-      const token = await approvalHandler(problem.permission);
-      if (!token) throw new ApiError(problem);
-      response = await send(path, method, options, idempotencyKey, token);
+    if (
+      problem.approvalRequired &&
+      problem.permission &&
+      approvalHandler &&
+      !options.approvalToken
+    ) {
+      const answer = await approvalHandler(problem.permission, options.approval);
+      if (!answer) throw new ApiError(problem);
+      if (typeof answer !== 'string') throw new RequestSentError(answer.requested);
+      response = await send(path, method, options, idempotencyKey, answer);
     } else {
       throw new ApiError(problem);
     }

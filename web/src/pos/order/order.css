@@ -69,7 +69,7 @@
   border-left-color: var(--color-selected);
   background: var(--color-selected-tint);
 }
-.order-line--pending {
+.order-line--saving {
   opacity: 0.55;
   cursor: default;
 }
@@ -332,4 +332,181 @@
 }
 .order-leave {
   flex-direction: column;
+}
+
+/* Voids, gifts, price changes and requests on the ticket */
+.order-line--voided {
+  cursor: default;
+}
+.order-line--voided .order-line__qty,
+.order-line--voided .order-line__name,
+.order-line--voided .order-line__amount {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+.order-line__was {
+  margin-right: var(--space-2);
+  color: var(--color-text-muted);
+}
+.order-line__changed {
+  color: var(--color-warning-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.order-badge--voided {
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+.order-badge--gift {
+  background: var(--color-selected-tint);
+  color: var(--color-selected);
+}
+.order-badge--pending {
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.order-line__cancel {
+  min-height: var(--touch-min);
+  margin: 0 0 var(--space-1) 55px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--color-selected);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.order-selected__waiting {
+  margin: 0;
+  color: var(--color-warning-text);
+}
+.order-pending {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+  font-size: 14px;
+}
+.order-pending .order-line__cancel {
+  margin: 0;
+}
+.order-subtotals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4) 0;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+.order-subtotals__amount {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.order-subtotals + .order-total {
+  border-top: 0;
+}
+
+/* Wireframe 5: void, gift, discount and price pop-ups */
+.action-dialog {
+  display: grid;
+  gap: var(--space-5);
+}
+.action-dialog--two {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.action-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.action-dialog__reasons {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.action-dialog__reasons legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: 600;
+}
+.action-dialog__reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.action-dialog__reason {
+  min-height: 60px;
+  font-size: 17px;
+  font-weight: 400;
+}
+.action-dialog__yesno {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-5);
+  font-size: 17px;
+}
+.action-dialog__poured,
+.action-dialog__kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.action-dialog__poured > span {
+  flex: 1;
+  font-weight: 600;
+}
+.action-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.action-dialog__field input {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  font: inherit;
+  font-size: 18px;
+}
+.action-dialog__error {
+  margin: 0;
+  color: var(--color-warning-text);
+}
+.action-dialog__info {
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-ground);
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+.action-dialog__info p {
+  margin: var(--space-1) 0 0;
+}
+.action-dialog__remove {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.action-dialog__price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.action-dialog__price-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+}
+@media (max-width: 1000px) {
+  .action-dialog--two {
+    grid-template-columns: 1fr;
+  }
 }
