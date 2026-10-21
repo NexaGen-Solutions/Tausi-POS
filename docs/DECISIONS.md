@@ -190,6 +190,7 @@ Each entry: date, decision, reason.
 | 2026-10-21 | The chime is two short tones made with Web Audio after the first tap or key press, so there is no sound file and no autoplay block. | Browsers block sound before the user interacts. |
 | 2026-10-21 | The price pop-up's number pad takes whole units (no decimal key); the API accepts cents. | Bars price in whole shillings; the pad stays simple. |
 | 2026-10-21 | "Earlier this shift" lists the current work period's decided requests (latest 100), including Expired and Cancelled ones. | The supervisor sees why a request vanished. |
+| 2026-10-21 | The **Approvals** button shows for users Allowed to void, gift, discount, change prices or reprint, and for anyone with a request waiting for them. Move and merge alone don't count: waiters are Allowed to move by default, so the button would sit on every waiter's screen. They can still decide move requests (the rule is unchanged). | Less noise on the waiters' screens. |
 | 2026-10-21 | The temporary `/api/dev/void-probe` is removed; its tests now use the real void endpoint. | As planned in Task 1. |
 
 ## Follow-ups

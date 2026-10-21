@@ -3,12 +3,12 @@ import { t } from '../../shared/i18n/i18n';
 import { Button } from '../../shared/ui';
 import { useCanApprove, usePendingApprovals } from './useApprovals';
 
-/** "Approvals 2" in the top bar, for users who can approve anything. */
+/** "Approvals 2" in the top bar, for approvers (and anyone with a request waiting for them). */
 export function ApprovalsButton() {
   const navigate = useNavigate();
   const canApprove = useCanApprove();
   const { waiting } = usePendingApprovals();
-  if (!canApprove) return null;
+  if (!canApprove && waiting.length === 0) return null;
   return (
     <Button
       variant="ghost-dark"
