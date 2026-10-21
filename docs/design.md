@@ -190,6 +190,8 @@ How money moves at Mau's Village:
     - A supervisor signs it off.
 5. **Waiter check.** Each waiter sees their tables, what was settled, and any **bills still open on their name**, so unpaid or missing cash shows up the same night.
 
+**Closing the day.** The day (work period) can't be closed while any ticket is still open. The close screen lists the open tickets, and each must be settled, or emptied by voids, first. Every sale belongs to exactly one day.
+
 ## Stock and basic accounting
 
 - **Stock items vs menu items.** A menu item is what you sell; a stock item is what you buy and count. A recipe links them, e.g. 1 Tusker Lager = 1 bottle; 1 Viceroy Tot = 25 ml of a 375 ml bottle.
