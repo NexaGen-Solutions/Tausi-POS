@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { api } from '../../shared/api/client';
 import type { Brand } from '../../shared/api/types';
@@ -9,14 +9,11 @@ import { formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { Banner, Button, TopBar } from '../../shared/ui';
 import { tableLabel } from '../tables/tableState';
-import type { LockState, TableEvent, TableMap, TicketDetail } from '../tables/types';
+import type { TableEvent, TableMap, TicketDetail } from '../tables/types';
 import { tableMapKey } from '../tables/useTableMap';
-import { TestMenu } from '../TestMenu';
 import { usePinSession } from '../usePinSession';
+import { useTicketLock } from './useTicketLock';
 import '../tables/tables.css';
-
-/** Terminals renew their edit lock this often while a ticket is on screen (the server drops it after 90 s). */
-export const lockRenewMs = 30_000;
 
 /**
  * The order screen's place (Task 6 builds it): the header, the lines read-only and Back to tables.
@@ -31,7 +28,6 @@ export function TicketPage() {
   const session = usePinSession();
   const isNew = id === 'new';
   const tableId = params.get('table');
-  const [lock, setLock] = useState<LockState | null>(null);
 
   const brand = useQuery({ queryKey: ['brand'], queryFn: () => api<Brand>('/api/brand') });
   const ticket = useQuery({
@@ -42,42 +38,15 @@ export function TicketPage() {
   });
   const currency = brand.data?.currency ?? 'KES';
 
-  // Take the lock, renew it while here, give it back on leaving. If someone else has it, try
-  // again when they leave (ticket.lock with no holder).
-  useEffect(() => {
-    if (isNew) return;
-    let alive = true;
-    let editable = false;
-    const take = async () => {
-      try {
-        const state = await api<LockState>(`/api/pos/tickets/${id}/lock`, { method: 'POST' });
-        if (!alive) return;
-        editable = state.editable;
-        setLock(state);
-      } catch {
-        // Offline: the banner shows; we try again on the next renewal.
-      }
-    };
-    void take();
-    const renew = window.setInterval(() => void take(), lockRenewMs);
-    const off = [
-      onPosEvent('ticket.lock', (payload) => {
-        const event = payload as TableEvent;
-        if (event.ticketId === id && !event.terminalId && !editable) void take();
-      }),
+  const lock = useTicketLock(isNew ? null : id);
+  useEffect(
+    () =>
       onPosEvent('ticket.changed', (payload) => {
         if ((payload as TableEvent).ticketId === id)
           void queries.invalidateQueries({ queryKey: ['ticket', id] });
       }),
-    ];
-    return () => {
-      alive = false;
-      window.clearInterval(renew);
-      off.forEach((unsubscribe) => unsubscribe());
-      if (editable)
-        void api(`/api/pos/tickets/${id}/lock`, { method: 'DELETE' }).catch(() => undefined);
-    };
-  }, [id, isNew, queries]);
+    [id, queries],
+  );
 
   const map = queries.getQueryData<TableMap>(tableMapKey);
   const tableName =
@@ -157,8 +126,6 @@ export function TicketPage() {
           )}
           <p className="map-empty">{t('pos.ticket.placeholder')}</p>
         </section>
-        {/* TEMPORARY: the read-only menu check moves here until the order screen (Task 6) replaces it. */}
-        <TestMenu />
       </main>
     </div>
   );

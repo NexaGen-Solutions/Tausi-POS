@@ -53,11 +53,13 @@ export function apiUrl(path: string): string {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
   /** Set when the caller retries a write itself, so the server sees the same request. */
   idempotencyKey?: string;
+  /** Let the request finish while the page unloads (e.g. giving back a ticket's edit lock). */
+  keepalive?: boolean;
 }
 
 /**
@@ -126,6 +128,7 @@ async function send(
       body,
       credentials: 'same-origin',
       signal: options.signal,
+      keepalive: options.keepalive,
     });
     updateConnection({ apiReachable: response.status !== 502 && response.status !== 503 });
     return response;
