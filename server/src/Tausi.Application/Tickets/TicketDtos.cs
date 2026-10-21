@@ -16,7 +16,9 @@ public sealed record TicketSummaryDto(
     DateTimeOffset LastActivityAt,
     bool Mine,
     LockDto? Lock,
-    int NewLines = 0);
+    int NewLines = 0,
+    decimal Paid = 0,
+    decimal? Left = null);
 
 public sealed record AreaDto(Guid Id, string Name, int SortOrder);
 
@@ -91,4 +93,19 @@ public sealed record TicketDetailDto(
     decimal Subtotal = 0,
     decimal DiscountTotal = 0,
     string? DiscountLabel = null,
-    IReadOnlyList<PendingRequestDto>? Pending = null);
+    IReadOnlyList<PendingRequestDto>? Pending = null,
+    IReadOnlyList<PaymentDto>? Payments = null,
+    decimal AmountDue = 0,
+    decimal Rounding = 0,
+    decimal Remaining = 0,
+    long? ReceiptNumber = null,
+    Guid? DefaultBroughtById = null,
+    IReadOnlyList<VatLineDto>? VatLines = null);
+
+/// <summary>"Total includes VAT 16%" with its amount, or "VAT exempt" with the exempt amount, as on the bill.</summary>
+public sealed record VatLineDto(string Label, decimal Amount);
+
+/// <summary>A payment on the settle screen: "M-Pesa SJK3XXXXXX − 1,000", "Cash (edna) − 370".</summary>
+public sealed record PaymentDto(
+    Guid Id, string Type, decimal Amount, decimal? Tendered, decimal? Change, string? MpesaCode, string? CardReference,
+    Guid BroughtById, string BroughtBy, string TakenBy, string Status, DateTimeOffset TakenAt);

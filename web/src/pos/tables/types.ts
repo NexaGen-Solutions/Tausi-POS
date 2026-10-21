@@ -19,6 +19,10 @@ export interface TicketSummary {
   lock: LockInfo | null;
   /** Lines saved but not yet printed. */
   newLines: number;
+  /** Taken so far while settling (pending payments). */
+  paid?: number;
+  /** "Part paid · KSh 370 left": what's left when some of it is paid. */
+  left?: number | null;
 }
 
 export interface Area {
@@ -120,6 +124,29 @@ export interface TicketDetail {
   discountLabel?: string | null;
   /** Ticket-level requests waiting: "Discount pending", "Reprint pending". */
   pending?: PendingRequest[];
+  payments?: Payment[];
+  /** Total after rounding; remaining = amountDue - payments. */
+  amountDue?: number;
+  rounding?: number;
+  remaining?: number;
+  receiptNumber?: number | null;
+  defaultBroughtById?: string | null;
+  vatLines?: { label: string; amount: number }[];
+}
+
+export interface Payment {
+  id: string;
+  type: 'Cash' | 'Mpesa' | 'Card';
+  amount: number;
+  tendered: number | null;
+  change: number | null;
+  mpesaCode: string | null;
+  cardReference: string | null;
+  broughtById: string;
+  broughtBy: string;
+  takenBy: string;
+  status: 'Pending' | 'Final' | 'Removed';
+  takenAt: string;
 }
 
 export interface LockState {

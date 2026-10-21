@@ -39,6 +39,10 @@ export function LiveUpdates() {
         () => void queries.invalidateQueries({ queryKey: ['terminals'] }),
       ),
       onPosEvent('day.opened', () => void queries.invalidateQueries({ queryKey: ['device'] })),
+      onPosEvent('day.closed', () => {
+        void queries.invalidateQueries({ queryKey: ['device'] });
+        void queries.invalidateQueries({ queryKey: ['table-map'] });
+      }),
       onPosEvent('menu.changed', () => void queries.invalidateQueries({ queryKey: ['pos-menu'] })),
       onPosEvent('print.failed', (payload) => {
         const job = payload as PrintFailed;

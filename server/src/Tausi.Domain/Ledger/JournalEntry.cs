@@ -10,6 +10,8 @@ public class JournalEntry : Entity
     public string? SourceId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public Guid? CreatedByUserId { get; set; }
+    /// <summary>The business day the entry belongs to (set for sales).</summary>
+    public Guid? WorkPeriodId { get; set; }
     public List<JournalLine> Lines { get; set; } = [];
 }
 

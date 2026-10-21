@@ -69,7 +69,7 @@ public sealed class PrintJobProcessor(
         var oldStatus = printer.Status;
         try
         {
-            await TransportFor(printer).Send(printer, WithDrawerPulse(printer, job), ct);
+            await TransportFor(printer).Send(printer, job, ct);
             job.MarkSent(clock.GetUtcNow());
             printer.Status = PrinterStatus.Online;
             printer.LastError = null;
@@ -100,21 +100,6 @@ public sealed class PrintJobProcessor(
         await db.SaveChangesAsync(ct);
         if (printer.Status != oldStatus)
             await events.Publish(PosEventNames.PrinterStatus, new { printerId = printer.Id, status = printer.Status.ToString() }, ct);
-    }
-
-    /// <summary>
-    /// A final receipt on a printer set to open the cash drawer gets the drawer pulse at the end.
-    /// Nothing else ever opens the drawer.
-    /// </summary>
-    public static PrintJob WithDrawerPulse(Printer printer, PrintJob job)
-    {
-        if (job.Kind != PrintJobKind.Receipt || !printer.OpenDrawerOnReceipt) return job;
-        return new PrintJob
-        {
-            Id = job.Id, PrinterId = job.PrinterId, Kind = job.Kind, TicketId = job.TicketId,
-            Content = [.. job.Content, .. ReceiptBuilder.DrawerPulse],
-            TextPreview = job.TextPreview + "[open cash drawer]" + Environment.NewLine,
-        };
     }
 
     private IPrinterTransport TransportFor(Printer printer)

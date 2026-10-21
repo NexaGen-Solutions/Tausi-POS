@@ -665,7 +665,7 @@ describe('order screen', () => {
     const router = await open();
 
     await user.click(await screen.findByRole('button', { name: 'Settle' }));
-    expect(router.state.location.pathname).toBe('/pos/settle/k1');
+    expect(router.state.location.pathname).toBe('/pos/ticket/k1/settle');
   });
 
   // ---- Voids, gifts, discounts, price changes and approvals ----

@@ -193,6 +193,23 @@ Each entry: date, decision, reason.
 | 2026-10-21 | The **Approvals** button shows for users Allowed to void, gift, discount, change prices or reprint, and for anyone with a request waiting for them. Move and merge alone don't count: waiters are Allowed to move by default, so the button would sit on every waiter's screen. They can still decide move requests (the rule is unchanged). | Less noise on the waiters' screens. |
 | 2026-10-21 | The temporary `/api/dev/void-probe` is removed; its tests now use the real void endpoint. | As planned in Task 1. |
 
+## Settle (task 8)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-21 | Rounding uses the existing business setting `rounding` (BusinessSettings.Rounding): `NearestOne` is the prompt's "NearestShilling" and the default, `None` is exact; `NearestFive` and `NearestTen` stay available. No separate `money.rounding` key. | One setting, already in the settings screen's model. |
+| 2026-10-21 | The rounding is kept on the ticket (`RoundingAmount`, due − total) and worked out again whenever payments are added; the ledger credits Rounding when the customer pays more and debits it when less. | The entry balances to the cent. |
+| 2026-10-21 | Receipt numbers come from their own database sequence (`ReceiptNumbers`, starting at 1), assigned only at completion, with a unique index. | Never reused, even when settled in parallel (tested on both providers). |
+| 2026-10-21 | The M-Pesa code's uniqueness is a unique index over all payments (removed ones included), filtered to non-null on SQL Server. The error names the ticket, table and the business-time it was first used. | "Used once, ever." |
+| 2026-10-21 | `ticket.settle` can't be approved: the permission service treats NeedsApproval as NotAllowed for it, and the UI shows Settle only for Allowed. | A waiter can never settle, even with a supervisor's PIN. |
+| 2026-10-21 | "Brought by" lists staff logged in now or who logged in during this work period, the ticket's opener first ("edna (waiter on Table 7)"). | The prompt's list. |
+| 2026-10-21 | The receipt prints one line per payment ("M-Pesa SJK3ABC123 1,000", "Cash 500 · Change 130 370", "Card · ref 1234 1,370"), and under "Served by edna" one line per payment type and person ("Cash brought by edna"). The drawer pulse goes at the start of the receipt. | What the cashier and the owner need to read back. |
+| 2026-10-21 | A ticket with nothing to pay (everything gifted) can be settled; it gets a receipt but posts no journal entry. A terminal without a receipt printer still settles (nothing prints); the reprint then says so. | Print failures never undo a business action. |
+| 2026-10-21 | Reprint receipt uses the approval pad with the PIN only: an approval request for "Reprint" reprints the bill, not the receipt. | Kept the request kinds as Task 7 built them. |
+| 2026-10-21 | The close-work-period use case (`CloseWorkPeriod`) is in place; the development `close-day` command uses it. Task 9 adds its screen and endpoint with the cash-up. Its refusal lists the open tickets (`openTickets` in the problem details). A `day.closed` event tells terminals. | The owner's rule (option A) in one place. |
+| 2026-10-21 | `seed --demo` opens a demo day when none is open and moves open tickets left in a closed day into it. The test fixtures don't open a day. | The old closed demo day is gone; demo tickets always belong to an open day. |
+| 2026-10-21 | Journal entries record their work period (`WorkPeriodId`). | The prompt: the entry records the cashier and the work period. |
+
 ## Follow-ups
 
 - **Powered-by footer toggle:** add `print.poweredByFooter` to Settings → Printing when that screen is built (it is set in the settings JSON until then).
@@ -212,16 +229,22 @@ Each entry: date, decision, reason.
 - **Remove the `close-day` development command** when cash-up closes days.
 - **CI runner image:** GitHub notes that `ubuntu-latest` moves to Ubuntu 26 from 19 Oct 2026; pin `ubuntu-24.04` if that causes trouble.
 - **Close the day:** `WorkPeriod` has the closing fields; closing comes with cash-up.
-- **Logout after settle:** `pos.logoutAfterSettle` exists but is not acted on until settle is built.
 - **Default option in the admin menu:** let Menu → Modifiers set an option's `IsDefault` (seeded only for now).
 - **Printing mode setting:** add `printMode` to Settings → Printing when that screen is built (set in the settings JSON until then).
 - **Logout from the order screen:** if a logout is added there, it should run the same leave check.
 - **Draft ticket note:** allow a note before the first item if waiters ask for it.
 - **Time zone in Settings:** add `timeZone` to the settings screen when it is built (set through the settings API until then).
 - **On-screen times:** the terminal and admin screens show times in the browser's time zone; format them in the business's zone if a terminal's clock is ever set differently.
-- **Settle (Task 8):** call `SettleChecks.EnsureNoPendingRequests` before settling, and expire the ticket's pending requests when it closes (the sweeper also does within seconds).
 - **Stock (Task 11):** use `VoidLog.WasPoured` (poured voids still use stock) and `GiftLog` (gifts count as sold).
 - **Ledger and ERPNext (Task 8+):** post discounts from each line's `Discount` share; gifts at 0 with their `UnitPrice` kept for reports.
 - **Approvals on the admin site:** decide requests from the admin site too, if supervisors work there.
 - **Approval sound setting:** let a business switch the chime off or choose its volume.
+- **Refunds** of a settled ticket, with approval, a refund slip and a reversing journal entry.
+- **Un-settling** a ticket settled by mistake.
+- **M-Pesa till confirmation** through the Daraja API.
+- **Card terminal integration.**
+- **Tips.**
+- **Close-day screen (Task 9):** call `CloseWorkPeriod` from the cash-up screen and show its list of open tickets with close-empty for zero-total ones.
+- **Cost of sales (Task 11):** `SalePosting.CostOfSales` is where stock and cost of sales are posted.
+- **Receipt reprint by request:** add an approval kind for it if cashiers ever need a supervisor elsewhere.
 

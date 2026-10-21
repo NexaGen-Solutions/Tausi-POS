@@ -8,6 +8,25 @@ public sealed class TicketDatabase(TausiDbContext db) : ITicketDatabase
 {
     private string Provider => db.Database.ProviderName ?? "";
 
+    public async Task<long> NextReceiptNumber(CancellationToken ct)
+    {
+        if (await FromSequence(TausiDbContext.ReceiptNumberSequence, ct) is { } next) return next;
+        // SQLite (unit tests only), as for ticket numbers.
+        var last = await db.Tickets.MaxAsync(t => t.ReceiptNumber, ct);
+        var pending = db.ChangeTracker.Entries<Domain.Service.Ticket>().Select(e => e.Entity.ReceiptNumber ?? 0).DefaultIfEmpty(0).Max();
+        return Math.Max(Math.Max(last ?? TausiDbContext.FirstReceiptNumber - 1, pending) + 1, TausiDbContext.FirstReceiptNumber);
+    }
+
+    private async Task<long?> FromSequence(string sequence, CancellationToken ct)
+    {
+        // The sequence names are our own constants, never input.
+        string? sql = null;
+        if (Provider.Contains("Npgsql", StringComparison.Ordinal)) sql = "SELECT nextval('\"" + sequence + "\"') AS \"Value\"";
+        else if (Provider.Contains("SqlServer", StringComparison.Ordinal)) sql = "SELECT NEXT VALUE FOR [" + sequence + "] AS [Value]";
+        if (sql is null) return null;
+        return (await db.Database.SqlQueryRaw<long>(sql).ToListAsync(ct)).Single();
+    }
+
     public async Task<long> NextNumber(CancellationToken ct)
     {
         // Run as written: composing (e.g. SingleAsync) would wrap it in a subquery, where SQL Server

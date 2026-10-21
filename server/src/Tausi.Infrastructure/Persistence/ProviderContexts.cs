@@ -10,6 +10,7 @@ public sealed class PostgresTausiDbContext(DbContextOptions<PostgresTausiDbConte
     protected override string? ActiveUserFilter => "\"Active\"";
     protected override string? OpenWorkPeriodFilter => "\"IsOpen\"";
     protected override string? DefaultPriceListFilter => "\"IsDefault\"";
+    protected override string? NotNullFilter(string column) => $"\"{column}\" IS NOT NULL";
     protected override bool HasSequences => true;
 
     protected override void OnModelCreating(ModelBuilder m)
@@ -26,5 +27,6 @@ public sealed class SqlServerTausiDbContext(DbContextOptions<SqlServerTausiDbCon
     protected override string? ActiveUserFilter => "[Active] = 1";
     protected override string? OpenWorkPeriodFilter => "[IsOpen] = 1";
     protected override string? DefaultPriceListFilter => "[IsDefault] = 1";
+    protected override string? NotNullFilter(string column) => $"[{column}] IS NOT NULL";
     protected override bool HasSequences => true;
 }

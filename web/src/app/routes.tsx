@@ -13,7 +13,8 @@ import { RequireSession } from '../pos/RequireSession';
 import { SetupPage } from '../pos/SetupPage';
 import { MySalesPage } from '../pos/MySalesPage';
 import { TablesPage } from '../pos/tables/TablesPage';
-import { OrderPage, SettlePlaceholder } from '../pos/order/OrderPage';
+import { OrderPage } from '../pos/order/OrderPage';
+import { SettlePage } from '../pos/settle/SettlePage';
 import { ApprovalsPage } from '../pos/approvals/ApprovalsPage';
 import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { t } from '../shared/i18n/i18n';
@@ -62,10 +63,10 @@ export const routes: RouteObject[] = [
         ),
       },
       {
-        path: 'settle/:id',
+        path: 'ticket/:id/settle',
         element: (
           <RequireSession>
-            <SettlePlaceholder />
+            <SettlePage />
           </RequireSession>
         ),
       },

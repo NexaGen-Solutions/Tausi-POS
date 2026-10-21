@@ -50,6 +50,7 @@ public interface ITausiDb
     DbSet<VoidLog> VoidLogs { get; }
     DbSet<GiftLog> GiftLogs { get; }
     DbSet<DiscountLog> DiscountLogs { get; }
+    DbSet<Payment> Payments { get; }
 
     DatabaseFacade Database { get; }
 

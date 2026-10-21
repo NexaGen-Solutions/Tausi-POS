@@ -195,18 +195,10 @@ public class PrintJobActionsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_drawer_pulse_goes_only_on_final_receipts_and_only_when_enabled()
+    public void The_drawer_pulse_is_esc_p_on_pin_2()
     {
-        var printer = new Printer { Name = "P", OpenDrawerOnReceipt = true };
-        var receipt = new PrintJob { Kind = PrintJobKind.Receipt, Content = [9] };
-        var bill = new PrintJob { Kind = PrintJobKind.Bill, Content = [9] };
-
-        PrintJobProcessor.WithDrawerPulse(printer, receipt).Content.Should().Equal([9, .. ReceiptBuilder.DrawerPulse]);
-        PrintJobProcessor.WithDrawerPulse(printer, bill).Content.Should().Equal(9);
-        printer.OpenDrawerOnReceipt = false;
-        PrintJobProcessor.WithDrawerPulse(printer, receipt).Content.Should().Equal(9);
+        // When it is sent (cash receipts on printers with it on) is tested with settling.
         ReceiptBuilder.DrawerPulse.Should().Equal(0x1B, 0x70, 0x00, 0x19, 0xFA);
-        await Task.CompletedTask;
     }
 
     private sealed class RecordingTransport : IPrinterTransport

@@ -114,7 +114,8 @@
       "colTotal": "Total",
       "colAge": "Age",
       "area": "{area}",
-      "notPrinted": "{count} not printed"
+      "notPrinted": "{count} not printed",
+      "partPaid": "Part paid · KSh {left} left"
     },
     "ticket": {
       "newTicket": "New ticket",
@@ -164,7 +165,6 @@
       "reprintNeedsSupervisor": "Reprint needs a supervisor",
       "settle": "Settle",
       "settleCashierOnly": "Settle: cashier only",
-      "settleComing": "Settling comes with the settle screen.",
       "backToTicket": "Back to the ticket",
       "helper": "Print: the customer's bill with every item first, then a slip with only the new items to {to}.",
       "helperSend": "Send: a slip with only the new items to {to}. Print bill prints the customer's bill.",
@@ -256,6 +256,48 @@
         "Move": "Move pending",
         "Merge": "Merge pending"
       }
+    },
+    "settled": {
+      "title": "Settled",
+      "none": "Nothing has been settled today yet.",
+      "receipt": "Receipt {number}",
+      "reprint": "Reprint receipt",
+      "reprinted": "Receipt {number} copy printed."
+    },
+    "settle": {
+      "title": "Settle · {where} · #{number}",
+      "bill": "Bill · all items",
+      "gift": "GIFT",
+      "rounding": "Rounding",
+      "payments": "Payments",
+      "remaining": "Remaining",
+      "paid": "Paid",
+      "payment": "Payment",
+      "paymentType": "Payment type",
+      "type": {
+        "Cash": "Cash",
+        "Mpesa": "M-Pesa",
+        "Card": "Card"
+      },
+      "cashFor": "Cash for the remaining {amount}",
+      "cashBroughtBy": "Cash brought by",
+      "broughtBy": "Brought by",
+      "waiterOn": "{name} (waiter on {where})",
+      "cashReceived": "Cash received",
+      "change": "Change",
+      "addCash": "Add cash payment",
+      "mpesaCode": "M-Pesa code from the SMS",
+      "amount": "Amount",
+      "addMpesa": "Add M-Pesa payment",
+      "mpesaNote": "A code already used on another bill is rejected.",
+      "cardReference": "Reference (optional)",
+      "addCard": "Add card payment",
+      "remove": "Remove {what} {amount}",
+      "receiptNote": "The receipt lists every item on the ticket, with the business name and logo from Settings.",
+      "complete": "Complete and print receipt",
+      "giveChange": "Give change",
+      "done": "Receipt {number} printed.",
+      "printThenSettle": "Print, then settle"
     }
   },
   "approval": {

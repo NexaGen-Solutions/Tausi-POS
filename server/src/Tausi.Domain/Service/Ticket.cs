@@ -64,7 +64,30 @@ public class Ticket : VersionedEntity
     /// <summary>"Regular customer", "Promotion", "Compensation" or "Other: …", printed on the bill.</summary>
     public string? DiscountReason { get; set; }
 
+    /// <summary>Set when settled: who, where and the receipt number (a global sequence of its own).</summary>
+    public DateTimeOffset? SettledAt { get; set; }
+    public Guid? SettledByUserId { get; set; }
+    public Guid? SettledTerminalId { get; set; }
+    public long? ReceiptNumber { get; set; }
+
+    /// <summary>
+    /// Due minus total under the rounding setting (e.g. -0.40 when 1,370.40 is due as 1,370). Kept
+    /// up to date while settling, and final when settled.
+    /// </summary>
+    public decimal RoundingAmount { get; set; }
+
     public List<OrderLine> Lines { get; set; } = [];
+    public List<Payment> Payments { get; set; } = [];
+
+    /// <summary>What the customer pays: the total after rounding.</summary>
+    public decimal AmountDue => Total + RoundingAmount;
+
+    public decimal Paid => Payments.Where(p => p.Counts).Sum(p => p.Amount);
+
+    public decimal Remaining => AmountDue - Paid;
+
+    /// <summary>Works out <see cref="RoundingAmount"/> from the current total and the business's rounding rule.</summary>
+    public void ApplyRounding(Money.RoundingRule rule) => RoundingAmount = Money.CashRounding.Apply(Total, rule).Difference;
 
     public bool IsOpen => Status == TicketStatus.Open;
 

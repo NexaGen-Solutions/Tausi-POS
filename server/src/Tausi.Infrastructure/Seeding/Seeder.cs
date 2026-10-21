@@ -78,7 +78,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
     /// <summary>Mau's Village is in Kenya.</summary>
     public const string DemoTimeZone = "Africa/Nairobi";
 
-    public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false)
+    public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false, bool openDemoDay = false)
     {
         await SeedBase(ct);
 
@@ -154,7 +154,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         await SeedDemoMenu(ct);
         await SeedDemoTemperature(ct);
         await SeedDemoTables(ct);
-        await SeedDemoTickets(ct);
+        await SeedDemoTickets(ct, openDemoDay);
         return created;
     }
 
@@ -177,11 +177,12 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
 
     /// <summary>
     /// A few open tickets with lines, so the demo map shows occupied tables, totals, two tickets on
-    /// Table 7 (to try merging) and an idle table. Only while a day is open (they belong to it).
+    /// Table 7 (to try merging) and an idle table. They belong to the open day (one is opened if needed).
     /// Run again, it adds only the ones that are missing: a demo ticket counts as there when its
     /// waiter already has that many open tickets on its table.
     /// </summary>
-    public async Task<bool> SeedDemoTickets(CancellationToken ct)
+    /// <param name="openDayIfNeeded">Open a demo day when none is open (the <c>seed --demo</c> command); otherwise add nothing then.</param>
+    public async Task<bool> SeedDemoTickets(CancellationToken ct, bool openDayIfNeeded = false)
     {
         var tables = await db.Tables.ToDictionaryAsync(t => t.Name, ct);
         var users = await db.Users.ToDictionaryAsync(u => u.Name, ct);
@@ -191,9 +192,21 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         if (tables.Count == 0 || items.Count == 0 || !terminals.ContainsKey("Counter A")) return false;
 
         var now = DateTimeOffset.UtcNow;
-        // A day only closes with no open tickets, so demo tickets go into the open day, or not at all.
+        // A day only closes with no open tickets, so demo tickets belong to the open day: the seed
+        // opens a demo day when none is open.
         var day = await db.WorkPeriods.FirstOrDefaultAsync(w => w.IsOpen, ct);
-        if (day is null) return false;
+        if (day is null && !openDayIfNeeded) return false;
+        if (day is null)
+        {
+            var opener = users.GetValueOrDefault("MAU") ?? users.GetValueOrDefault("Administrator");
+            if (opener is null) return false;
+            day = new WorkPeriod { OpenedAt = now.AddHours(-2), OpenedByUserId = opener.Id };
+            db.WorkPeriods.Add(day);
+            await db.SaveChangesAsync(ct);
+        }
+        // Earlier seeds left open tickets in a day that was closed again: they belong to this one now.
+        await db.Tickets.Where(k => k.Status == TicketStatus.Open && k.WorkPeriodId != day.Id)
+            .ExecuteUpdateAsync(u => u.SetProperty(k => k.WorkPeriodId, day.Id), ct);
 
         var demo = new (string Table, string Waiter, string Terminal, int MinutesAgo, int IdleMinutes, (string Item, int Qty)[] Lines)[]
         {

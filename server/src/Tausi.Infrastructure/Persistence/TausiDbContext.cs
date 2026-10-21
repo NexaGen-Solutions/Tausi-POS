@@ -56,6 +56,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
     public DbSet<VoidLog> VoidLogs => Set<VoidLog>();
     public DbSet<GiftLog> GiftLogs => Set<GiftLog>();
     public DbSet<DiscountLog> DiscountLogs => Set<DiscountLog>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -74,6 +75,13 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
 
     /// <summary>Filter for the "one default price list" index; the SQL differs per provider.</summary>
     protected virtual string? DefaultPriceListFilter => null;
+
+    /// <summary>A unique index over a nullable column: SQL Server needs "IS NOT NULL" to allow many nulls.</summary>
+    protected virtual string? NotNullFilter(string column) => null;
+
+    /// <summary>The database sequence for receipt numbers: global, never reused, separate from ticket numbers.</summary>
+    public const string ReceiptNumberSequence = "ReceiptNumbers";
+    public const long FirstReceiptNumber = 1;
 
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {
@@ -335,7 +343,10 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
         });
 
         if (HasSequences)
+        {
             m.HasSequence<long>(TicketNumberSequence).StartsAt(FirstTicketNumber).IncrementsBy(1);
+            m.HasSequence<long>(ReceiptNumberSequence).StartsAt(FirstReceiptNumber).IncrementsBy(1);
+        }
 
         m.Entity<Ticket>(e =>
         {
@@ -346,6 +357,12 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.Ignore(x => x.IsOpen);
             e.Ignore(x => x.Total);
             e.Ignore(x => x.Subtotal);
+            e.Ignore(x => x.AmountDue);
+            e.Ignore(x => x.Paid);
+            e.Ignore(x => x.Remaining);
+            var receipt = e.HasIndex(x => x.ReceiptNumber).IsUnique();
+            if (NotNullFilter(nameof(Ticket.ReceiptNumber)) is { } receiptFilter) receipt.HasFilter(receiptFilter);
+            e.HasMany(x => x.Payments).WithOne().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Restrict);
             e.Ignore(x => x.DiscountTotal);
             e.Ignore(x => x.DiscountableLines);
             e.Ignore(x => x.NewLineCount);
@@ -379,6 +396,24 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.HasOne<User>().WithMany().HasForeignKey(x => x.AddedByUserId).OnDelete(DeleteBehavior.Restrict).IsRequired();
             e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.AddedTerminalId).OnDelete(DeleteBehavior.Restrict).IsRequired();
             e.HasOne<MenuItem>().WithMany().HasForeignKey(x => x.MenuItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<Payment>(e =>
+        {
+            e.Property(x => x.MpesaCode).HasMaxLength(Payment.MpesaCodeLength);
+            e.Property(x => x.CardReference).HasMaxLength(Payment.MaxReferenceLength);
+            e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Ignore(x => x.Counts);
+            // An M-Pesa code is used once, ever (removed payments included).
+            var code = e.HasIndex(x => x.MpesaCode).IsUnique();
+            if (NotNullFilter(nameof(Payment.MpesaCode)) is { } codeFilter) code.HasFilter(codeFilter);
+            e.HasIndex(x => new { x.TicketId, x.Status });
+            e.HasIndex(x => x.WorkPeriodId);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.TakenByUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.BroughtByUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<WorkPeriod>().WithMany().HasForeignKey(x => x.WorkPeriodId).OnDelete(DeleteBehavior.Restrict);
         });
 
         m.Entity<ApprovalRequest>(e =>

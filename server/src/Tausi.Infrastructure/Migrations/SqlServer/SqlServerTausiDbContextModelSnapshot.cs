@@ -22,6 +22,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence("ReceiptNumbers");
+
             modelBuilder.HasSequence("TicketNumbers")
                 .StartsAt(1001L);
 
@@ -278,6 +280,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("WorkPeriodId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -1449,6 +1454,85 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.ToTable("OrderLines");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Service.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("BroughtByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CardReference")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<decimal?>("Change")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("MpesaCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("RemovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset>("TakenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("TakenByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("Tendered")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("WorkPeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BroughtByUserId");
+
+                    b.HasIndex("MpesaCode")
+                        .IsUnique()
+                        .HasFilter("[MpesaCode] IS NOT NULL");
+
+                    b.HasIndex("TakenByUserId");
+
+                    b.HasIndex("TerminalId");
+
+                    b.HasIndex("WorkPeriodId");
+
+                    b.HasIndex("TicketId", "Status");
+
+                    b.ToTable("Payments");
+                });
+
             modelBuilder.Entity("Tausi.Domain.Service.Ticket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1515,9 +1599,25 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<int>("PrintRound")
                         .HasColumnType("int");
 
+                    b.Property<long?>("ReceiptNumber")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("RoundingAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("SettledAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("SettledByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SettledTerminalId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1541,6 +1641,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsUnique();
 
                     b.HasIndex("OpenedByUserId");
+
+                    b.HasIndex("ReceiptNumber")
+                        .IsUnique()
+                        .HasFilter("[ReceiptNumber] IS NOT NULL");
 
                     b.HasIndex("TableId");
 
@@ -1964,6 +2068,39 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Service.Payment", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("BroughtByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("TakenByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Devices.Terminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.Ticket", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.WorkPeriod", null)
+                        .WithMany()
+                        .HasForeignKey("WorkPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Tausi.Domain.Service.Ticket", b =>
                 {
                     b.HasOne("Tausi.Domain.Service.Ticket", null)
@@ -2020,6 +2157,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
             modelBuilder.Entity("Tausi.Domain.Service.Ticket", b =>
                 {
                     b.Navigation("Lines");
+
+                    b.Navigation("Payments");
                 });
 #pragma warning restore 612, 618
         }

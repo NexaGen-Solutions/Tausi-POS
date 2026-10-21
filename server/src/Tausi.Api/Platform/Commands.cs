@@ -58,7 +58,7 @@ public static class Commands
         await using var scope = scopes.CreateAsyncScope();
         var created = await scope.ServiceProvider.GetRequiredService<Seeder>()
             .SeedDemo(Seeder.AdminPasswordFromEnvironment(), CancellationToken.None,
-                filePrinters: app.Environment.IsDevelopment());
+                filePrinters: app.Environment.IsDevelopment(), openDemoDay: true);
 
         if (created.Count == 0)
         {
@@ -100,21 +100,18 @@ public static class Commands
             return;
         }
         await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+        // The same rule as closing on a terminal: refused while any ticket is open (part-paid ones too).
         try
         {
-            await Tausi.Application.Day.DayClosing.EnsureNoOpenTickets(db, CancellationToken.None);
+            var closed = await scope.ServiceProvider.GetRequiredService<Tausi.Application.Day.CloseWorkPeriod>()
+                .Close(null, null, null, CancellationToken.None);
+            Console.WriteLine(closed ? "The day is closed." : "No day was open.");
         }
-        catch (Tausi.Application.Common.ConflictException e)
+        catch (Tausi.Application.Day.OpenTicketsException e)
         {
             Console.WriteLine(e.Message);
             Environment.ExitCode = 1;
-            return;
         }
-        var closed = await db.WorkPeriods.Where(w => w.IsOpen).ExecuteUpdateAsync(u => u
-            .SetProperty(w => w.IsOpen, false)
-            .SetProperty(w => w.ClosedAt, DateTimeOffset.UtcNow));
-        Console.WriteLine(closed == 1 ? "The day is closed." : "No day was open.");
     }
 
     private static async Task RequirePinChange(WebApplication app, string? name)

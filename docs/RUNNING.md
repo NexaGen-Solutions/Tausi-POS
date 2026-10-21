@@ -139,12 +139,10 @@ Role ids are in `GET /api/admin/staff` (`roleId`, `assignableRoles`).
 
 ### Table map and tickets
 
-`seed --demo` adds Mau's layout (tables 1–16 in Main, Pool 1–2, Bar 1–2). A day can't close while
-tickets are open, so demo tickets only go into an open day:
-
-1. On a fresh database the map shows "The day isn't open yet". Log in as MAU and press **Open day**.
-2. Run `seed --demo` again: it adds a few open tickets to that day (two on Table 7, one idle on
-   Table 5 with no activity for 48 minutes, and others). The map shows them at once.
+`seed --demo` adds Mau's layout (tables 1–16 in Main, Pool 1–2, Bar 1–2) and a few open tickets
+(two on Table 7, one idle on Table 5 with no activity for 48 minutes, and others). A day can't
+close while tickets are open, so the demo tickets belong to the open day: the seed opens a demo
+day when none is open. Running it again adds only the tickets that are missing.
 
 - **Tap** a table to see its tickets on the right; **tap twice** to open it (a free table opens a
   new draft, a table with one ticket opens that ticket) in the order screen (below).
@@ -164,8 +162,10 @@ tickets are open, so demo tickets only go into an open day:
 - **Admin site → Tables** lists areas and tables, with **Quick add** ("from 1 to 16 in Main", with
   an optional name before the number such as Pool). A table with open tickets can't be switched off.
 
-To get back to "no open day" in development (closing days properly comes with the cash-up). Like
-the cash-up will, it refuses while tickets are open and lists them:
+To close the day in development (the close screen comes with the cash-up). It uses the same rule
+as the cash-up will: it refuses while any ticket is open or part paid, and lists them with table,
+waiter and total. Tickets emptied by voids are closed first with `POST /api/pos/tickets/{id}/close-empty`
+(needs `day.open_close`):
 
 ```bash
 dotnet run --project src/Tausi.Api -- close-day
@@ -237,6 +237,30 @@ and as **MAU** (supervisor) on Counter B. Open a table on Pillar 1, add 2 Tusker
 - **Reprint, Move and Merge** needing approval open the approval pad with **Send request** too.
 - A request not decided within `pos.approvalExpiryMinutes` (30) expires. To try it quickly, set
   it in the settings JSON as for idle logout above: `{"pos":{…,"approvalExpiryMinutes":1}}`.
+
+### Settling (cashier only)
+
+Log in as **edna** on one terminal, order on Table 7 and press **Print**. Log in as **CAROL**
+(Cashier) on another, open Table 7 and press **Settle**.
+
+- **M-Pesa:** type the code from the SMS (it's upper-cased), the amount (defaults to what's left)
+  and **Add M-Pesa payment**. A code used before, on any ticket, is refused with where and when.
+- **Cash:** tap a quick amount (the exact remainder, then round amounts) or type it, check
+  **Cash brought by** (the table's waiter by default) and **Add cash payment**. **Change** shows in
+  large text. Payments are saved at once; **×** removes a pending one.
+- **Complete and print receipt** is enabled when Remaining is 0. With change to give, it asks
+  first ("Give change: KSh 130"). The receipt (`RECEIPT No. 1 · Ticket #…`) prints on the
+  terminal's receipt printer; `print-output/` shows it with `[open drawer]` when the printer has
+  **Open cash drawer on receipt** on (admin site → Terminals and printers → Edit printer) and
+  cash was taken. The table is free on every map, and the sale is posted to the ledger.
+- Items not printed yet block settling; **Print, then settle** prints them first. A pending
+  void (or other) request blocks it too ("Waiting for MAU to approve a void on Guiness").
+- Leave a ticket part paid: its tile says "Part paid · KSh 370 left", and `close-day` refuses.
+- The **Settled** tab (cashiers) lists today's receipts with **Reprint receipt** (prints COPY).
+- Totals round to the nearest shilling (`rounding` in the business settings: `NearestOne`, or
+  `None`); the difference shows as "Rounding" and is posted to the Rounding account.
+- To check the ledger: `SELECT a."Code", l."Debit", l."Credit" FROM "JournalLines" l JOIN
+  "LedgerAccounts" a ON a."Id" = l."AccountId" ORDER BY l."JournalEntryId";` on PostgreSQL.
 
 ### Admin site
 

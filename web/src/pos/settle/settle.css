@@ -1,0 +1,227 @@
+/* Wireframe 7: settle (cashier only) */
+.settle-screen {
+  height: 100vh;
+  min-height: 0;
+}
+.settle-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 390px minmax(0, 1fr);
+  gap: var(--space-5);
+  min-height: 0;
+  padding: var(--space-5);
+}
+.settle-bill,
+.settle-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.settle-heading {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.settle-lines {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.settle-line,
+.settle-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+}
+.settle-amount {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.settle-gift {
+  color: var(--color-selected);
+  font-size: 13px;
+  font-weight: 600;
+}
+.settle-totals {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.settle-row--small {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.settle-row--total {
+  font-weight: 600;
+}
+.settle-total {
+  font-family: var(--font-mono);
+  font-size: 30px;
+}
+.settle-payments {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.settle-remove {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  margin-left: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-panel);
+  font: inherit;
+  cursor: pointer;
+}
+.settle-remaining {
+  color: var(--color-warning-text);
+  font-size: 18px;
+  font-weight: 600;
+}
+.settle-remaining .settle-amount {
+  font-size: 24px;
+}
+.settle-remaining--paid {
+  color: var(--color-selected);
+}
+.settle-pay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+.settle-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.settle-tab {
+  min-height: 72px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+.settle-tab--on {
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-primary-text);
+  font-weight: 600;
+}
+.settle-form {
+  flex: 1;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+.settle-form__title {
+  margin: 0;
+  font-size: 18px;
+}
+.settle-quick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+.settle-quick__button {
+  min-height: var(--touch-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-ground);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  cursor: pointer;
+}
+.settle-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.settle-field select,
+.settle-field input {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-panel);
+  font: inherit;
+  font-size: 17px;
+}
+.settle-money-input {
+  font-family: var(--font-mono) !important;
+  font-size: 24px !important;
+}
+.settle-change {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 22px;
+  font-weight: 600;
+}
+.settle-change__amount {
+  font-family: var(--font-mono);
+  font-size: 34px;
+}
+.settle-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.settle-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.settle-give-change {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 48px;
+  font-weight: 600;
+  text-align: center;
+}
+.settle-confirm {
+  display: flex;
+  gap: var(--space-2);
+}
+.settle-confirm .nx-btn--primary {
+  flex: 1;
+}
+@media (max-width: 1000px) {
+  .settle-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cash: the fields on the left, the number pad beside them, so Change and Add stay in view. */
+.settle-cash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--space-4);
+}
+.settle-cash__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.settle-cash__pad {
+  align-self: end;
+}
+@media (max-width: 1100px) {
+  .settle-cash {
+    grid-template-columns: 1fr;
+  }
+}

@@ -10,6 +10,7 @@ using Tausi.Application.Events;
 using Tausi.Application.Printing;
 using Tausi.Application.Security;
 using Tausi.Application.Tickets;
+using Tausi.Domain.Common;
 using Tausi.Domain.Service;
 using Tausi.Domain.Settings;
 using Tausi.Infrastructure.Persistence;
@@ -119,45 +120,11 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         Skip.IfNot(sql.Available, Skipped);
         const string name = "tausi_approve";
         var options = sql.Options(name);
-        await using (var db = new SqlServerTausiDbContext(options))
-        {
-            await db.Database.MigrateAsync();
-            await new Seeder(db, new PlainPinHasher(), NullLogger<Seeder>.Instance).SeedDemo("pw", CancellationToken.None, filePrinters: true);
-            db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "MAU").Id });
-            await db.SaveChangesAsync();
-        }
+        await Seeded(name);
 
-        // Each person gets their own service provider (their own session), all on one database.
-        async Task<(ServiceProvider Provider, FixedSession Session)> As(string user, string terminal)
-        {
-            var session = new FixedSession();
-            var services = new ServiceCollection();
-            services.AddApplication();
-            services.AddSingleton(TimeProvider.System);
-            services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(sql.ConnectionFor(name), SqlServerFixture.Slow));
-            services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
-            services.AddScoped<ITausiDb>(sp => sp.GetRequiredService<TausiDbContext>());
-            services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
-            services.AddSingleton<ICurrentSession>(session);
-            services.AddSingleton<IApprovalTokenSource, NoApproval>();
-            services.AddSingleton<IPosEvents, NoEvents>();
-            services.AddSingleton<ILogoProvider, NoLogo>();
-            services.AddSingleton<IPinHasher, PlainPinHasher>();
-            var provider = services.BuildServiceProvider();
-            await using var scope = provider.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
-            var u = await db.Users.Include(x => x.Role).SingleAsync(x => x.Name == user);
-            var t = await db.Terminals.SingleAsync(x => x.Name == terminal);
-            var started = await scope.ServiceProvider.GetRequiredService<SessionKeeper>().Start(u.Id, t.Id, CancellationToken.None);
-            await db.SaveChangesAsync();
-            session.User = new SessionUser(u.Id, u.Name, u.RoleId, u.Role!.Name, t.Id, t.Name, started.Id);
-            session.Terminal = new DeviceTerminal(t.Id, t.Name);
-            return (provider, session);
-        }
-
-        var (edna, _) = await As("edna", "Counter A");
-        var (mau, _) = await As("MAU", "Counter B");
-        var (admin, _) = await As("Administrator", "Pillar 1");
+        var (edna, _) = await As(name, "edna", "Counter A");
+        var (mau, _) = await As(name, "MAU", "Counter B");
+        var (admin, _) = await As(name, "Administrator", "Pillar 1");
         Guid requestId, ticketId;
         await using (var scope = edna.CreateAsyncScope())
         {
@@ -195,5 +162,101 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         await edna.DisposeAsync();
         await mau.DisposeAsync();
         await admin.DisposeAsync();
+    }
+
+    /// <summary>A database with the demo seed and an open day.</summary>
+    private async Task Seeded(string name)
+    {
+        await using var db = new SqlServerTausiDbContext(sql.Options(name));
+        await db.Database.MigrateAsync();
+        await new Seeder(db, new PlainPinHasher(), NullLogger<Seeder>.Instance).SeedDemo("pw", CancellationToken.None, filePrinters: true);
+        db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "MAU").Id });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Someone logged in on a terminal: their own service provider (their own session), on one database.</summary>
+    private async Task<(ServiceProvider Provider, FixedSession Session)> As(string name, string user, string terminal)
+    {
+        var session = new FixedSession();
+        var services = new ServiceCollection();
+        services.AddApplication();
+        services.AddSingleton(TimeProvider.System);
+        services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(sql.ConnectionFor(name), SqlServerFixture.Slow));
+        services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
+        services.AddScoped<ITausiDb>(sp => sp.GetRequiredService<TausiDbContext>());
+        services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
+        services.AddScoped<Application.Ledger.ILedgerPostingService, Infrastructure.Ledger.LedgerPostingService>();
+        services.AddSingleton<ICurrentSession>(session);
+        services.AddSingleton<IApprovalTokenSource, NoApproval>();
+        services.AddSingleton<IPosEvents, NoEvents>();
+        services.AddSingleton<ILogoProvider, NoLogo>();
+        services.AddSingleton<IPinHasher, PlainPinHasher>();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+        var u = await db.Users.Include(x => x.Role).SingleAsync(x => x.Name == user);
+        var t = await db.Terminals.SingleAsync(x => x.Name == terminal);
+        var started = await scope.ServiceProvider.GetRequiredService<SessionKeeper>().Start(u.Id, t.Id, CancellationToken.None);
+        await db.SaveChangesAsync();
+        session.User = new SessionUser(u.Id, u.Name, u.RoleId, u.Role!.Name, t.Id, t.Name, started.Id);
+        session.Terminal = new DeviceTerminal(t.Id, t.Name);
+        return (provider, session);
+    }
+
+    [SkippableFact]
+    public async Task Receipt_numbers_never_repeat_and_one_ticket_settles_once_on_sql_server()
+    {
+        Skip.IfNot(sql.Available, Skipped);
+        const string name = "tausi_settle";
+        await Seeded(name);
+        var (edna, _) = await As(name, "edna", "Counter A");
+        var (carol, carolSession) = await As(name, "CAROL", "Counter B");
+
+        var ids = new List<Guid>();
+        await using (var scope = edna.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+            var punch = await db.MenuItems.SingleAsync(i => i.Name == "Pineapple Punch");
+            for (var i = 0; i < 4; i++)
+            {
+                var ticket = await scope.ServiceProvider.GetRequiredService<StartTicket>().Execute(
+                    new StartTicketRequest(null, $"T{i}", [new NewLineRequest(punch.Id, 1)]), CancellationToken.None);
+                await scope.ServiceProvider.GetRequiredService<PrintTicket>().Print(ticket.Id, CancellationToken.None);
+                ids.Add(ticket.Id);
+            }
+        }
+        // CAROL opens them all at Counter B and takes a card payment on each.
+        await using (var db = new SqlServerTausiDbContext(sql.Options(name)))
+            await db.Tickets.Where(k => ids.Contains(k.Id)).ExecuteUpdateAsync(u => u
+                .SetProperty(k => k.LockTerminalId, carolSession.User!.TerminalId)
+                .SetProperty(k => k.LockUserId, carolSession.User!.UserId)
+                .SetProperty(k => k.LockSessionId, carolSession.User!.SessionId)
+                .SetProperty(k => k.LockExpiresAt, DateTimeOffset.UtcNow.AddMinutes(5)));
+        foreach (var id in ids)
+        {
+            await using var scope = carol.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<Application.Settling.PaymentCommands>().Add(
+                id, new Application.Settling.AddPaymentRequest(PaymentType.Card, 270m), CancellationToken.None);
+        }
+
+        // All four at once, plus the first one a second time.
+        var results = await Task.WhenAll(ids.Append(ids[0]).Select(async id =>
+        {
+            await using var scope = carol.CreateAsyncScope();
+            try
+            {
+                return (long?)(await scope.ServiceProvider.GetRequiredService<Application.Settling.SettleTicket>().Execute(id, CancellationToken.None)).ReceiptNumber;
+            }
+            catch (DomainException)
+            {
+                return null;
+            }
+        }));
+
+        results.OfType<long>().Should().HaveCount(4).And.OnlyHaveUniqueItems();
+        await using var check = new SqlServerTausiDbContext(sql.Options(name));
+        (await check.JournalEntries.CountAsync(e => ids.Select(i => i.ToString()).Contains(e.SourceId!))).Should().Be(4);
+        await edna.DisposeAsync();
+        await carol.DisposeAsync();
     }
 }

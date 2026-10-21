@@ -423,6 +423,60 @@ describe('table map', () => {
     expect(router.state.location.search).toBe('');
   });
 
+  it('a part-paid table says how much is left on its tile', async () => {
+    map = mapWith([tile('7', 'main', [ticket('k1', 1042, { paid: 1000, left: 370 })])]);
+    await open();
+
+    expect(tileFor('7')).toHaveTextContent('Part paid · KSh 370 left');
+    expect(tileFor('7')).toHaveAccessibleName('7: edna, 1,370, Part paid · KSh 370 left');
+  });
+
+  it("cashiers see today's settled tickets and reprint a receipt with a supervisor's approval", async () => {
+    permissions['ticket.settle'] = 'Allowed';
+    let token: string | null = null;
+    extra = {
+      'GET /api/pos/tickets/settled': () =>
+        json(200, [
+          {
+            id: 'k9',
+            receiptNumber: 2041,
+            number: 1042,
+            where: 'Table 7',
+            total: 1370,
+            paymentTypes: ['Mpesa', 'Cash'],
+            cashier: 'CAROL',
+            settledAt: ago(5),
+          },
+        ]),
+      'POST /api/pos/tickets/k9/receipt/reprint': ({ headers }) => {
+        token = headers.get('X-Approval-Token');
+        return token
+          ? new Response(null, { status: 204 })
+          : json(403, { status: 403, approvalRequired: true, permission: 'ticket.reprint' });
+      },
+      'POST /api/auth/approve': () => json(200, { approvalToken: 'tok-1', approvedByName: 'MAU' }),
+    };
+    await open();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Settled' }));
+    const row = (await screen.findByText('Receipt 2041')).closest('li')!;
+    expect(row).toHaveTextContent('#1042 · Table 7');
+    expect(row).toHaveTextContent('KSh 1,370');
+    expect(row).toHaveTextContent('M-Pesa + Cash');
+    expect(row).toHaveTextContent('CAROL');
+    await userEvent.click(within(row).getByRole('button', { name: 'Reprint receipt' }));
+    await screen.findByRole('dialog', { name: 'Supervisor approval' });
+    await userEvent.keyboard('8014{Enter}');
+
+    expect(await screen.findByText('Receipt 2041 copy printed.')).toBeInTheDocument();
+    expect(token).toBe('tok-1');
+  });
+
+  it('waiters have no Settled tab', async () => {
+    await open();
+    expect(screen.queryByRole('button', { name: 'Settled' })).not.toBeInTheDocument();
+  });
+
   it('a waiter without day.open_close sees the banner without the button', async () => {
     map = mapWith(standardTables(), { dayOpen: false });
     await open();

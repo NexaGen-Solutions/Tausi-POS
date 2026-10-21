@@ -405,10 +405,21 @@ public static class SettleChecks
     {
         var pending = await db.ApprovalRequests.AsNoTracking()
             .Where(r => r.TicketId == ticketId && r.Status == ApprovalStatus.Pending)
-            .Select(r => r.Summary).ToListAsync(ct);
-        if (pending.Count > 0)
-            throw new ConflictException(
-                $"This ticket can't be settled while a request is waiting: {string.Join(", ", pending)}.",
-                ApprovalCodes.RequestsPending);
+            .OrderBy(r => r.RequestedAt)
+            .Select(r => new
+            {
+                r.Kind,
+                r.Summary,
+                To = db.Users.Where(u => u.Id == r.PreferredApproverId).Select(u => u.Name).FirstOrDefault(),
+            })
+            .ToListAsync(ct);
+        if (pending.Count == 0) return;
+        // "Waiting for MAU to approve a void on Guiness" (or "a supervisor" when sent to anyone).
+        var first = pending[0];
+        var on = first.Summary.Contains(" × ") ? first.Summary[(first.Summary.IndexOf(" × ", StringComparison.Ordinal) + 3)..] : null;
+        var what = ApprovalKinds.Noun(first.Kind);
+        var text = $"Waiting for {first.To ?? "a supervisor"} to approve {(what is "void" or "gift" or "price change" ? "a " : "the ")}{what}"
+            + (on is null ? "" : $" on {on}") + (pending.Count > 1 ? $" (and {pending.Count - 1} more)" : "") + ".";
+        throw new ConflictException(text, ApprovalCodes.RequestsPending);
     }
 }

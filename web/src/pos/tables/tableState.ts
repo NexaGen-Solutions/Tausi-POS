@@ -15,6 +15,8 @@ export interface TileState {
   lockedElsewhere: boolean;
   /** Lines added but not printed yet, on all its tickets. */
   notPrinted: number;
+  /** What's left to pay on part-paid tickets, or null when none is part paid. */
+  partPaidLeft: number | null;
 }
 
 /**
@@ -36,6 +38,7 @@ export function tileState(
       idleMinutes: null,
       lockedElsewhere: false,
       notPrinted: 0,
+      partPaidLeft: null,
     };
 
   const total = tickets.reduce((sum, t) => sum + t.total, 0);
@@ -49,9 +52,13 @@ export function tileState(
     (t) => t.lock !== null && t.lock.terminalId !== myTerminalId,
   );
   const notPrinted = tickets.reduce((sum, t) => sum + (t.newLines ?? 0), 0);
+  const partPaid = tickets.filter((t) => t.left != null);
+  const partPaidLeft =
+    partPaid.length > 0 ? partPaid.reduce((sum, t) => sum + (t.left ?? 0), 0) : null;
+  const shared = { total, waiter, lockedElsewhere, notPrinted, partPaidLeft };
   return idle >= idleLimitMinutes
-    ? { kind: 'idle', total, waiter, idleMinutes: idle, lockedElsewhere, notPrinted }
-    : { kind: 'occupied', total, waiter, idleMinutes: null, lockedElsewhere, notPrinted };
+    ? { kind: 'idle', idleMinutes: idle, ...shared }
+    : { kind: 'occupied', idleMinutes: null, ...shared };
 }
 
 /** My tables: at least one open ticket opened by me, or with a line added by me. */
@@ -95,6 +102,8 @@ export function tileLabel(table: TableTile, state: TileState): string {
   const parts = [state.waiter, formatAmount(state.total)];
   if (state.idleMinutes !== null) parts.push(t('pos.map.idle', { minutes: state.idleMinutes }));
   if (state.notPrinted > 0) parts.push(t('pos.map.notPrinted', { count: state.notPrinted }));
+  if (state.partPaidLeft !== null)
+    parts.push(t('pos.map.partPaid', { left: formatAmount(state.partPaidLeft) }));
   if (state.lockedElsewhere) parts.push(t('pos.map.lockedElsewhere'));
   return `${table.name}: ${parts.join(', ')}`;
 }

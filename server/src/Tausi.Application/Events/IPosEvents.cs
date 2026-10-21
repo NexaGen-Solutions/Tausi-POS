@@ -13,6 +13,7 @@ public static class PosEventNames
     public const string MenuChanged = "menu.changed";
     public const string SettingsChanged = "settings.changed";
     public const string DayOpened = "day.opened";
+    public const string DayClosed = "day.closed";
     public const string UserDeactivated = "user.deactivated";
     public const string UserPinReset = "user.pin_reset";
     public const string TerminalStatus = "terminal.status";

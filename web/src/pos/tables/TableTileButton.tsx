@@ -58,6 +58,11 @@ export function TableTileButton({
             {t('pos.map.idle', { minutes: state.idleMinutes })}
           </span>
         )}
+        {state.partPaidLeft !== null && (
+          <span className="map-tile__unprinted">
+            {t('pos.map.partPaid', { left: formatAmount(state.partPaidLeft) })}
+          </span>
+        )}
         {state.notPrinted > 0 && (
           <span className="map-tile__unprinted">
             {t('pos.map.notPrinted', { count: state.notPrinted })}

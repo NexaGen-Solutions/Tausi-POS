@@ -181,6 +181,41 @@ public sealed class TicketPrints(
         return queue.Enqueue(printer, PrintJobKind.Void, Slips.Void(slip, SlipStyle.For(printer, null)), ticket.Id);
     }
 
+    /// <summary>
+    /// The final receipt on this terminal's receipt printer (COPY for a reprint). The cash drawer
+    /// opens with it when the printer has "open cash drawer on receipt" on and cash was taken,
+    /// never for a copy. Without a usable printer nothing prints and null comes back.
+    /// </summary>
+    public async Task<PrintJob?> Receipt(Ticket ticket, Guid terminalId, bool copy, CancellationToken ct)
+    {
+        var terminal = await TerminalWithPrinters(terminalId, ct);
+        if (terminal.ReceiptPrinter is not { Active: true } printer) return null;
+        var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct) ?? new BusinessSettings();
+        var settings = PrintSettings.From(business.OtherJson);
+        var logo = settings.LogoOnBill ? await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct) : null;
+        var payments = ticket.Payments.Where(p => p.Status == PaymentStatus.Final).OrderBy(p => p.TakenAt).ToList();
+        var names = new Dictionary<Guid, string>();
+        async Task<string> Name(Guid id) => names.TryGetValue(id, out var n) ? n : names[id] = await UserName(id, ct);
+
+        // One query at a time: the context isn't safe for parallel use.
+        var receiptPayments = new List<ReceiptPayment>();
+        foreach (var p in payments)
+            receiptPayments.Add(new ReceiptPayment(
+                p.Type == PaymentType.Mpesa ? "M-Pesa" : p.Type.ToString(), p.Amount, p.Tendered, p.Change,
+                p.Type == PaymentType.Mpesa ? p.MpesaCode : p.CardReference, await Name(p.BroughtByUserId)));
+        var slip = new ReceiptSlip(
+            new BusinessInfo(business.Name, business.Address, business.Phone, business.ReceiptFooter),
+            ticket.ReceiptNumber ?? 0, ticket.Number, copy, Where(ticket), await Name(ticket.OpenedByUserId),
+            ticket.SettledByUserId is { } cashier ? await Name(cashier) : "?", terminal.Name,
+            BusinessClock.ToLocal(ticket.SettledAt ?? clock.GetUtcNow(), BusinessTimeZone.Find(business.TimeZone)),
+            ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList(),
+            DiscountLabel(ticket), ticket.RoundingAmount,
+            receiptPayments,
+            OpenDrawer: !copy && printer.OpenDrawerOnReceipt && payments.Any(p => p.Type == PaymentType.Cash));
+        var document = Slips.Receipt(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
+        return queue.Enqueue(printer, PrintJobKind.Receipt, document, ticket.Id);
+    }
+
     public Task<Terminal> TerminalWithPrinters(Guid terminalId, CancellationToken ct) =>
         db.Terminals.AsNoTracking().Include(t => t.ReceiptPrinter).Include(t => t.DispensePrinter).FirstAsync(t => t.Id == terminalId, ct);
 
