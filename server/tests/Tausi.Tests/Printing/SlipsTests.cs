@@ -213,14 +213,85 @@ public class SlipsTests
         doc.Text.Should().NotContain("[cut]");
     }
 
+    /// <summary>Order lines as the server builds them: amounts, discount shares and VAT after the discount.</summary>
+    private static OrderLine OL(string name, decimal qty, decimal price, string? options = null, bool exempt = false, bool gift = false)
+    {
+        var line = new OrderLine { Name = name, ShortName = name, Options = options, UnitPrice = price, VatRate = exempt ? 0 : 16m, VatExempt = exempt, Status = OrderLineStatus.Printed, IsGift = gift };
+        line.SetQuantity(qty);
+        return line;
+    }
+
+    /// <summary>Table 7's ticket #1042 for KSh 1,370 (the wireframe's bill): 2 Tusker, Guiness, water, 2 sodas, punch.</summary>
+    private static Ticket Table7(params OrderLine[] extra) => new()
+    {
+        Number = 1042,
+        Lines = [OL("Tusker Lager", 2, 250m, "Cold"), OL("Guiness", 1, 300m), OL("Mau's Water 1L", 1, 100m, exempt: true),
+            OL("Sodas 300ml", 2, 100m, "Cold"), OL("Pineapple Punch", 1, 270m), .. extra],
+    };
+
+    private static ReceiptSlip Receipt(IReadOnlyList<ReceiptPayment> payments, Ticket? ticket = null, bool copy = false, bool drawer = false)
+    {
+        var t = ticket ?? Table7();
+        return new ReceiptSlip(Mau, 2041, t.Number, copy, "Table 7", "edna", "CAROL", "Counter A", At,
+            t.Lines.Where(l => l.Counts).Select(Tausi.Application.Tickets.TicketPrints.ToSlipLine).ToList(),
+            Tausi.Application.Tickets.TicketPrints.DiscountLabel(t), t.RoundingAmount, payments, drawer);
+    }
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_cash_receipt_shows_change_and_opens_the_drawer(int columns) =>
+        Golden($"receipt-cash-{columns}", Slips.Receipt(Receipt([new("Cash", 1370m, 1500m, 130m, null, "edna")], drawer: true), new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_receipt_with_m_pesa_and_cash_lists_both_and_who_brought_them(int columns) =>
+        Golden($"receipt-mpesa-cash-{columns}", Slips.Receipt(Receipt(
+            [new("M-Pesa", 1000m, null, null, "SJK3ABC123", "edna"), new("Cash", 370m, 500m, 130m, null, "edna")], drawer: true),
+            new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_receipt_with_a_discount_and_a_gift_paid_by_card(int columns)
+    {
+        var ticket = Table7(OL("Guiness", 1, 300m, gift: true));
+        ticket.SetDiscount(DiscountKind.Percent, 10m, "Regular customer");
+        ticket.ApplyRounding(Tausi.Domain.Money.RoundingRule.NearestOne);
+        Golden($"receipt-discount-gift-{columns}", Slips.Receipt(Receipt([new("Card", ticket.AmountDue, null, null, "1234", "WAMBOO")], ticket),
+            new SlipStyle(columns, true, null)));
+    }
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_receipt_shows_the_rounding_and_the_amount_due(int columns)
+    {
+        // 7% off 1,370 is 95.90: 1,274.10 is due as 1,274.
+        var ticket = Table7();
+        ticket.SetDiscount(DiscountKind.Percent, 7m, "Promotion");
+        ticket.ApplyRounding(Tausi.Domain.Money.RoundingRule.NearestOne);
+        ticket.RoundingAmount.Should().Be(-0.10m);
+        Golden($"receipt-rounding-{columns}", Slips.Receipt(Receipt([new("M-Pesa", 1274m, null, null, "SJK3ABC124", "edna")], ticket),
+            new SlipStyle(columns, true, null)));
+    }
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_reprinted_receipt_says_copy_and_never_opens_the_drawer(int columns) =>
+        Golden($"receipt-copy-{columns}", Slips.Receipt(Receipt([new("Cash", 1370m, 1370m, 0m, null, "edna")], copy: true),
+            new SlipStyle(columns, true, null)));
+
     [Fact]
     public void Void_receipt_and_cash_up_slips_render()
     {
         var style = new SlipStyle(42, true, null);
         Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At, [new(1, "Guiness", null, 300m)], "Wrong item", "edna", "MAU"), style)
             .Text.Should().Contain("VOID").And.Contain("Wrong item").And.Contain("By: edna · Approved: MAU");
-        var receipt = Slips.Receipt(new ReceiptSlip(SampleBill(), [("M-Pesa", "SJK3XXXXX", 500m), ("Cash", null, 300m)], 30m, "CAROL"), style);
-        receipt.Text.Should().Contain("M-Pesa SJK3XXXXX").And.Contain("Change").And.Contain("Served by CAROL");
+        var receipt = Slips.Receipt(Receipt([new("M-Pesa", 1000m, null, null, "SJK3ABC123", "edna"), new("Cash", 370m, 500m, 130m, null, "edna")]), style);
+        receipt.Text.Should().Contain("M-Pesa SJK3ABC123").And.Contain("Change 130").And.Contain("Served by edna");
         receipt.Text.Should().NotContain(Slips.NotAReceiptText);
         Slips.CashUp(new CashUpSlip("B", "CAROL", At.AddHours(-8), At, [("Cash settled", 12000m)], 12000m, 11950m), style)
             .Text.Should().Contain("Difference").And.Contain("KSh -50");
@@ -234,7 +305,8 @@ public class SlipsTests
 
         Slips.Bill(SampleBill(), off).Text.Should().NotContain(Slips.PoweredByText);
         Slips.Bill(SampleBill(), on).Text.Should().Contain(Slips.PoweredByText);
-        Slips.Receipt(new ReceiptSlip(SampleBill(), [("Cash", null, 5000m)], 0m, "CAROL"), on).Text.Should().Contain(Slips.PoweredByText);
+        Slips.Receipt(Receipt([new("Cash", 1370m, 1370m, 0m, null, "edna")]), on).Text.Should().Contain(Slips.PoweredByText);
+        Slips.Receipt(Receipt([new("Cash", 1370m, 1370m, 0m, null, "edna")]), off).Text.Should().NotContain(Slips.PoweredByText);
         Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1, At, [new DispenseGroup("edna", Slips.SampleLines(16m))]), on).Text
             .Should().NotContain(Slips.PoweredByText);
         Slips.CashUp(new CashUpSlip("B", "CAROL", At.AddHours(-8), At, [("Cash settled", 100m)], 100m, 100m), on).Text

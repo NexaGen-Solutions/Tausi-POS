@@ -116,20 +116,22 @@ public class TablesAdminTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_demo_seed_adds_open_tickets_only_into_an_open_day()
+    public async Task The_demo_seed_puts_its_open_tickets_into_the_open_day_and_opens_one_if_needed()
     {
         await using var demo = await TicketsFixture.Create(openDay: false);
         var seeder = new Tausi.Infrastructure.Seeding.Seeder(demo.Db, demo.Hasher,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Tausi.Infrastructure.Seeding.Seeder>.Instance);
 
-        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeFalse("a day only closes with no open tickets");
-        demo.Read().Tickets.Should().BeEmpty();
-
-        var day = new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = demo.User("MAU").Id };
-        demo.Db.WorkPeriods.Add(day);
+        // A day closed earlier does not count: the seed opens a new one.
+        var oldDay = new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow.AddDays(-1), OpenedByUserId = demo.User("MAU").Id, IsOpen = false };
+        demo.Db.WorkPeriods.Add(oldDay);
         await demo.Db.SaveChangesAsync();
-        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeTrue();
+        demo.Db.ChangeTracker.Clear();
+
+        (await seeder.SeedDemoTickets(CancellationToken.None)).Should().BeFalse("no day is open");
+        (await seeder.SeedDemoTickets(CancellationToken.None, openDayIfNeeded: true)).Should().BeTrue("seed --demo opens a demo day");
         demo.Clock.SetUtcNow(DateTimeOffset.UtcNow);
+        var day = demo.Read().WorkPeriods.Single(w => w.IsOpen);
 
         var map = await demo.Get<GetTableMap>().Execute(null, CancellationToken.None);
         map.Tables.Should().HaveCount(20);

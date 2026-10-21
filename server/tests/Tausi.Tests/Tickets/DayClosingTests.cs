@@ -27,10 +27,12 @@ public class DayClosingTests : IAsyncLifetime
         var first = await _f.NewTicket("4");
         var second = await _f.NewTicket("7");
 
-        var error = (await FluentActions.Awaiting(Check).Should().ThrowAsync<ConflictException>()).Which;
+        var error = (await FluentActions.Awaiting(Check).Should().ThrowAsync<OpenTicketsException>()).Which;
 
         error.Code.Should().Be(DayClosing.OpenTicketsCode);
-        error.Message.Should().Be($"The day can't close while 2 tickets are open (#{first.Number}, #{second.Number}). Settle or move them first.");
+        error.Message.Should().Be(
+            $"The day can't close while 2 tickets are open: #{first.Number} Table 4 · edna · 250; #{second.Number} Table 7 · edna · 250. Settle them first, or close empty ones.");
+        error.Tickets.Select(k => (k.Number, k.Where, k.Waiter, k.Total)).Should().Equal((first.Number, "Table 4", "edna", 250m), (second.Number, "Table 7", "edna", 250m));
     }
 
     [Fact]
