@@ -116,7 +116,7 @@ public sealed class GetPosMenu(ITausiDb db, ICurrentSession session)
         PosGroupDto? Group(Guid id) => groups.TryGetValue(id, out var g)
             ? new PosGroupDto(g.Id, g.Name, g.MinSelect, g.MaxSelect,
                 g.Options.Where(o => o.Active).OrderBy(o => o.SortOrder).ThenBy(o => o.Name)
-                    .Select(o => new PosOptionDto(o.Id, o.Name, o.PriceAddOn)).ToList())
+                    .Select(o => new PosOptionDto(o.Id, o.Name, o.PriceAddOn, o.IsDefault)).ToList())
             : null;
 
         var result = new List<PosCategoryDto>();

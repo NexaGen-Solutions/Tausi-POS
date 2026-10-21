@@ -114,7 +114,7 @@ public sealed record PriceListRequest(string Name, bool Active = true, long RowV
 
 // ---- Terminal view ----
 
-public sealed record PosOptionDto(Guid Id, string Name, decimal PriceAddOn);
+public sealed record PosOptionDto(Guid Id, string Name, decimal PriceAddOn, bool IsDefault = false);
 
 public sealed record PosGroupDto(Guid Id, string Name, int MinSelect, int MaxSelect, IReadOnlyList<PosOptionDto> Options);
 

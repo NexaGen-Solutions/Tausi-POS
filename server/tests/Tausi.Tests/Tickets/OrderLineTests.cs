@@ -174,6 +174,23 @@ public class OrderLineTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_demo_menu_asks_temperature_for_beers_with_cold_chosen_already_and_not_for_sodas()
+    {
+        var menu = await _f.Get<Tausi.Application.Menu.GetPosMenu>().Execute(CancellationToken.None);
+        var items = menu.Categories.SelectMany(c => c.Items).ToDictionary(i => i.Name);
+
+        foreach (var beer in new[] { "Tusker Lager", "Guiness", "White Cap Lager", "Balozi Lager" })
+        {
+            var group = items[beer].Groups.Should().ContainSingle().Which;
+            group.Name.Should().Be("Temperature");
+            group.MinSelect.Should().Be(1);
+            group.Options.Single(o => o.IsDefault).Name.Should().Be("Cold");
+        }
+        foreach (var plain in new[] { "Sodas 300ml", "Mau's Water 1L", "Viceroy 375ml" })
+            items[plain].Groups.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task The_ticket_note_and_customer_name_can_change()
     {
         var ticket = await _f.Get<StartTicket>().Execute(
