@@ -4,6 +4,7 @@ using Tausi.Application.Abstractions;
 using Tausi.Application.Security;
 using Tausi.Application.Settings;
 using Tausi.Application.Tickets;
+using Tausi.Domain.Cash;
 using Tausi.Domain.Devices;
 using Tausi.Domain.Ledger;
 using Tausi.Domain.Menu;
@@ -67,6 +68,11 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         var codes = await db.LedgerAccounts.Select(a => a.Code).ToListAsync(ct);
         foreach (var (code, name, type) in LedgerAccountCodes.Defaults.Where(d => !codes.Contains(d.Code)))
             db.LedgerAccounts.Add(new LedgerAccount { Code = code, Name = name, Type = type });
+
+        // Pay-out categories (Task 12 adds the admin screen for them).
+        if (!await db.ExpenseCategories.AnyAsync(ct))
+            for (var i = 0; i < ExpenseCategory.Defaults.Count; i++)
+                db.ExpenseCategories.Add(new ExpenseCategory { Name = ExpenseCategory.Defaults[i], SortOrder = (i + 1) * 10 });
 
         await db.SaveChangesAsync(ct);
     }

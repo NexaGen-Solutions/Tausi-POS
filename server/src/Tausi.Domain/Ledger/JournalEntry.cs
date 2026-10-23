@@ -12,6 +12,8 @@ public class JournalEntry : Entity
     public Guid? CreatedByUserId { get; set; }
     /// <summary>The business day the entry belongs to (set for sales).</summary>
     public Guid? WorkPeriodId { get; set; }
+    /// <summary>The cashier's shift, for drawer entries (float, pay-outs, drops, close).</summary>
+    public Guid? ShiftId { get; set; }
     public List<JournalLine> Lines { get; set; } = [];
 }
 

@@ -51,6 +51,25 @@ public sealed class PermissionService(ITausiDb db, TimeProvider clock) : IPermis
         return new PermissionGrant(permissionKey, grant.ApprovedByUserId);
     }
 
+    public async Task<Guid> RequireSignOff(string permissionKey, string? approvalToken, Guid notUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(approvalToken)) throw new ApprovalRequiredException(permissionKey);
+        var now = clock.GetUtcNow();
+        var hash = SecureTokens.Hash(approvalToken);
+        var grant = await db.ApprovalGrants.AsNoTracking().FirstOrDefaultAsync(g => g.TokenHash == hash, ct);
+        if (grant is null || !grant.IsUsable(permissionKey, now))
+            throw new ApprovalRequiredException(permissionKey, "The sign-off has expired or was already used. Ask again.");
+        if (grant.ApprovedByUserId == notUserId)
+            throw new ApprovalRequiredException(permissionKey, "You can't sign off your own shift. Ask a supervisor.");
+        var approver = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == grant.ApprovedByUserId, ct);
+        if (approver is null || !approver.Active || await CheckRole(approver.RoleId, permissionKey, ct) != PermissionValue.Allowed)
+            throw new ApprovalRequiredException(permissionKey, "The person who signed off can no longer do so.");
+        var used = await db.ApprovalGrants.Where(g => g.Id == grant.Id && g.UsedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(g => g.UsedAt, now).SetProperty(g => g.UsedByUserId, notUserId), ct);
+        if (used != 1) throw new ApprovalRequiredException(permissionKey, "The sign-off has expired or was already used. Ask again.");
+        return grant.ApprovedByUserId;
+    }
+
     /// <summary>Actions a supervisor can't approve for someone else: NeedsApproval counts as NotAllowed.</summary>
     public static readonly IReadOnlySet<string> NotApprovable = new HashSet<string> { PermissionKeys.TicketSettle };
 

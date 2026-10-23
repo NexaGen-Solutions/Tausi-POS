@@ -27,6 +27,8 @@ public sealed class TicketLockSweeper(IServiceScopeFactory scopes, TimeProvider 
                 if (released > 0) log.LogInformation("Released {Count} stale ticket lock(s)", released);
                 var expired = await scope.ServiceProvider.GetRequiredService<Application.Approvals.ExpireApprovals>().Run(stoppingToken);
                 if (expired > 0) log.LogInformation("Expired {Count} approval request(s)", expired);
+                var loggedOut = await scope.ServiceProvider.GetRequiredService<Application.Day.EndSessionsAfterDayClose>().Run(stoppingToken);
+                if (loggedOut > 0) log.LogInformation("Logged out {Count} session(s) after the day closed", loggedOut);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

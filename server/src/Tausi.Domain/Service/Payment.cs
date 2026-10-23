@@ -42,6 +42,8 @@ public partial class Payment : Entity
     public Guid BroughtByUserId { get; set; }
     public Guid TerminalId { get; set; }
     public Guid WorkPeriodId { get; set; }
+    /// <summary>The cashier's shift (drawer) it was taken in.</summary>
+    public Guid? ShiftId { get; set; }
     public DateTimeOffset TakenAt { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public DateTimeOffset? RemovedAt { get; set; }

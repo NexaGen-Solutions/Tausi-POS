@@ -60,10 +60,6 @@ public sealed record ReceiptSlip(
     string Terminal, DateTimeOffset At, IReadOnlyList<SlipLine> Lines, string? DiscountLabel, decimal Rounding,
     IReadOnlyList<ReceiptPayment> Payments, bool OpenDrawer = false);
 
-public sealed record CashUpSlip(
-    string Business, string Person, DateTimeOffset From, DateTimeOffset To,
-    IReadOnlyList<(string Label, decimal Amount)> Rows, decimal Expected, decimal Counted);
-
 public sealed record TestSlip(
     string Business, string PrinterName, string Connection, int PaperWidthMm, decimal VatRate, DateTimeOffset At);
 
@@ -266,22 +262,6 @@ public static class Slips
         foreach (var brought in d.Payments.Select(p => (p.Type, p.BroughtBy)).Distinct())
             b.Text($"{brought.Type} brought by {brought.BroughtBy}");
         return WriteFooter(b, d.Business, style).Cut().Build();
-    }
-
-    public static PrintDocument CashUp(CashUpSlip d, SlipStyle style)
-    {
-        var b = new ReceiptBuilder(style.Columns, style.Cut)
-            .Text(d.Business, TextStyle.Center | TextStyle.Bold)
-            .Text("Cash-up", TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight)
-            .Text(d.Person, TextStyle.Center)
-            .Text($"{d.From:dd MMM HH:mm} – {d.To:HH:mm}", TextStyle.Center)
-            .Separator();
-        foreach (var (label, amount) in d.Rows) b.Columns2(label, Money(amount, style.Currency));
-        b.Separator()
-            .Columns2("Expected", Money(d.Expected, style.Currency), TextStyle.Bold)
-            .Columns2("Counted", Money(d.Counted, style.Currency), TextStyle.Bold)
-            .Columns2("Difference", Money(d.Counted - d.Expected, style.Currency), TextStyle.Bold);
-        return b.Cut().Build();
     }
 
     /// <summary>Sample lines for the test print (and nothing else).</summary>

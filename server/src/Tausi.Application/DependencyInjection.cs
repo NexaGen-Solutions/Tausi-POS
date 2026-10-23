@@ -46,6 +46,18 @@ public static class DependencyInjection
         services.AddScoped<Settling.GetSettledTickets>();
         services.AddScoped<Settling.ReprintReceipt>();
         services.AddScoped<Day.CloseWorkPeriod>();
+        services.AddScoped<Day.GetDayStatus>();
+        services.AddScoped<Day.DaySummaries>();
+        services.AddScoped<Day.EndSessionsAfterDayClose>();
+        services.AddScoped<Cash.ShiftReader>();
+        services.AddScoped<Cash.CashPrints>();
+        services.AddScoped<Cash.OpenShift>();
+        services.AddScoped<Cash.ShiftQueries>();
+        services.AddScoped<Cash.CountShift>();
+        services.AddScoped<Cash.CloseShift>();
+        services.AddScoped<Cash.DrawerMovements>();
+        services.AddScoped<Cash.GetMySales>();
+        services.AddScoped<Cash.PrintMySales>();
         services.AddScoped<Day.CloseEmptyTicket>();
 
         // Use cases: one class per action.
