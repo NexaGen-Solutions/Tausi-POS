@@ -225,6 +225,7 @@ Each entry: date, decision, reason.
 | 2026-10-23 | The day summary counts settled tickets: gross (gifts at 0), discounts, gifts at their price and voids (for information), net and VAT by rate, payments by type, rounding, each shift's difference and pay-outs. Gross − discounts + rounding = payments, exactly. | The prompt's list, and it adds up. |
 | 2026-10-23 | Closing the day publishes `day.closed` with a logout time 60 seconds later; terminals show the warning and log out then, and the server ends every session that was open at the close once the minute is over (the background sweep). | The prompt's warning, enforced on the server too. |
 | 2026-10-23 | Cash slips (cash-up, pay-out, drop, waiter, day report) print on the terminal's receipt printer as print jobs of kind CashUp; without a printer the action still completes. | Print failures never undo a business action. |
+| 2026-10-23 | My sales leaves out the wireframe's "Long item names wrap instead of being cut off": it describes the layout (names do wrap) rather than telling the waiter anything. The note keeps "Supervisors see this for every waiter in the admin reports." | A design note, not screen text. |
 
 ## Follow-ups
 
@@ -267,4 +268,4 @@ Each entry: date, decision, reason.
 - **A daily email of the day report.**
 - **Expense categories admin** (Task 12): the five seeded categories can't be edited yet.
 - **design.md's permission table:** update "Expenses" for cashiers to Needs approval, to match the defaults.
-
+- **Approval pad after a refused PIN:** a refusal (such as the cashier's own PIN at shift sign-off) closes the pad with a toast, so the cashier taps Close shift again for the supervisor. Consider keeping the pad open with the message for 403s, for every approval.

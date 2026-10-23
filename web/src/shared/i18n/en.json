@@ -385,7 +385,7 @@
       "amount": "Amount",
       "void": "Void",
       "gift": "Gift",
-      "note": "Long item names wrap instead of being cut off. Supervisors see this for every waiter in the admin reports."
+      "note": "Supervisors see this for every waiter in the admin reports."
     }
   },
   "approval": {
