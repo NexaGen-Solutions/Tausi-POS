@@ -125,6 +125,67 @@ public class SlipsTests
         Golden($"bill-corrected-{columns}", Slips.Bill(slip, new SlipStyle(columns, true, null)));
     }
 
+    // ---- Cash slips (Task 9) ----
+
+    private static Tausi.Application.Cash.ShiftDto CashUpShift(decimal counted, IReadOnlyDictionary<string, int> notes, decimal coins) =>
+        new(Guid.Empty, "Closed", Guid.Empty, "CAROL", Guid.Empty, "Counter A", At.AddHours(-6), At,
+            2000m, 370m, 200m, 1000m, 1170m, 2, 1300m, 1, 270m, true, true, notes, coins, counted, counted - 1170m,
+            null, "MAU", 3, 1, 3, [1000, 500, 200, 100, 50],
+            [new(Guid.Empty, "edna", 370m, 0), new(Guid.Empty, "CYNTHIA", 0m, 1)],
+            [new(Guid.Empty, "PayOut", 200m, "Transport", "Taxi for ice", "CAROL", At.AddHours(-2)),
+             new(Guid.Empty, "Drop", 1000m, null, "To the safe", "CAROL", At.AddHours(-1))],
+            []);
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_cash_up_slip_shows_the_drawer_the_count_and_the_sign_off(int columns) =>
+        Golden($"cashup-{columns}", Tausi.Application.Cash.CashSlips.CashUp(
+            CashUpShift(1170m, new Dictionary<string, int> { ["1000"] = 1, ["100"] = 1, ["50"] = 1 }, 20m),
+            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_short_cash_up_says_short(int columns) =>
+        Golden($"cashup-short-{columns}", Tausi.Application.Cash.CashSlips.CashUp(
+            CashUpShift(1070m, new Dictionary<string, int> { ["1000"] = 1, ["50"] = 1 }, 20m),
+            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void Pay_out_and_drop_slips(int columns)
+    {
+        var style = new SlipStyle(columns, true, null);
+        Golden($"payout-{columns}", Tausi.Application.Cash.CashSlips.Movement(
+            new Tausi.Domain.Cash.DrawerMovement { Kind = Tausi.Domain.Cash.DrawerMovementKind.PayOut, Amount = 200m, CategoryName = "Transport", Note = "Taxi for ice", At = At },
+            "Mau's Village", "Counter A", "CAROL", "MAU", at => at, style));
+        Golden($"drop-{columns}", Tausi.Application.Cash.CashSlips.Movement(
+            new Tausi.Domain.Cash.DrawerMovement { Kind = Tausi.Domain.Cash.DrawerMovementKind.Drop, Amount = 1000m, At = At },
+            "Mau's Village", "Counter A", "CAROL", null, at => at, style));
+    }
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_waiter_slip_lists_sales_money_brought_and_open_bills(int columns) =>
+        Golden($"waiter-{columns}", Tausi.Application.Cash.CashSlips.Waiter(
+            new Tausi.Application.Cash.MySalesDto("edna", At.AddHours(-8), 3400m, 6, 1370m, 1000m, 270m,
+                [new(Guid.Empty, 1047, "Table 7", 540m)], []),
+            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void The_day_report(int columns) =>
+        Golden($"day-report-{columns}", Tausi.Application.Cash.CashSlips.DayReport(
+            new Tausi.Application.Day.DaySummaryDto(4, 2240m, 0m, 300m, 250m, 1931.04m, 308.96m,
+                [new("VAT 16%", 1931.04m, 308.96m)],
+                [new("Cash", 1, 370m), new("M-Pesa", 2, 1300m), new("Card", 2, 570m)], 2240m, 0m,
+                [new("CAROL", "Counter A", 0m)], 200m),
+            "Mau's Village", At.AddHours(-10), At, "MAU", new SlipStyle(columns, true, null)));
+
     [Fact]
     public void A_zero_rated_item_is_in_the_vat_lines_at_0_percent_and_only_exempt_items_say_vat_exempt()
     {
@@ -285,7 +346,7 @@ public class SlipsTests
             new SlipStyle(columns, true, null)));
 
     [Fact]
-    public void Void_receipt_and_cash_up_slips_render()
+    public void Void_and_receipt_slips_render()
     {
         var style = new SlipStyle(42, true, null);
         Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At, [new(1, "Guiness", null, 300m)], "Wrong item", "edna", "MAU"), style)
@@ -293,8 +354,6 @@ public class SlipsTests
         var receipt = Slips.Receipt(Receipt([new("M-Pesa", 1000m, null, null, "SJK3ABC123", "edna"), new("Cash", 370m, 500m, 130m, null, "edna")]), style);
         receipt.Text.Should().Contain("M-Pesa SJK3ABC123").And.Contain("Change 130").And.Contain("Served by edna");
         receipt.Text.Should().NotContain(Slips.NotAReceiptText);
-        Slips.CashUp(new CashUpSlip("B", "CAROL", At.AddHours(-8), At, [("Cash settled", 12000m)], 12000m, 11950m), style)
-            .Text.Should().Contain("Difference").And.Contain("KSh -50");
     }
 
     [Fact]
@@ -308,8 +367,6 @@ public class SlipsTests
         Slips.Receipt(Receipt([new("Cash", 1370m, 1370m, 0m, null, "edna")]), on).Text.Should().Contain(Slips.PoweredByText);
         Slips.Receipt(Receipt([new("Cash", 1370m, 1370m, 0m, null, "edna")]), off).Text.Should().NotContain(Slips.PoweredByText);
         Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1, At, [new DispenseGroup("edna", Slips.SampleLines(16m))]), on).Text
-            .Should().NotContain(Slips.PoweredByText);
-        Slips.CashUp(new CashUpSlip("B", "CAROL", At.AddHours(-8), At, [("Cash settled", 100m)], 100m, 100m), on).Text
             .Should().NotContain(Slips.PoweredByText);
     }
 
