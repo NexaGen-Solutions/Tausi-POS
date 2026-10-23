@@ -1,0 +1,245 @@
+/* Wireframes 8 and 9: my sales, the cash-up, and closing the day */
+.cash-screen {
+  height: 100vh;
+  min-height: 0;
+}
+.cash-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr 1.1fr 1.2fr;
+  gap: var(--space-5);
+  min-height: 0;
+  padding: var(--space-5);
+}
+.cash-body--two {
+  grid-template-columns: 1fr 1fr;
+}
+.cash-body--start {
+  grid-template-columns: minmax(0, 520px);
+  justify-content: center;
+}
+.cash-body--sales {
+  grid-template-columns: 380px minmax(0, 1fr);
+}
+.cash-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  overflow-y: auto;
+}
+.cash-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 19px;
+}
+.cash-subheading {
+  margin: var(--space-3) 0 0;
+  font-size: 16px;
+}
+.cash-label {
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+.cash-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.cash-row--small {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.cash-row--total {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: 19px;
+  font-weight: 600;
+}
+.cash-row--off {
+  color: var(--color-warning-text);
+}
+.cash-amount {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.cash-warn {
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
+.cash-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.cash-blind {
+  padding: var(--space-4) 0;
+  font-size: 16px;
+}
+.cash-moves,
+.cash-list {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cash-list li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.cash-list a,
+.cash-link {
+  display: block;
+  min-height: var(--touch-min);
+  padding: var(--space-2) 0;
+  border: 0;
+  background: none;
+  color: var(--color-selected);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cash-count {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.cash-count__row {
+  display: grid;
+  grid-template-columns: 80px 20px 110px 1fr;
+  gap: var(--space-2);
+  align-items: center;
+}
+.cash-count__note {
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+.cash-count__row input {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  text-align: center;
+}
+.cash-count__subtotal {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.cash-count__total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font-size: 19px;
+  font-weight: 600;
+}
+.cash-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cash-table th {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+.cash-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.cash-table td.cash-amount,
+.cash-table th:nth-child(n + 2) {
+  text-align: right;
+}
+.cash-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+.cash-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.cash-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.cash-spacer {
+  flex: 1;
+}
+.sales-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+.sales-big {
+  font-family: var(--font-mono);
+  font-size: 34px;
+}
+.sales-bills {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sales-bills--open {
+  border: 2px solid var(--color-primary);
+}
+.sales-lines {
+  padding: 0;
+}
+.sales-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.sales-table th:nth-child(3) {
+  text-align: left;
+}
+.sales-item__name {
+  overflow-wrap: anywhere;
+}
+.sales-line--voided .sales-item__name,
+.sales-line--voided td.cash-amount {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+.sales-tag {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.sales-tag--gift {
+  border-color: var(--color-selected);
+  color: var(--color-selected);
+}
+.sales-lines .cash-note {
+  padding: var(--space-3) var(--space-4);
+}
+@media (max-width: 1000px) {
+  .cash-body,
+  .cash-body--two,
+  .cash-body--sales {
+    grid-template-columns: 1fr;
+  }
+}

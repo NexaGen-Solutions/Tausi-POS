@@ -15,6 +15,8 @@ import { tableLabel } from '../tables/tableState';
 import type { OrderLine, Payment, TableEvent, TicketDetail } from '../tables/types';
 import { useTicketLock } from '../ticket/useTicketLock';
 import { usePinSession } from '../usePinSession';
+import { StartShift } from '../cash/StartShift';
+import { currentShiftKey, type CurrentShift } from '../cash/types';
 import { quickCash } from './quickCash';
 import './settle.css';
 
@@ -72,6 +74,13 @@ export function SettlePage() {
     staleTime: 0,
   });
   const ticket = ticketQuery.data ?? null;
+  // Settling needs the cashier's shift on this terminal: without one, "Start your shift" comes first.
+  const shiftQuery = useQuery({
+    queryKey: currentShiftKey,
+    queryFn: () => api<CurrentShift>('/api/pos/shifts/current'),
+    staleTime: 0,
+  });
+  const needsShift = shiftQuery.data !== undefined && shiftQuery.data.shift === null;
   const broughtBy = useQuery({
     queryKey: ['brought-by', id],
     queryFn: () => api<BroughtBy[]>(`/api/pos/tickets/${id}/brought-by`),
@@ -357,150 +366,160 @@ export function SettlePage() {
           </div>
         </section>
 
-        <section className="settle-pay" aria-label={t('pos.settle.payment')}>
-          <div className="settle-tabs" role="group" aria-label={t('pos.settle.paymentType')}>
-            {(['Cash', 'Mpesa', 'Card'] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={`settle-tab${type === k ? ' settle-tab--on' : ''}`}
-                aria-pressed={type === k}
-                onClick={() => setType(k)}
-              >
-                {typeName(k)}
-              </button>
-            ))}
-          </div>
+        {needsShift && shiftQuery.data ? (
+          <section className="settle-pay" aria-label={t('pos.cash.startYourShift')}>
+            <StartShift
+              title={t('pos.cash.startYourShift')}
+              defaultFloat={shiftQuery.data.start.defaultFloat}
+              denominations={shiftQuery.data.start.denominations}
+            />
+          </section>
+        ) : (
+          <section className="settle-pay" aria-label={t('pos.settle.payment')}>
+            <div className="settle-tabs" role="group" aria-label={t('pos.settle.paymentType')}>
+              {(['Cash', 'Mpesa', 'Card'] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`settle-tab${type === k ? ' settle-tab--on' : ''}`}
+                  aria-pressed={type === k}
+                  onClick={() => setType(k)}
+                >
+                  {typeName(k)}
+                </button>
+              ))}
+            </div>
 
-          <div className="settle-form">
-            {type === 'Cash' && (
-              <div className="settle-cash">
-                <div className="settle-cash__main">
-                  <h3 className="settle-form__title">
-                    {t('pos.settle.cashFor', { amount: formatMoney(remaining, currency) })}
-                  </h3>
-                  <div className="settle-quick">
-                    {quickCash(remaining).map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className="settle-quick__button"
+            <div className="settle-form">
+              {type === 'Cash' && (
+                <div className="settle-cash">
+                  <div className="settle-cash__main">
+                    <h3 className="settle-form__title">
+                      {t('pos.settle.cashFor', { amount: formatMoney(remaining, currency) })}
+                    </h3>
+                    <div className="settle-quick">
+                      {quickCash(remaining).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          className="settle-quick__button"
+                          disabled={disabled}
+                          onClick={() => setReceived(String(v))}
+                        >
+                          {formatAmount(v)}
+                        </button>
+                      ))}
+                    </div>
+                    {broughtBySelect(t('pos.settle.cashBroughtBy'))}
+                    <label className="settle-field">
+                      <span>{t('pos.settle.cashReceived')}</span>
+                      <input
+                        className="settle-money-input"
+                        inputMode="decimal"
+                        value={received}
+                        onChange={(e) => setReceived(e.target.value.replace(/[^\d.]/g, ''))}
                         disabled={disabled}
-                        onClick={() => setReceived(String(v))}
-                      >
-                        {formatAmount(v)}
-                      </button>
-                    ))}
+                      />
+                    </label>
+                    <div className="settle-change">
+                      <span>{t('pos.settle.change')}</span>
+                      <span className="settle-change__amount" aria-live="polite">
+                        {formatAmount(change)}
+                      </span>
+                    </div>
+                    <Button
+                      variant="dark"
+                      size="lg"
+                      block
+                      disabled={disabled || receivedValue <= 0 || remaining <= 0}
+                      onClick={() => void addCash()}
+                    >
+                      {t('pos.settle.addCash')}
+                    </Button>
                   </div>
-                  {broughtBySelect(t('pos.settle.cashBroughtBy'))}
+                  <div className="settle-cash__pad">
+                    <Keypad
+                      variant="compact"
+                      onDigit={(d) =>
+                        setReceived((r) => (r.length < 8 ? (r === '0' ? d : r + d) : r))
+                      }
+                      onClear={() => setReceived('')}
+                      onEnter={() => setReceived((r) => r.slice(0, -1))}
+                      enterLabel={t('pos.actions.backspace')}
+                      enterDisabled={received === '' || disabled}
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+              )}
+              {type === 'Mpesa' && (
+                <>
                   <label className="settle-field">
-                    <span>{t('pos.settle.cashReceived')}</span>
+                    <span>{t('pos.settle.mpesaCode')}</span>
                     <input
                       className="settle-money-input"
-                      inputMode="decimal"
-                      value={received}
-                      onChange={(e) => setReceived(e.target.value.replace(/[^\d.]/g, ''))}
+                      value={code}
+                      maxLength={10}
+                      autoCapitalize="characters"
+                      onChange={(e) =>
+                        setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                      }
                       disabled={disabled}
                     />
                   </label>
-                  <div className="settle-change">
-                    <span>{t('pos.settle.change')}</span>
-                    <span className="settle-change__amount" aria-live="polite">
-                      {formatAmount(change)}
-                    </span>
-                  </div>
+                  {amountField}
+                  {broughtBySelect(t('pos.settle.broughtBy'))}
                   <Button
                     variant="dark"
                     size="lg"
                     block
-                    disabled={disabled || receivedValue <= 0 || remaining <= 0}
-                    onClick={() => void addCash()}
+                    disabled={disabled || code.length !== 10 || remaining <= 0}
+                    onClick={() => void addMpesa()}
                   >
-                    {t('pos.settle.addCash')}
+                    {t('pos.settle.addMpesa')}
                   </Button>
-                </div>
-                <div className="settle-cash__pad">
-                  <Keypad
-                    variant="compact"
-                    onDigit={(d) =>
-                      setReceived((r) => (r.length < 8 ? (r === '0' ? d : r + d) : r))
-                    }
-                    onClear={() => setReceived('')}
-                    onEnter={() => setReceived((r) => r.slice(0, -1))}
-                    enterLabel={t('pos.actions.backspace')}
-                    enterDisabled={received === '' || disabled}
-                    disabled={disabled}
-                  />
-                </div>
-              </div>
-            )}
-            {type === 'Mpesa' && (
-              <>
-                <label className="settle-field">
-                  <span>{t('pos.settle.mpesaCode')}</span>
-                  <input
-                    className="settle-money-input"
-                    value={code}
-                    maxLength={10}
-                    autoCapitalize="characters"
-                    onChange={(e) =>
-                      setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
-                    }
-                    disabled={disabled}
-                  />
-                </label>
-                {amountField}
-                {broughtBySelect(t('pos.settle.broughtBy'))}
-                <Button
-                  variant="dark"
-                  size="lg"
-                  block
-                  disabled={disabled || code.length !== 10 || remaining <= 0}
-                  onClick={() => void addMpesa()}
-                >
-                  {t('pos.settle.addMpesa')}
-                </Button>
-                <p className="settle-note">{t('pos.settle.mpesaNote')}</p>
-              </>
-            )}
-            {type === 'Card' && (
-              <>
-                {amountField}
-                <label className="settle-field">
-                  <span>{t('pos.settle.cardReference')}</span>
-                  <input
-                    value={reference}
-                    maxLength={40}
-                    onChange={(e) => setReference(e.target.value)}
-                    disabled={disabled}
-                  />
-                </label>
-                {broughtBySelect(t('pos.settle.broughtBy'))}
-                <Button
-                  variant="dark"
-                  size="lg"
-                  block
-                  disabled={disabled || remaining <= 0}
-                  onClick={() => void addCard()}
-                >
-                  {t('pos.settle.addCard')}
-                </Button>
-              </>
-            )}
-          </div>
+                  <p className="settle-note">{t('pos.settle.mpesaNote')}</p>
+                </>
+              )}
+              {type === 'Card' && (
+                <>
+                  {amountField}
+                  <label className="settle-field">
+                    <span>{t('pos.settle.cardReference')}</span>
+                    <input
+                      value={reference}
+                      maxLength={40}
+                      onChange={(e) => setReference(e.target.value)}
+                      disabled={disabled}
+                    />
+                  </label>
+                  {broughtBySelect(t('pos.settle.broughtBy'))}
+                  <Button
+                    variant="dark"
+                    size="lg"
+                    block
+                    disabled={disabled || remaining <= 0}
+                    onClick={() => void addCard()}
+                  >
+                    {t('pos.settle.addCard')}
+                  </Button>
+                </>
+              )}
+            </div>
 
-          <div className="settle-footer">
-            <p className="settle-note">{t('pos.settle.receiptNote')}</p>
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={disabled || !ticket || remaining !== 0 || ticket.status !== 'Open'}
-              onClick={() => (totalChange > 0 ? setConfirming(true) : void complete())}
-            >
-              {t('pos.settle.complete')}
-            </Button>
-          </div>
-        </section>
+            <div className="settle-footer">
+              <p className="settle-note">{t('pos.settle.receiptNote')}</p>
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={disabled || !ticket || remaining !== 0 || ticket.status !== 'Open'}
+                onClick={() => (totalChange > 0 ? setConfirming(true) : void complete())}
+              >
+                {t('pos.settle.complete')}
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
 
       {confirming && (
