@@ -1,6 +1,9 @@
 # Development databases.
 #   PostgreSQL (default):       docker compose -f docker-compose.dev.yml up -d
 #   Also SQL Server Express:    docker compose -f docker-compose.dev.yml --profile sqlserver up -d
+
+name: nexagen-pos
+
 services:
   postgres:
     image: postgres:16
