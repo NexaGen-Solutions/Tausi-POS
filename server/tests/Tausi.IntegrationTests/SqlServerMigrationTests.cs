@@ -72,6 +72,8 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
         services.AddScoped<ITausiDb>(sp => sp.GetRequiredService<TausiDbContext>());
         services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
+        services.AddScoped<Tausi.Application.Stock.IStockDatabase>(sp => new StockDatabase(sp.GetRequiredService<TausiDbContext>()));
+        services.AddScoped<Application.Ledger.ILedgerPostingService, Infrastructure.Ledger.LedgerPostingService>();
         services.AddSingleton<ICurrentSession>(session);
         services.AddSingleton<IApprovalTokenSource, NoApproval>();
         services.AddSingleton<IPosEvents, NoEvents>();
@@ -185,6 +187,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
         services.AddScoped<ITausiDb>(sp => sp.GetRequiredService<TausiDbContext>());
         services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
+        services.AddScoped<Tausi.Application.Stock.IStockDatabase>(sp => new StockDatabase(sp.GetRequiredService<TausiDbContext>()));
         services.AddScoped<Application.Ledger.ILedgerPostingService, Infrastructure.Ledger.LedgerPostingService>();
         services.AddSingleton<ICurrentSession>(session);
         services.AddSingleton<IApprovalTokenSource, NoApproval>();

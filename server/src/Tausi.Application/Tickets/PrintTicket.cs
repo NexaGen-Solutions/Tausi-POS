@@ -35,7 +35,7 @@ public static class PrintCodes
 /// </summary>
 public sealed class PrintTicket(
     ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
-    TicketPrints prints, IAuditLog audit, TicketEvents events, TimeProvider clock)
+    TicketPrints prints, Stock.StockSelling stock, IAuditLog audit, TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketDetailDto> Print(Guid id, CancellationToken ct)
     {
@@ -95,6 +95,9 @@ public sealed class PrintTicket(
                 // The round's printer, so a void goes back to the bar that poured it.
                 line.DispensePrinterId = dispensePrinter.Id;
             }
+            // The bar pours what was sent: its stock leaves this terminal's location now.
+            var day = await Day.WorkPeriods.Current(db, ct);
+            await stock.Sell(ticket, ticket.PrintRound, fresh, edit.TerminalId, edit.User.UserId, day?.Id, now, ct);
         }
         var jobs = new List<PrintJob>();
         // The bill goes into the queue first, so where one printer does both, it comes out first.

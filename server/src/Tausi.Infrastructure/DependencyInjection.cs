@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddSingleton<IPinHasher, PinHasher>();
         services.AddScoped<ILedgerPostingService, LedgerPostingService>();
         services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
+        services.AddScoped<Application.Stock.IStockDatabase>(sp => new StockDatabase(sp.GetRequiredService<TausiDbContext>()));
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddScoped<Seeder>();
 

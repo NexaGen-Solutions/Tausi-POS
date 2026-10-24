@@ -41,6 +41,7 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton(_db.Context);
         services.AddSingleton<ITausiDb>(_db.Context);
         services.AddSingleton<ITicketDatabase>(new TicketDatabase(_db.Context));
+        services.AddSingleton<Tausi.Application.Stock.IStockDatabase>(new StockDatabase(_db.Context));
         services.AddSingleton<ICurrentSession>(Session);
         services.AddSingleton<IApprovalTokenSource>(Approval);
         services.AddSingleton<IPosEvents>(Events);

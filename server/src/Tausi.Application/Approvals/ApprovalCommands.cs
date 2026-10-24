@@ -240,14 +240,27 @@ public sealed class CreateApprovalRequest(
 /// requester. If it no longer fits (the line was voided meanwhile, the ticket closed), nothing
 /// changes and the request becomes Expired with the reason.
 /// </summary>
+/// <summary>
+/// The approver's answers. <c>WasPoured</c>, for a void with <c>stock.returnOnVoidIfNotServed</c> on:
+/// the approver confirms or changes the requester's "Was it already poured?", and theirs is stored.
+/// </summary>
+public sealed record ApproveRequestDto(bool? WasPoured = null);
+
 public sealed class ApproveRequest(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, ITicketDatabase tickets,
     ApprovalActions actions, IAuditLog audit, IPosEvents events, TicketEvents ticketEvents, TimeProvider clock)
 {
-    public async Task<ApprovalRequestDto> Execute(Guid id, CancellationToken ct)
+    public async Task<ApprovalRequestDto> Execute(Guid id, CancellationToken ct, ApproveRequestDto? decision = null)
     {
         var approver = session.RequireUser();
         var request = await Decidable.Load(db, permissions, approver, id, ct);
+        if (request.Kind == ApprovalKind.Void && decision?.WasPoured is { } poured
+            && (await SettingsRegistry.Load(db, ct)).Bool(SettingsRegistry.StockReturnOnVoidIfNotServed))
+        {
+            request.PayloadJson = ApprovalActions.Serialize(ApprovalActions.Payload<VoidLineRequest>(request.PayloadJson) with { WasPoured = poured });
+            await db.ApprovalRequests.Where(r => r.Id == id)
+                .ExecuteUpdateAsync(u => u.SetProperty(r => r.PayloadJson, request.PayloadJson), ct);
+        }
         var requester = await db.Users.AsNoTracking().FirstAsync(u => u.Id == request.RequestedByUserId, ct);
         var actor = new TicketActor(requester.Id, requester.Name, request.TerminalId, approver.UserId, approver.Name, request.Id);
 

@@ -20,7 +20,7 @@ namespace Tausi.Infrastructure.Persistence;
 /// (<see cref="PostgresTausiDbContext"/>, <see cref="SqlServerTausiDbContext"/>) that owns its
 /// own migrations, so the model stays the same and only column details differ.
 /// </summary>
-public class TausiDbContext(DbContextOptions options) : DbContext(options), ITausiDb
+public partial class TausiDbContext(DbContextOptions options) : DbContext(options), ITausiDb
 {
     public DbSet<BusinessSettings> BusinessSettings => Set<BusinessSettings>();
     public DbSet<Licence> Licences => Set<Licence>();
@@ -61,6 +61,19 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
     public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
     public DbSet<DrawerMovement> DrawerMovements => Set<DrawerMovement>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Domain.Stock.StockLocation> StockLocations => Set<Domain.Stock.StockLocation>();
+    public DbSet<Domain.Stock.StockItem> StockItems => Set<Domain.Stock.StockItem>();
+    public DbSet<Domain.Stock.StockLevel> StockLevels => Set<Domain.Stock.StockLevel>();
+    public DbSet<Domain.Stock.StockMovement> StockMovements => Set<Domain.Stock.StockMovement>();
+    public DbSet<Domain.Stock.RecipeLine> RecipeLines => Set<Domain.Stock.RecipeLine>();
+    public DbSet<Domain.Stock.Supplier> Suppliers => Set<Domain.Stock.Supplier>();
+    public DbSet<Domain.Stock.Delivery> Deliveries => Set<Domain.Stock.Delivery>();
+    public DbSet<Domain.Stock.DeliveryLine> DeliveryLines => Set<Domain.Stock.DeliveryLine>();
+    public DbSet<Domain.Stock.WasteRecord> WasteRecords => Set<Domain.Stock.WasteRecord>();
+    public DbSet<Domain.Stock.StockTransfer> StockTransfers => Set<Domain.Stock.StockTransfer>();
+    public DbSet<Domain.Stock.StockTransferLine> StockTransferLines => Set<Domain.Stock.StockTransferLine>();
+    public DbSet<Domain.Stock.StockCount> StockCounts => Set<Domain.Stock.StockCount>();
+    public DbSet<Domain.Stock.StockCountLine> StockCountLines => Set<Domain.Stock.StockCountLine>();
 
     /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -500,6 +513,8 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.Property(x => x.Reason).HasMaxLength(VoidLog.MaxReasonLength);
             e.HasIndex(x => x.TicketId);
         });
+
+        ConfigureStock(m);
 
         // Every editable entity carries an optimistic concurrency token.
         foreach (var type in m.Model.GetEntityTypes().Where(t => typeof(VersionedEntity).IsAssignableFrom(t.ClrType)))

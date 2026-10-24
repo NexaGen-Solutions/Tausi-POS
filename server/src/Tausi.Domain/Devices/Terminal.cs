@@ -30,6 +30,9 @@ public class Terminal : VersionedEntity
     /// <summary>Use this price list instead of the default; null uses the default.</summary>
     public Guid? PriceListId { get; set; }
 
+    /// <summary>The stock location its sales come from (the Bar by default); null moves no stock.</summary>
+    public Guid? SellsFromLocationId { get; set; }
+
     public DateTimeOffset? LastSeenAt { get; set; }
     public string? AppVersion { get; set; }
 

@@ -62,6 +62,16 @@ public static class AuditActions
     public const string RoleCreated = "permissions.role_created";
     public const string RoleRenamed = "permissions.role_renamed";
     public const string RoleDeleted = "permissions.role_deleted";
+    public const string StockItemChanged = "stock.item_changed";
+    public const string RecipeChanged = "stock.recipe_changed";
+    public const string SupplierChanged = "stock.supplier_changed";
+    public const string DeliveryRecorded = "stock.delivery";
+    public const string DeliveryReversed = "stock.delivery_reversed";
+    public const string WasteRecorded = "stock.waste";
+    public const string TransferRecorded = "stock.transfer";
+    public const string StockCountChanged = "stock.count";
+    public const string StockDocumentApproved = "stock.approved";
+    public const string StockDocumentRejected = "stock.rejected";
 }
 
 /// <summary>Entity types of audit entries that more than one place writes or reads.</summary>

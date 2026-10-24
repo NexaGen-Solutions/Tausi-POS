@@ -96,7 +96,9 @@ public sealed class PairTerminal(
             var upper = name.ToUpperInvariant();
             if (await db.Terminals.AnyAsync(t => t.Name.ToUpper() == upper, ct))
                 throw new DomainException($"There is already a terminal called {name}. Choose it from the list instead.");
-            terminal = new Terminal { Name = name };
+            // New terminals sell from the Bar.
+            var bar = await db.StockLocations.Where(l => l.Name == Domain.Stock.StockLocation.Bar).Select(l => (Guid?)l.Id).FirstOrDefaultAsync(ct);
+            terminal = new Terminal { Name = name, SellsFromLocationId = bar };
             db.Terminals.Add(terminal);
         }
 

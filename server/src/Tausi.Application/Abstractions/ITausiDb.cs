@@ -54,6 +54,19 @@ public interface ITausiDb
     DbSet<Domain.Cash.CashierShift> CashierShifts { get; }
     DbSet<Domain.Cash.DrawerMovement> DrawerMovements { get; }
     DbSet<Domain.Cash.ExpenseCategory> ExpenseCategories { get; }
+    DbSet<Domain.Stock.StockLocation> StockLocations { get; }
+    DbSet<Domain.Stock.StockItem> StockItems { get; }
+    DbSet<Domain.Stock.StockLevel> StockLevels { get; }
+    DbSet<Domain.Stock.StockMovement> StockMovements { get; }
+    DbSet<Domain.Stock.RecipeLine> RecipeLines { get; }
+    DbSet<Domain.Stock.Supplier> Suppliers { get; }
+    DbSet<Domain.Stock.Delivery> Deliveries { get; }
+    DbSet<Domain.Stock.DeliveryLine> DeliveryLines { get; }
+    DbSet<Domain.Stock.WasteRecord> WasteRecords { get; }
+    DbSet<Domain.Stock.StockTransfer> StockTransfers { get; }
+    DbSet<Domain.Stock.StockTransferLine> StockTransferLines { get; }
+    DbSet<Domain.Stock.StockCount> StockCounts { get; }
+    DbSet<Domain.Stock.StockCountLine> StockCountLines { get; }
 
     DatabaseFacade Database { get; }
 

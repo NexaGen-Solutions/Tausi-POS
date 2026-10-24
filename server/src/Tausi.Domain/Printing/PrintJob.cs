@@ -10,6 +10,7 @@ public enum PrintJobKind
     Void,
     Receipt,
     CashUp,
+    Stock,
     Test,
 }
 

@@ -60,6 +60,7 @@ app.MapPrinterEndpoints();
 app.MapDayEndpoints();
 app.MapStaffEndpoints();
 app.MapPermissionEndpoints();
+app.MapStockEndpoints();
 app.MapMenuEndpoints();
 app.MapTicketEndpoints();
 app.MapHub<PosHub>(PosHub.Path);
