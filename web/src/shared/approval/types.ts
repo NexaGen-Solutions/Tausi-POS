@@ -23,6 +23,8 @@ export interface ApprovalRequest {
   decidedBy: string | null;
   decidedAt: string | null;
   decisionNote: string | null;
+  /** A void's "Was it already poured?" as the requester answered it; the approver may change it. */
+  wasPoured?: boolean | null;
 }
 
 /** Someone logged in who can approve a kind of request, for "Send request to". */

@@ -19,7 +19,7 @@ public sealed record ApprovalRequestDto(
     string Summary, decimal? Amount, string? Reason,
     Guid RequestedById, string RequestedBy, string Terminal, DateTimeOffset RequestedAt,
     Guid? PreferredApproverId, bool SentToMe, bool Mine, bool CanDecide,
-    string? DecidedBy, DateTimeOffset? DecidedAt, string? DecisionNote);
+    string? DecidedBy, DateTimeOffset? DecidedAt, string? DecisionNote, bool? WasPoured = null);
 
 /// <summary>Someone who can approve a kind of request now, for "Send request to".</summary>
 public sealed record ApproverDto(Guid UserId, string Name, string Role, string Terminal);
@@ -55,7 +55,8 @@ internal static class ApprovalList
                 r.Summary, r.Amount, r.Reason, r.RequestedByUserId, users.GetValueOrDefault(r.RequestedByUserId, "?"),
                 terminals.GetValueOrDefault(r.TerminalId, "?"), r.RequestedAt, r.PreferredApproverId,
                 r.PreferredApproverId == me.UserId, mine, r.IsPending && !mine && allowed[r.Kind],
-                r.DecidedByUserId is { } d ? users.GetValueOrDefault(d, "?") : null, r.DecidedAt, r.DecisionNote);
+                r.DecidedByUserId is { } d ? users.GetValueOrDefault(d, "?") : null, r.DecidedAt, r.DecisionNote,
+                r.Kind == ApprovalKind.Void ? ApprovalActions.Payload<VoidLineRequest>(r.PayloadJson).WasPoured ?? false : null);
         }).ToList();
     }
 }

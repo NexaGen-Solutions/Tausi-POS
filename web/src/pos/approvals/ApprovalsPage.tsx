@@ -7,6 +7,7 @@ import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import type { ApprovalRequest } from '../../shared/approval/types';
+import { usePosRules } from '../../shared/device/usePosRules';
 import { Button, TopBar, useToast } from '../../shared/ui';
 import { usePinSession } from '../usePinSession';
 import { usePendingApprovals } from './useApprovals';
@@ -55,13 +56,21 @@ export function ApprovalsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  // The approver's own answer to "Was it already poured?", per void request (theirs is stored).
+  const [poured, setPoured] = useState<Record<string, boolean>>({});
+  const askPoured = usePosRules().returnOnVoidIfNotServed;
 
   const decide = async (request: ApprovalRequest, how: 'approve' | 'reject' | 'cancel') => {
     setBusy(request.id);
     try {
       await api(`/api/pos/approvals/${request.id}/${how}`, {
         method: 'POST',
-        body: how === 'reject' ? { note: note.trim() || null } : undefined,
+        body:
+          how === 'reject'
+            ? { note: note.trim() || null }
+            : how === 'approve' && request.kind === 'Void' && askPoured
+              ? { wasPoured: poured[request.id] ?? request.wasPoured ?? false }
+              : undefined,
       });
       setRejecting(null);
       setNote('');
@@ -139,6 +148,26 @@ export function ApprovalsPage() {
                     <p className="approvals-card__reason">
                       {t('approval.reason', { reason: r.reason })}
                     </p>
+                  )}
+                  {r.kind === 'Void' && askPoured && r.wasPoured != null && (
+                    <div
+                      className="approvals-card__poured"
+                      role="group"
+                      aria-label={t('pos.actions.poured')}
+                    >
+                      <span>{t('pos.actions.poured')}</span>
+                      {[false, true].map((yes) => (
+                        <button
+                          key={String(yes)}
+                          type="button"
+                          className={`approvals-yesno${(poured[r.id] ?? r.wasPoured) === yes ? ' approvals-yesno--on' : ''}`}
+                          aria-pressed={(poured[r.id] ?? r.wasPoured) === yes}
+                          onClick={() => setPoured((p) => ({ ...p, [r.id]: yes }))}
+                        >
+                          {yes ? t('common.yes') : t('common.no')}
+                        </button>
+                      ))}
+                    </div>
                   )}
                   {rejecting === r.id && (
                     <label className="approvals-card__note">

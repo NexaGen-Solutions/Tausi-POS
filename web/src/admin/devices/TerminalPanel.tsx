@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ApiError, api } from '../../shared/api/client';
 import { t } from '../../shared/i18n/i18n';
@@ -10,7 +11,7 @@ interface PriceListOption {
   active: boolean;
 }
 
-/** Edit a terminal: name, price list, dispense printer and header, receipt printer, active; revoke. */
+/** Edit a terminal: name, price list, stock location, dispense printer and header, receipt printer, active; revoke. */
 export function TerminalPanel({
   terminal,
   printers,
@@ -26,6 +27,13 @@ export function TerminalPanel({
 }) {
   const [name, setName] = useState(terminal.name);
   const [priceListId, setPriceListId] = useState(terminal.priceListId ?? '');
+  const [sellsFrom, setSellsFrom] = useState(terminal.sellsFromLocationId ?? '');
+  const locations = useQuery({
+    queryKey: ['stock', 'locations'],
+    queryFn: () =>
+      api<{ id: string; name: string; active: boolean }[]>('/api/admin/stock/locations'),
+    retry: false,
+  });
   const [dispenseId, setDispenseId] = useState(terminal.dispensePrinterId ?? '');
   const [header, setHeader] = useState(terminal.dispenseHeader ?? '');
   const [receiptId, setReceiptId] = useState(terminal.receiptPrinterId ?? '');
@@ -53,6 +61,7 @@ export function TerminalPanel({
         body: {
           name: name.trim(),
           priceListId: priceListId || null,
+          sellsFromLocationId: sellsFrom || null,
           dispensePrinterId: dispenseId || null,
           dispenseHeader: header.trim() || null,
           receiptPrinterId: receiptId || null,
@@ -110,6 +119,19 @@ export function TerminalPanel({
             .map((l) => ({ value: l.id, label: l.name })),
         ]}
       />
+      {(locations.data ?? []).length > 0 && (
+        <SelectField
+          label={t('admin.devices.sellsFrom')}
+          value={sellsFrom}
+          onChange={(e) => setSellsFrom(e.target.value)}
+          options={[
+            ...(sellsFrom ? [] : [{ value: '', label: t('admin.devices.noLocation') }]),
+            ...(locations.data ?? [])
+              .filter((l) => l.active || l.id === sellsFrom)
+              .map((l) => ({ value: l.id, label: l.name })),
+          ]}
+        />
+      )}
       <SelectField
         label={t('admin.devices.dispensePrinter')}
         value={dispenseId}

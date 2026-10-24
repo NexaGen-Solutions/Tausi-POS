@@ -45,7 +45,8 @@ public sealed record RecipeLineDto(Guid StockItemId, string StockItem, decimal Q
 
 /// <summary>A menu item's recipe with what one sale costs, its Standard price and the margin on the price without VAT.</summary>
 public sealed record RecipeDto(
-    Guid MenuItemId, string MenuItem, IReadOnlyList<RecipeLineDto> Lines, decimal CostPerSale, decimal? Price, decimal? MarginPercent);
+    Guid MenuItemId, string MenuItem, IReadOnlyList<RecipeLineDto> Lines, decimal CostPerSale, decimal? Price, decimal? MarginPercent,
+    decimal? PriceWithoutVat = null);
 
 public sealed record SaveRecipeLine(Guid StockItemId, decimal Quantity, string? Unit);
 
@@ -300,12 +301,12 @@ public sealed class RecipeCommands(
         var cost = MoneyMath.Round(dto.Sum(l => l.Cost));
         var price = menu.Prices.FirstOrDefault(p => p.PriceList?.IsDefault == true)?.Price;
         var vatDefault = (await SettingsRegistry.Load(db, ct)).Decimal(SettingsRegistry.BusinessVatRate);
-        decimal? margin = null;
+        decimal? margin = null, net = null;
         if (price is > 0)
         {
-            var net = price.Value - VatCalculator.VatIncluded(price.Value, menu.EffectiveVatRate(vatDefault));
-            margin = net > 0 ? decimal.Round((net - cost) / net * 100m, 1) : null;
+            net = price.Value - VatCalculator.VatIncluded(price.Value, menu.EffectiveVatRate(vatDefault));
+            margin = net > 0 ? decimal.Round((net.Value - cost) / net.Value * 100m, 1) : null;
         }
-        return new RecipeDto(menu.Id, menu.Name, dto.Select(l => l with { Cost = MoneyMath.Round(l.Cost) }).ToList(), cost, price, margin);
+        return new RecipeDto(menu.Id, menu.Name, dto.Select(l => l with { Cost = MoneyMath.Round(l.Cost) }).ToList(), cost, price, margin, net);
     }
 }

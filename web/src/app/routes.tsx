@@ -8,6 +8,10 @@ import { MenuPage } from '../admin/menu/MenuPage';
 import { StaffPage } from '../admin/staff/StaffPage';
 import { PermissionsPage } from '../admin/permissions/PermissionsPage';
 import { SettingsPage } from '../admin/settings/SettingsPage';
+import { StockPage } from '../admin/stock/StockPage';
+import { DeliveriesPage } from '../admin/stock/DeliveriesPage';
+import { CountsPage } from '../admin/stock/CountsPage';
+import { CountPage } from '../admin/stock/CountPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
@@ -112,12 +116,24 @@ export const routes: RouteObject[] = [
       { path: 'tables', element: <TablesAdminPage /> },
       { path: 'permissions', element: <PermissionsPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'stock', element: <StockPage /> },
+      { path: 'deliveries', element: <DeliveriesPage /> },
+      { path: 'stock-counts', element: <CountsPage /> },
+      { path: 'stock-counts/:id', element: <CountPage /> },
       ...adminNav
         .filter(
           (item) =>
-            !['staff', 'menu', 'terminals', 'tables', 'permissions', 'settings'].includes(
-              item.path,
-            ),
+            ![
+              'staff',
+              'menu',
+              'terminals',
+              'tables',
+              'permissions',
+              'settings',
+              'stock',
+              'deliveries',
+              'stock-counts',
+            ].includes(item.path),
         )
         .map((item) => ({
           path: item.path,
