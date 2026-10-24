@@ -166,6 +166,46 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         await admin.DisposeAsync();
     }
 
+    [SkippableFact]
+    public async Task Concurrent_prints_of_two_tickets_with_the_same_item_keep_on_hand_consistent_on_sql_server()
+    {
+        Skip.IfNot(sql.Available, Skipped);
+        const string name = "tausi_stock";
+        var options = sql.Options(name);
+        await Seeded(name);
+
+        var waiters = new[] { await As(name, "edna", "Counter A"), await As(name, "Ruth", "Pillar 1") };
+        var tickets = new List<(ServiceProvider Provider, Guid Id)>();
+        foreach (var (provider, _) in waiters)
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+            var tusker = await db.MenuItems.SingleAsync(i => i.Name == "Tusker Lager");
+            var cold = await db.ModifierOptions.SingleAsync(o => o.Name == "Cold");
+            var ticket = await scope.ServiceProvider.GetRequiredService<StartTicket>().Execute(
+                new StartTicketRequest(null, null, [new NewLineRequest(tusker.Id, 3, [cold.Id])]), CancellationToken.None);
+            tickets.Add((provider, ticket.Id));
+        }
+        decimal OnHand(SqlServerTausiDbContext db) =>
+            db.StockLevels.Single(l => l.StockItemId == db.StockItems.Single(i => i.Name == "Tusker Lager").Id
+                && l.LocationId == db.StockLocations.Single(x => x.Name == "Bar").Id).OnHand;
+        decimal before;
+        await using (var db = new SqlServerTausiDbContext(options)) before = OnHand(db);
+
+        await Task.WhenAll(tickets.Select(async t =>
+        {
+            await using var scope = t.Provider.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<PrintTicket>().Print(t.Id, CancellationToken.None);
+        }));
+
+        await using var check = new SqlServerTausiDbContext(options);
+        OnHand(check).Should().Be(before - 6);
+        var item = check.StockItems.Single(i => i.Name == "Tusker Lager").Id;
+        var bar = check.StockLocations.Single(x => x.Name == "Bar").Id;
+        check.StockMovements.Where(m => m.StockItemId == item && m.LocationId == bar).Sum(m => m.Quantity).Should().Be(OnHand(check));
+        foreach (var (provider, _) in waiters) await provider.DisposeAsync();
+    }
+
     /// <summary>A database with the demo seed and an open day.</summary>
     private async Task Seeded(string name)
     {

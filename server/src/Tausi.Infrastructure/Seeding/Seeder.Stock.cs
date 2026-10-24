@@ -106,7 +106,7 @@ public sealed partial class Seeder
         // The opening counts, approved by the Administrator after MAU counted.
         var mau = await db.Users.Where(u => u.Name == "MAU").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         var admin = await db.Users.Where(u => u.Name == "Administrator").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
-        var now = DateTimeOffset.UtcNow;
+        var now = (clock ?? TimeProvider.System).GetUtcNow();
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Code, a => a.Id, ct);
         foreach (var location in new[] { store, bar })
         {

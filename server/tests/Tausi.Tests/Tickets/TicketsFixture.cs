@@ -58,7 +58,7 @@ public sealed class TicketsFixture : IAsyncDisposable
         f.Roles = await Builders.SeedRoles(f._db.Context);
         f._db.Context.BusinessSettings.Add(new BusinessSettings { Name = "Test", VatRate = 16m });
         await f._db.Context.SaveChangesAsync();
-        await new Seeder(f._db.Context, f.Hasher, NullLogger<Seeder>.Instance).SeedDemo("pw", CancellationToken.None, filePrinters: true);
+        await new Seeder(f._db.Context, f.Hasher, NullLogger<Seeder>.Instance, clock: f.Clock).SeedDemo("pw", CancellationToken.None, filePrinters: true);
         // Start from no tickets; each test makes its own.
         await f._db.Context.OrderLines.ExecuteDeleteAsync();
         await f._db.Context.Tickets.ExecuteDeleteAsync();

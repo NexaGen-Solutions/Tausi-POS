@@ -23,7 +23,8 @@ public sealed record SeededUser(string Name, string Role, string Pin);
 /// every business. The demo seed adds the first customer's business, staff, terminals and printers.
 /// Existing rows are never changed, so running it again keeps any edits.
 /// </summary>
-public sealed partial class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, ITicketDatabase? ticketNumbers = null)
+public sealed partial class Seeder(
+    ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, ITicketDatabase? ticketNumbers = null, TimeProvider? clock = null)
 {
     public const string AdminPasswordVariable = "TAUSI_ADMIN_PASSWORD";
     public const string OldAdminPasswordVariable = "NEXAGEN_ADMIN_PASSWORD";
