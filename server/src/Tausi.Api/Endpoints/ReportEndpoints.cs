@@ -1,3 +1,4 @@
+using Tausi.Api.Platform;
 using Tausi.Application.Reports;
 
 namespace Tausi.Api.Endpoints;
@@ -9,7 +10,8 @@ public static class ReportEndpoints
         var reports = app.MapGroup("/api/admin/reports").WithTags("Reports").RequireAuthorization();
         reports.MapGet("/", (ReportService r, CancellationToken ct) => r.List(ct));
         reports.MapGet("/options", (ReportService r, CancellationToken ct) => r.Options(ct));
-        reports.MapPost("/{key}/run", (string key, ReportFilters filters, ReportService r, CancellationToken ct) => r.Run(key, filters, ct));
+        // Running and exporting only read: POST carries the filters.
+        reports.MapPost("/{key}/run", (string key, ReportFilters filters, ReportService r, CancellationToken ct) => r.Run(key, filters, ct)).ReadsOnly();
         reports.MapPost("/{key}/export", async (string key, string? format, ReportFilters filters, ReportService r, CancellationToken ct) =>
         {
             var file = await r.Export(key, filters, format ?? "xlsx", ct);

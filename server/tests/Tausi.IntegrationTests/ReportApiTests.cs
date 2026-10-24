@@ -64,6 +64,19 @@ public class ReportApiTests(TausiApp app) : IAsyncLifetime
         xlsx.Content.Headers.ContentType!.MediaType.Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         using (var book = new XLWorkbook(await xlsx.Content.ReadAsStreamAsync()))
             book.Worksheet(1).Cell(1, 1).GetString().Should().Be("Sales by user");
+        // A file is never stored for replay: the same Idempotency-Key twice still gives a real workbook.
+        var key = Guid.NewGuid().ToString();
+        for (var i = 0; i < 2; i++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/reports/sales-by-user/export?format=xlsx")
+            {
+                Content = JsonContent.Create(new { }),
+            };
+            request.Headers.Add("Idempotency-Key", key);
+            var again = await admin.SendAsync(request);
+            using var opened = new XLWorkbook(await again.Content.ReadAsStreamAsync());
+            opened.Worksheets.Should().ContainSingle();
+        }
         var csv = await admin.PostAsJsonAsync("/api/admin/reports/sales-by-user/export?format=csv", new { });
         (await csv.Content.ReadAsStringAsync()).TrimStart('﻿').Should().StartWith("Group,Ticket,Time,Item,Qty,Amount");
         var pdf = await admin.PostAsJsonAsync("/api/admin/reports/sales-by-user/print?target=pdf", new { });
