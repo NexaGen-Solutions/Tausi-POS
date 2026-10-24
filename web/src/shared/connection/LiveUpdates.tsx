@@ -2,7 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n/i18n';
 import { Banner, useToast } from '../ui';
-import { endPinSession, pinSession } from '../session/session';
+import { api } from '../api/client';
+import { endPinSession, pinSession, setIdleLogoutMinutes } from '../session/session';
 import { onPosEvent, startHub, stopHub } from './hub';
 
 interface PrintFailed {
@@ -32,6 +33,17 @@ export function LiveUpdates() {
       onPosEvent('settings.changed', () => {
         void queries.invalidateQueries({ queryKey: ['brand'] });
         void queries.invalidateQueries({ queryKey: ['settings'] });
+        void queries.invalidateQueries({ queryKey: ['device'] });
+        // The idle logout may have changed: count down with what the server now uses.
+        if (pinSession())
+          api<{ idleLogoutMinutes: number | null }>('/api/auth/session')
+            .then((status) => setIdleLogoutMinutes(status.idleLogoutMinutes))
+            .catch(() => {});
+      }),
+      // Buttons appear or disappear at once; the server checks every request anyway.
+      onPosEvent('permissions.changed', () => {
+        void queries.invalidateQueries({ queryKey: ['me'] });
+        void queries.invalidateQueries({ queryKey: ['permissions'] });
       }),
       onPosEvent('printer.status', () => {
         void queries.invalidateQueries({ queryKey: ['health'] });

@@ -2,17 +2,20 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../../shared/api/client';
-import type { Brand } from '../../shared/api/types';
+import type { Brand, DeviceInfo } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { onPosEvent } from '../../shared/connection/hub';
 import { isOffline } from '../../shared/connection/status';
 import { useConnection } from '../../shared/connection/useConnection';
+import { usePosRules } from '../../shared/device/usePosRules';
 import { formatAmount, formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { endPinSession } from '../../shared/session/session';
 import { Banner, Button, Keypad, Modal, TopBar, useToast } from '../../shared/ui';
 import { tableLabel } from '../tables/tableState';
 import type { OrderLine, Payment, TableEvent, TicketDetail } from '../tables/types';
+import { CloseVoidedButton } from '../ticket/CloseVoidedButton';
+import { isFullyVoided } from '../ticket/closeVoided';
 import { useTicketLock } from '../ticket/useTicketLock';
 import { usePinSession } from '../usePinSession';
 import { StartShift } from '../cash/StartShift';
@@ -81,6 +84,10 @@ export function SettlePage() {
     staleTime: 0,
   });
   const needsShift = shiftQuery.data !== undefined && shiftQuery.data.shift === null;
+  const rules = usePosRules();
+  const device = useQuery({ queryKey: ['device'], queryFn: () => api<DeviceInfo>('/api/device') });
+  const sendAndBill = device.data?.printing?.mode === 'SendAndBill';
+  const closable = rules.closeVoidedWithoutReceipt && isFullyVoided(ticketQuery.data);
   const broughtBy = useQuery({
     queryKey: ['brought-by', id],
     queryFn: () => api<BroughtBy[]>(`/api/pos/tickets/${id}/brought-by`),
@@ -140,7 +147,8 @@ export function SettlePage() {
       save(
         await api<TicketDetail>(`/api/pos/tickets/${id}/payments`, {
           method: 'POST',
-          body: { ...body, broughtByUserId: broughtById },
+          // Not recorded: the server fills in the waiter who opened the ticket.
+          body: { ...body, broughtByUserId: rules.recordBroughtBy ? broughtById : null },
         }),
       );
       reset();
@@ -150,7 +158,7 @@ export function SettlePage() {
     addPayment({ type: 'Cash', tendered: receivedValue }, () => setReceived(''));
   const addMpesa = () =>
     addPayment(
-      { type: 'Mpesa', mpesaCode: code, amount: amount ? Number(amount) : remaining },
+      { type: 'Mpesa', mpesaCode: code || null, amount: amount ? Number(amount) : remaining },
       () => {
         setCode('');
         setAmount('');
@@ -179,7 +187,12 @@ export function SettlePage() {
 
   const printFirst = () =>
     run(async () => {
-      save(await api<TicketDetail>(`/api/pos/tickets/${id}/print`, { method: 'POST' }));
+      // Send and Print bill mode: only the new items go to the bar, as the Send button does.
+      save(
+        await api<TicketDetail>(`/api/pos/tickets/${id}/${sendAndBill ? 'send' : 'print'}`, {
+          method: 'POST',
+        }),
+      );
       setUnprinted(null);
     });
 
@@ -215,18 +228,23 @@ export function SettlePage() {
     p.isDefault && ticket?.tableId
       ? t('pos.settle.waiterOn', { name: p.name, where })
       : `${p.name} (${p.role})`;
-  const broughtBySelect = (label: string) => (
-    <label className="settle-field">
-      <span>{label}</span>
-      <select value={broughtById ?? ''} onChange={(e) => setBy(e.target.value)} disabled={disabled}>
-        {people.map((p) => (
-          <option key={p.userId} value={p.userId}>
-            {byLabel(p)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+  const broughtBySelect = (label: string) =>
+    rules.recordBroughtBy && (
+      <label className="settle-field">
+        <span>{label}</span>
+        <select
+          value={broughtById ?? ''}
+          onChange={(e) => setBy(e.target.value)}
+          disabled={disabled}
+        >
+          {people.map((p) => (
+            <option key={p.userId} value={p.userId}>
+              {byLabel(p)}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
   const amountField = (
     <label className="settle-field">
       <span>{t('pos.settle.amount')}</span>
@@ -329,10 +347,12 @@ export function SettlePage() {
                 <li key={p.id} className="settle-row">
                   <span>
                     {p.type === 'Mpesa'
-                      ? `${typeName('Mpesa')} ${p.mpesaCode}`
+                      ? `${typeName('Mpesa')} ${p.mpesaCode || t('pos.settle.noCode')}`
                       : p.type === 'Card'
                         ? `${typeName('Card')}${p.cardReference ? ` · ${p.cardReference}` : ''}`
-                        : `${typeName('Cash')} (${p.broughtBy})`}
+                        : rules.recordBroughtBy
+                          ? `${typeName('Cash')} (${p.broughtBy})`
+                          : typeName('Cash')}
                   </span>
                   <span className="settle-amount">
                     − {formatAmount(p.amount)}
@@ -366,7 +386,13 @@ export function SettlePage() {
           </div>
         </section>
 
-        {needsShift && shiftQuery.data ? (
+        {closable ? (
+          <section className="settle-pay" aria-label={t('pos.settle.closeTicket')}>
+            <h3 className="settle-form__title">{t('pos.settle.allVoided')}</h3>
+            <p className="settle-note">{t('pos.settle.allVoidedNote')}</p>
+            <CloseVoidedButton ticketId={id} disabled={readOnly || offline} />
+          </section>
+        ) : needsShift && shiftQuery.data ? (
           <section className="settle-pay" aria-label={t('pos.cash.startYourShift')}>
             <StartShift
               title={t('pos.cash.startYourShift')}
@@ -455,7 +481,11 @@ export function SettlePage() {
               {type === 'Mpesa' && (
                 <>
                   <label className="settle-field">
-                    <span>{t('pos.settle.mpesaCode')}</span>
+                    <span>
+                      {rules.mpesaCodeRequired
+                        ? t('pos.settle.mpesaCode')
+                        : t('pos.settle.mpesaCodeOptional')}
+                    </span>
                     <input
                       className="settle-money-input"
                       value={code}
@@ -473,7 +503,13 @@ export function SettlePage() {
                     variant="dark"
                     size="lg"
                     block
-                    disabled={disabled || code.length !== 10 || remaining <= 0}
+                    disabled={
+                      disabled ||
+                      (rules.mpesaCodeRequired
+                        ? code.length !== 10
+                        : ![0, 10].includes(code.length)) ||
+                      remaining <= 0
+                    }
                     onClick={() => void addMpesa()}
                   >
                     {t('pos.settle.addMpesa')}

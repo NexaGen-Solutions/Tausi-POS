@@ -6,6 +6,7 @@ import type { Brand, DeviceInfo, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { isOffline } from '../../shared/connection/status';
 import { useConnection } from '../../shared/connection/useConnection';
+import { usePosRules } from '../../shared/device/usePosRules';
 import { formatAmount, formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { Banner, Button, TopBar } from '../../shared/ui';
@@ -13,6 +14,8 @@ import { ApprovalsButton } from '../approvals/ApprovalsButton';
 import { tableLabel } from '../tables/tableState';
 import type { OrderLine, PendingRequest, TableMap } from '../tables/types';
 import { tableMapKey } from '../tables/useTableMap';
+import { CloseVoidedButton } from '../ticket/CloseVoidedButton';
+import { isFullyVoided } from '../ticket/closeVoided';
 import { useTicketLock } from '../ticket/useTicketLock';
 import { usePinSession } from '../usePinSession';
 import {
@@ -109,6 +112,7 @@ export function OrderPage() {
   const canCancel = permission('order.cancel_unprinted') !== 'NotAllowed';
   // Settling can't be approved for someone else: only Allowed counts.
   const canSettle = permission('ticket.settle') === 'Allowed';
+  const rules = usePosRules();
   const canVoid = permission('order.void') !== 'NotAllowed';
   const canGift = permission('order.gift') !== 'NotAllowed';
   const canDiscount = permission('order.discount') !== 'NotAllowed';
@@ -483,13 +487,17 @@ export function OrderPage() {
             >
               {canReprint ? t('pos.order.reprintBill') : t('pos.order.reprintNeedsSupervisor')}
             </Button>
-            <Button
-              size="lg"
-              disabled={!canSettle || !ticket || disabled}
-              onClick={() => navigate(`/pos/ticket/${order.ticketId}/settle`)}
-            >
-              {canSettle ? t('pos.order.settle') : t('pos.order.settleCashierOnly')}
-            </Button>
+            {canSettle && rules.closeVoidedWithoutReceipt && isFullyVoided(ticket) ? (
+              <CloseVoidedButton ticketId={order.ticketId!} disabled={disabled} />
+            ) : (
+              <Button
+                size="lg"
+                disabled={!canSettle || !ticket || disabled}
+                onClick={() => navigate(`/pos/ticket/${order.ticketId}/settle`)}
+              >
+                {canSettle ? t('pos.order.settle') : t('pos.order.settleCashierOnly')}
+              </Button>
+            )}
           </div>
           {printing && <p className="order-helper">{helper}</p>}
         </section>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { ApiError, api, type ApprovalKind } from '../api/client';
+import { usePosRules } from '../device/usePosRules';
 import { t } from '../i18n/i18n';
 import { Button, Keypad, PinDots } from '../ui';
 import type { ApprovalIssued } from './ApprovalPad';
@@ -25,7 +26,7 @@ export interface ApprovalChoicesProps {
 /**
  * Wireframe 5's right side, shared by every action that may need a supervisor: Option 1, the
  * supervisor types their PIN here (never the requester's own); Option 2, send a request to a
- * supervisor at their own counter.
+ * supervisor at their own counter, unless the business switched requests off.
  */
 export function ApprovalChoices({
   permission,
@@ -38,10 +39,12 @@ export function ApprovalChoices({
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const requests = usePosRules().approvalsFromOwnCounter;
   const approvers = useQuery({
     queryKey: ['approvers', kind],
     queryFn: () => api<Approver[]>(`/api/pos/approvals/approvers?kind=${kind}`),
     staleTime: 0,
+    enabled: requests,
   });
   // Nothing picked yet: the first approver; '' means anyone who can approve.
   const [to, setTo] = useState<string | undefined>();
@@ -127,32 +130,38 @@ export function ApprovalChoices({
           {error}
         </p>
       )}
-      <section aria-labelledby="approval-option-2" className="approval-choices__send">
-        <h3 id="approval-option-2" className="approval-choices__heading">
-          {t('approval.option2')}
-        </h3>
-        <label className="approval-choices__to">
-          <span>{t('approval.sendTo')}</span>
-          <select value={chosen} onChange={(e) => setTo(e.target.value)} disabled={busy}>
-            {(approvers.data ?? []).map((a) => (
-              <option key={a.userId} value={a.userId}>
-                {t('approval.approverOption', { name: a.name, role: a.role, terminal: a.terminal })}
-              </option>
-            ))}
-            <option value="">{t('approval.anyone')}</option>
-          </select>
-        </label>
-        <Button
-          variant="dark"
-          size="lg"
-          block
-          disabled={busy || disabled}
-          onClick={() => void send()}
-        >
-          {sendLabel}
-        </Button>
-        <p className="approval-choices__note">{t('approval.sendNote')}</p>
-      </section>
+      {requests && (
+        <section aria-labelledby="approval-option-2" className="approval-choices__send">
+          <h3 id="approval-option-2" className="approval-choices__heading">
+            {t('approval.option2')}
+          </h3>
+          <label className="approval-choices__to">
+            <span>{t('approval.sendTo')}</span>
+            <select value={chosen} onChange={(e) => setTo(e.target.value)} disabled={busy}>
+              {(approvers.data ?? []).map((a) => (
+                <option key={a.userId} value={a.userId}>
+                  {t('approval.approverOption', {
+                    name: a.name,
+                    role: a.role,
+                    terminal: a.terminal,
+                  })}
+                </option>
+              ))}
+              <option value="">{t('approval.anyone')}</option>
+            </select>
+          </label>
+          <Button
+            variant="dark"
+            size="lg"
+            block
+            disabled={busy || disabled}
+            onClick={() => void send()}
+          >
+            {sendLabel}
+          </Button>
+          <p className="approval-choices__note">{t('approval.sendNote')}</p>
+        </section>
+      )}
     </div>
   );
 }

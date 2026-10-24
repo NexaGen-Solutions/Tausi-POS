@@ -6,6 +6,8 @@ import { adminNav } from '../admin/nav';
 import { DevicesPage } from '../admin/devices/DevicesPage';
 import { MenuPage } from '../admin/menu/MenuPage';
 import { StaffPage } from '../admin/staff/StaffPage';
+import { PermissionsPage } from '../admin/permissions/PermissionsPage';
+import { SettingsPage } from '../admin/settings/SettingsPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
@@ -108,8 +110,15 @@ export const routes: RouteObject[] = [
       { path: 'terminals', element: <DevicesPage /> },
       { path: 'staff', element: <StaffPage /> },
       { path: 'tables', element: <TablesAdminPage /> },
+      { path: 'permissions', element: <PermissionsPage /> },
+      { path: 'settings', element: <SettingsPage /> },
       ...adminNav
-        .filter((item) => !['staff', 'menu', 'terminals', 'tables'].includes(item.path))
+        .filter(
+          (item) =>
+            !['staff', 'menu', 'terminals', 'tables', 'permissions', 'settings'].includes(
+              item.path,
+            ),
+        )
         .map((item) => ({
           path: item.path,
           element: <ComingSoonPage title={t(item.label)} />,

@@ -6,6 +6,7 @@ import { t } from '../../shared/i18n/i18n';
 import type { ApprovalEvent } from '../../shared/approval/types';
 import { useToast } from '../../shared/ui';
 import { usePinSession } from '../usePinSession';
+import { usePosRules } from '../../shared/device/usePosRules';
 import { playChime, prepareChime } from './chime';
 import { usePendingApprovals } from './useApprovals';
 
@@ -32,6 +33,7 @@ export function ApprovalsWatcher() {
   const { pending, waiting } = usePendingApprovals();
   const seen = useRef<Set<string> | null>(null);
   const me = session?.user.id;
+  const chime = usePosRules().approvalChime;
 
   useEffect(() => prepareChime(), []);
 
@@ -77,12 +79,12 @@ export function ApprovalsWatcher() {
     const fresh = waiting.filter((r) => !seen.current!.has(r.id));
     seen.current = ids;
     if (fresh.length === 0) return;
-    playChime();
+    if (chime) playChime();
     for (const r of fresh)
       toast(t('approval.asks', { name: r.requestedBy, what: r.summary, where: r.where }), {
         action: { label: t('approval.open'), onClick: () => navigate('/pos/approvals') },
       });
-  }, [pending.data, waiting, toast, navigate]);
+  }, [pending.data, waiting, toast, navigate, chime]);
 
   return null;
 }

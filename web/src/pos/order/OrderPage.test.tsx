@@ -152,6 +152,7 @@ describe('order screen', () => {
   let ticket: TicketDetail;
   let permissions: Record<string, string>;
   let printMode: 'OneButton' | 'SendAndBill';
+  let rules: Record<string, boolean> | undefined;
   let editable: boolean;
   let extra: Parameters<typeof fakeServer>[0];
   /** Lets a test hold the next line add until it says so. */
@@ -226,6 +227,7 @@ describe('order screen', () => {
               dispensePrinter: 'Bar Printer',
               dispenseName: 'Dispense A',
             },
+            rules,
           }),
         'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
         'GET /api/auth/me': () =>
@@ -316,6 +318,7 @@ describe('order screen', () => {
       'ticket.move': 'Allowed',
     };
     printMode = 'OneButton';
+    rules = undefined;
     editable = true;
     extra = {};
     gate = null;
@@ -756,6 +759,64 @@ describe('order screen', () => {
     expect(voided).toBeDisabled();
     expect(voided).toHaveTextContent('Voided');
     expect(voided).toHaveTextContent('Other: Glass cracked');
+  });
+
+  it('the Void button appears without logging out when permissions are saved', async () => {
+    const user = userEvent.setup();
+    ticket = ticketWith([printedGuiness()]);
+    await openTicket();
+    await user.click(lineButton(/Guiness/));
+    expect(screen.queryByRole('button', { name: 'Void' })).not.toBeInTheDocument();
+
+    permissions['order.void'] = 'NeedsApproval';
+    emit('permissions.changed', {});
+
+    expect(await screen.findByRole('button', { name: 'Void' })).toBeEnabled();
+  });
+
+  it('with requests off and stock return off the void pop-up has only the PIN and no poured question', async () => {
+    const user = userEvent.setup();
+    permissions['order.void'] = 'NeedsApproval';
+    rules = {
+      approvalsFromOwnCounter: false,
+      recordBroughtBy: true,
+      mpesaCodeRequired: true,
+      closeVoidedWithoutReceipt: true,
+      returnOnVoidIfNotServed: false,
+      approvalChime: true,
+    };
+    ticket = ticketWith([printedGuiness()]);
+    const dialog = await openVoid(user);
+
+    expect(within(dialog).getByText('Option 1 · supervisor is here')).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Option 2/)).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('group', { name: 'Was it already poured?' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('a cashier closes a fully voided ticket without a receipt', async () => {
+    const user = userEvent.setup();
+    permissions['ticket.settle'] = 'Allowed';
+    ticket = ticketWith([
+      // The fake server adds up gross for the total; a voided line counts 0 on the real one.
+      line('l2', {
+        name: 'Guiness',
+        status: 'Voided',
+        voided: true,
+        quantity: 1,
+        gross: 0,
+        printRound: 1,
+      }),
+    ]);
+    extra = { 'POST /api/pos/tickets/k1/close-voided': () => new Response(null, { status: 204 }) };
+    const router = renderRoutes(routes, '/pos/ticket/k1?table=t-7');
+
+    await user.click(await screen.findByRole('button', { name: 'Close ticket' }));
+
+    await waitFor(() => expect(writes('/close-voided')).toHaveLength(1));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/pos/tables'));
+    expect(screen.queryByRole('button', { name: 'Settle' })).not.toBeInTheDocument();
   });
 
   it('a waiter without order.void sees no Void button', async () => {

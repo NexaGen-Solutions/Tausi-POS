@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ApiError, RequestSentError, type ApprovalKind } from '../../shared/api/client';
 import { ApprovalChoices } from '../../shared/approval/ApprovalChoices';
+import { usePosRules } from '../../shared/device/usePosRules';
 import { permissionFor } from '../../shared/approval/types';
 import { formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
@@ -204,9 +205,11 @@ export function VoidDialog({
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [poured, setPoured] = useState(false);
+  // With stock.returnOnVoidIfNotServed off nobody is asked: every void counts as poured.
+  const askPoured = usePosRules().returnOnVoidIfNotServed;
   const spilled = reason === 'Spilled or broken';
   const body = reasonOk(reason, note)
-    ? { quantity, reason, note: note.trim() || null, wasPoured: spilled || poured }
+    ? { quantity, reason, note: note.trim() || null, wasPoured: !askPoured || spilled || poured }
     : null;
 
   return (
@@ -247,7 +250,7 @@ export function VoidDialog({
         note={note}
         onNote={setNote}
       />
-      {!spilled && (
+      {askPoured && !spilled && (
         <div className="action-dialog__poured" role="group" aria-label={t('pos.actions.poured')}>
           <span>{t('pos.actions.poured')}</span>
           {[false, true].map((yes) => (

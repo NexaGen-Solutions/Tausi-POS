@@ -21,6 +21,7 @@ export const posEvents = [
   'printer.status',
   'menu.changed',
   'settings.changed',
+  'permissions.changed',
   'day.opened',
   'user.deactivated',
   'user.pin_reset',
