@@ -133,7 +133,14 @@ public static class ReportPdf
                 return widest + 2 * Pad + 2;
             }).ToArray();
             var fixedColumns = table.Columns.Select(c => c.Type != ColumnType.Text).ToArray();
-            if (natural.Sum() <= Usable) return natural;
+            if (natural.Sum() <= Usable)
+            {
+                // Room to spare: the text columns share it, so the table runs across the page.
+                var text = natural.Where((_, i) => !fixedColumns[i]).Sum();
+                if (text == 0) return natural;
+                var spare = Usable - natural.Sum();
+                return natural.Select((w, i) => fixedColumns[i] ? w : w + spare * w / text).ToArray();
+            }
 
             // Number, date and ticket columns keep their width; text columns share the rest and wrap.
             var fixedWidth = natural.Where((_, i) => fixedColumns[i]).Sum();
