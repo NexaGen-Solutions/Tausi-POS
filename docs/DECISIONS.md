@@ -264,6 +264,23 @@ Each entry: date, decision, reason.
 | 2026-10-24 | A delivery reversal recalculates the average cost by taking the delivery back out at its own cost. Transfers move stock at the average cost and post no journal entry. | The average is business-wide. |
 | 2026-10-24 | A terminal's Sells from left empty in a save keeps the current location; new terminals sell from the Bar. Stock slips (transfer slip, count sheet) are print jobs of kind Stock. | No terminal is left selling from nowhere by an older client. |
 
+## Cash book (task 12)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-24 | The prompt's "Manager" column is the Admin role (`cash.book`: Waiter and Cashier Not allowed, Supervisor Needs approval, Admin Allowed), set only where no cell exists. | Our four roles, as in task 11. |
+| 2026-10-24 | A business date is the work period's date (its opening day in `business.timeZone`), else the date chosen on the form, else today. The back-fill runs at start-up after migrating, from the work period or the created date. | One rule for every entry; existing installs need nothing run by hand. |
+| 2026-10-24 | A reversal is dated the day it is made, not the original's date; its line says "Reversed: …" and both entries link to each other. A reversal asked for by someone with `cash.book` set to Needs approval waits as Pending, like the document itself. | A closed day's figures don't change after the fact; the correction shows on the day it was made. |
+| 2026-10-24 | Opening balances need `settings.manage` (the setup wizard's key) and post once; afterwards only a reversal unlocks them. | The prompt; one starting point for the books. |
+| 2026-10-24 | Rounding is part of net sales in the daily summary. | It is money the customer paid, without VAT. |
+| 2026-10-24 | On Accounts, credit-side groups (Owed, Sales and income, Owner) read credit − debit, so Owner's drawings shows below 0. | People read the owner's stake as positive, drawings as taking from it. |
+| 2026-10-24 | Receipt photos are stored as private files: `/files/{id}` refuses them, and only `GET /api/admin/money/{id}/attachment` (cash.book) opens them. The type is checked from the file's first bytes, not its name. | Receipts can show suppliers' and staff details. |
+| 2026-10-24 | The shared queue is `GET /api/admin/awaiting` (stock and money); each page shows its own part. `AdminApprovals` holds the PostsNow and approver rules for both. | Task 12 Part C: one queue, one set of rules. |
+| 2026-10-24 | An expense's line reads its note first ("Ice and charcoal (expense)"), then the category, then the payee. A line touching several money accounts (opening balances) lists them all. | The wireframe's wording. |
+| 2026-10-24 | The trial balance warning uses the warning colours, not red. | AGENTS.md has no red token. |
+| 2026-10-24 | The Accounts page has no sidebar entry; it is linked from the cash book. | The wireframe's sidebar has no Accounts item. |
+| 2026-10-24 | The "goes below 0" warning on Move money is worked out on the form from the day's tiles and also returned by the server after saving. | Warn before saving; the server's figure is the final word. |
+
 ## Follow-ups
 
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
@@ -295,11 +312,12 @@ Each entry: date, decision, reason.
 - **Receipt reprint by request:** add an approval kind for it if cashiers ever need a supervisor elsewhere.
 - **Reopening or recounting a closed shift**, with the manager's approval.
 - **Several cashiers sharing one drawer.**
-- **Bank deposit from the safe** (Task 12's cash book).
 - **A daily email of the day report.**
-- **Expense categories admin** (Task 12): the five seeded categories can't be edited yet.
 - **design.md's permission table:** update "Expenses" for cashiers to Needs approval, to match the defaults.
 - **Approval pad after a refused PIN:** a refusal (such as the cashier's own PIN at shift sign-off) closes the pad with a toast, so the cashier taps Close shift again for the supervisor. Consider keeping the pad open with the message for 403s, for every approval.
 - **Option-level recipes:** a modifier option (e.g. a double) can't change the recipe yet.
-- **Stock reports** (on hand, variance, purchases) and **supplier payments** come in Tasks 13 and 12.
+- **Stock reports** (on hand, variance, purchases) come in Task 13.
 - **Stock locations admin:** locations are Store and Bar from the seed; adding or renaming one has no screen yet.
+- **Cash book date ranges:** the cash book and summary are per business day; ranges and comparisons come with Task 13's reports.
+- **Late entries on a printed Z:** a late entry changes the cash book but not the Z already printed; consider a "corrections since the close" line on the next day's report.
+- **Accounts ledger width:** at 1280 the ledger's Balance column scrolls inside its box; consider a full-width ledger view if owners find it awkward.
