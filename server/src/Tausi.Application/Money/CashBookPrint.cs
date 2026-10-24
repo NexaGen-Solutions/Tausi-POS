@@ -18,25 +18,33 @@ public sealed class CashBookPrint(ITausiDb db, ICurrentSession session, MoneyAcc
     private static string Amount(decimal amount) => amount.ToString("#,##0.##", CultureInfo.InvariantCulture);
 
     /// <summary>The summary's lines in order: (label, amount, bold). Expenses and losses by part, indented.</summary>
-    public static IReadOnlyList<(string Label, string Amount, bool Bold)> Lines(DailySummaryDto s)
+    public static IReadOnlyList<(string Label, decimal Amount, bool Bold)> Figures(DailySummaryDto s)
     {
-        var lines = new List<(string, string, bool)>
+        var lines = new List<(string, decimal, bool)>
         {
-            ("Sales (incl. VAT)", Amount(s.SalesInclVat), false),
-            ("VAT", Amount(s.Vat), false),
-            ("Net sales", Amount(s.NetSales), true),
-            ("Cost of sales", Amount(s.CostOfSales), false),
-            ($"Gross profit{(s.GrossMarginPercent is { } m ? $" ({m:0.#}%)" : "")}", Amount(s.GrossProfit), true),
-            ("Expenses", Amount(s.Expenses), false),
+            ("Sales (incl. VAT)", s.SalesInclVat, false),
+            ("VAT", s.Vat, false),
         };
-        lines.AddRange(s.ExpensesByCategory.Select(c => ($"  {c.Name}", Amount(c.Amount), false)));
-        lines.Add(("Stock loss and cash differences", Amount(s.StockLossAndCash), false));
-        lines.AddRange(s.StockLossParts.Select(c => ($"  {c.Name}", Amount(c.Amount), false)));
-        lines.Add(("Bank charges", Amount(s.BankCharges), false));
-        lines.Add(("Other income", Amount(s.OtherIncome), false));
-        lines.Add(("Net for the day", Amount(s.Net), true));
+        if (s.Rounding != 0) lines.Add(("Rounding", s.Rounding, false));
+        lines.AddRange(new (string, decimal, bool)[]
+        {
+            ("Net sales", s.NetSales, true),
+            ("Cost of sales", s.CostOfSales, false),
+            ($"Gross profit{(s.GrossMarginPercent is { } m ? $" ({m:0.#}%)" : "")}", s.GrossProfit, true),
+            ("Expenses", s.Expenses, false),
+        });
+        lines.AddRange(s.ExpensesByCategory.Select(c => ($"  {c.Name}", c.Amount, false)));
+        lines.Add(("Stock loss and cash differences", s.StockLossAndCash, false));
+        lines.AddRange(s.StockLossParts.Select(c => ($"  {c.Name}", c.Amount, false)));
+        lines.Add(("Bank charges", s.BankCharges, false));
+        lines.Add(("Other income", s.OtherIncome, false));
+        lines.Add(("Net for the day", s.Net, true));
         return lines;
     }
+
+    /// <summary>The same lines with the amounts as printed text.</summary>
+    public static IReadOnlyList<(string Label, string Amount, bool Bold)> Lines(DailySummaryDto s) =>
+        Figures(s).Select(l => (l.Label, Amount(l.Amount), l.Bold)).ToList();
 
     public async Task<byte[]> Pdf(DateOnly date, CancellationToken ct)
     {

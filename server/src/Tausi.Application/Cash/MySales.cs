@@ -60,12 +60,14 @@ public sealed class GetMySales(ITausiDb db, ICurrentSession session, IPermission
                     voided ? l.Gross : l.Gross - l.Discount, voided, l.IsGift);
             })
             .OrderByDescending(l => l.At).ThenByDescending(l => l.TicketNumber).ToList();
-        var counted = shown.Where(l => !l.Voided).ToList();
+        // The total and ticket count use the shared sales definition, credited to who added the item.
+        var sales = await Reports.SalesQuery.Lines(db, [day.Id], includeOpen: true).Where(l => l.AddedByUserId == userId)
+            .Select(l => new { l.TicketId, Amount = l.Gross - l.Discount }).ToListAsync(ct);
 
         var brought = await db.Payments.AsNoTracking()
             .Where(p => p.BroughtByUserId == userId && p.WorkPeriodId == day.Id && p.Status != PaymentStatus.Removed)
             .Select(p => new { p.Type, p.Amount }).ToListAsync(ct);
-        return new MySalesDto(name, day.OpenedAt, counted.Sum(l => l.Amount), shown.Select(l => l.TicketId).Distinct().Count(),
+        return new MySalesDto(name, day.OpenedAt, sales.Sum(l => l.Amount), shown.Select(l => l.TicketId).Distinct().Count(),
             brought.Where(p => p.Type == PaymentType.Cash).Sum(p => p.Amount),
             brought.Where(p => p.Type == PaymentType.Mpesa).Sum(p => p.Amount),
             brought.Where(p => p.Type == PaymentType.Card).Sum(p => p.Amount),
