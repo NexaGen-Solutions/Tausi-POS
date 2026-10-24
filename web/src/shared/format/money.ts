@@ -9,6 +9,11 @@ export function formatAmount(amount: number): string {
   });
 }
 
+/** "1,370" or "− 1,370" (a true minus sign): figures that can go below 0, like a day's net. */
+export function formatSigned(amount: number): string {
+  return amount < 0 ? `− ${formatAmount(-amount)}` : formatAmount(amount);
+}
+
 /** "KSh 1,370". The currency comes from the business settings (KES by default). */
 export function formatMoney(amount: number, currency = 'KES'): string {
   return `${symbols[currency] ?? currency} ${formatAmount(amount)}`;

@@ -30,6 +30,7 @@ public sealed class OpenDay(
         var period = new WorkPeriod
         {
             OpenedAt = clock.GetUtcNow(),
+            BusinessDate = await Money.BusinessDates.Today(db, clock, ct),
             OpenedByUserId = user.UserId,
             OpenedTerminalId = user.TerminalId ?? session.Terminal?.TerminalId,
         };

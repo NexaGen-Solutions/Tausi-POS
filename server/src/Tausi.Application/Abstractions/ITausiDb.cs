@@ -67,6 +67,7 @@ public interface ITausiDb
     DbSet<Domain.Stock.StockTransferLine> StockTransferLines { get; }
     DbSet<Domain.Stock.StockCount> StockCounts { get; }
     DbSet<Domain.Stock.StockCountLine> StockCountLines { get; }
+    DbSet<Domain.Money.MoneyDocument> MoneyDocuments { get; }
 
     DatabaseFacade Database { get; }
 

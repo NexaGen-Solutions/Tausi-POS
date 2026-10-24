@@ -167,6 +167,38 @@ public partial class TausiDbContext
             e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.CountId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        m.Entity<Domain.Money.MoneyDocument>(e =>
+        {
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ReversalStatus).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.From).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.To).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Payee).HasMaxLength(Domain.Money.MoneyDocument.MaxTextLength);
+            e.Property(x => x.Reference).HasMaxLength(Domain.Money.MoneyDocument.MaxTextLength);
+            e.Property(x => x.Note).HasMaxLength(Domain.Money.MoneyDocument.MaxNoteLength);
+            e.Property(x => x.RejectNote).HasMaxLength(Domain.Money.MoneyDocument.MaxNoteLength);
+            e.Property(x => x.ReversalReason).HasMaxLength(Domain.Money.MoneyDocument.MaxNoteLength);
+            e.Property(x => x.DeliveryIds)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, JsonOptions),
+                    v => JsonSerializer.Deserialize<List<Guid>>(v, JsonOptions) ?? new List<Guid>(),
+                    new ValueComparer<List<Guid>>((a, b) => a!.SequenceEqual(b!), v => v.Count, v => v.ToList()))
+                .HasMaxLength(2000);
+            e.Property(x => x.OpeningLines)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, JsonOptions),
+                    v => JsonSerializer.Deserialize<List<Domain.Money.OpeningLine>>(v, JsonOptions) ?? new List<Domain.Money.OpeningLine>(),
+                    new ValueComparer<List<Domain.Money.OpeningLine>>((a, b) => a!.SequenceEqual(b!), v => v.Count, v => v.ToList()))
+                .Unbounded();
+            e.Ignore(x => x.IsStanding);
+            e.HasIndex(x => new { x.Kind, x.Status });
+            e.HasIndex(x => x.BusinessDate);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<Domain.Ledger.JournalEntry>(e => e.HasIndex(x => x.BusinessDate));
+
         m.Entity<StockCountLine>(e =>
         {
             e.Property(x => x.Counted).HasPrecision(18, QuantityScale);

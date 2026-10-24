@@ -304,4 +304,22 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         await edna.DisposeAsync();
         await carol.DisposeAsync();
     }
+    [SkippableFact]
+    public async Task The_back_fill_dates_existing_entries_on_sql_server()
+    {
+        Skip.IfNot(sql.Available, Skipped);
+        const string name = "tausi_backfill";
+        await Seeded(name);
+        var id = Guid.NewGuid();
+        await using (var db = new SqlServerTausiDbContext(sql.Options(name)))
+        {
+            db.JournalEntries.Add(new Domain.Ledger.JournalEntry { Id = id, Date = DateTimeOffset.UtcNow.AddDays(-3), Memo = "Before task 12", SourceType = "Test", CreatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+            await new Application.Money.LedgerBackfill(db).Run(CancellationToken.None);
+        }
+
+        await using var check = new SqlServerTausiDbContext(sql.Options(name));
+        (await check.JournalEntries.SingleAsync(e => e.Id == id)).BusinessDate.Should().NotBeNull();
+        (await check.JournalEntries.CountAsync(e => e.BusinessDate == null)).Should().Be(0);
+    }
 }

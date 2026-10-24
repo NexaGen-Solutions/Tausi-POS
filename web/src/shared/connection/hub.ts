@@ -23,6 +23,7 @@ export const posEvents = [
   'settings.changed',
   'permissions.changed',
   'stock.changed',
+  'money.changed',
   'day.opened',
   'user.deactivated',
   'user.pin_reset',

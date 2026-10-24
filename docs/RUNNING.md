@@ -322,6 +322,37 @@ To check the ledger on PostgreSQL: `SELECT e."Memo", a."Code", l."Debit", l."Cre
 ON a."Id" = l."AccountId" WHERE e."SourceType" IN ('StockSale', 'StockVoid', 'Delivery', 'Waste',
 'StockCount') ORDER BY e."CreatedAt";`
 
+### Cash book
+
+The server dates every journal entry with its **business date** when it starts (a one-off
+back-fill of older entries), so nothing needs to be run by hand. Sign in to the admin site as
+`admin` and open **Cash book** (`/admin/cash-book`).
+
+- **Opening balances** (More → Opening balances; needs `settings.manage`): Safe 20,000, Bank
+  150,000, M-Pesa 5,000 and KBL owed 30,000. The tiles show them and the form locks; to change
+  them, reverse the entry and enter them again.
+- **Add expense:** 1,500 for Repairs from the Safe, with a photo (JPG, PNG or PDF up to 5 MB).
+  Cash on hand drops by 1,500. Money paid from a drawer stays a **Pay out** on the POS.
+- **Pay supplier:** KBL 10,000 from the Bank; KBL's owed drops to 20,000 (also on Deliveries).
+  Paying more than is owed is refused.
+- **Record banking:** 15,000 from the Safe to the Bank with a 50 fee. Bank charges shows 50 in
+  the daily summary. Going below 0 warns but saves. **More** also has Move money, Owner money,
+  Other income and Manage categories.
+- **Reverse:** tap a line, then **Reverse** with a reason. Both lines stay in the book.
+- **Needs approval:** supervisors have `cash.book` set to Needs approval, so MAU's supplier
+  payment waits under **Awaiting approval** until the Administrator approves it (give MAU an
+  admin password under **Staff and PINs** first). Expenses use `cash.expense`, which supervisors
+  are allowed.
+- **Daily summary** (right): sales, VAT, net sales, cost of sales, gross profit, expenses (tap to
+  split by category), stock loss and cash differences, bank charges, other income and the net,
+  all read from the journal lines of that business date. **Print summary (PDF)**, **Print on
+  receipt printer** and **Export entries (CSV)** are under it. **All entries** adds cost of sales
+  and stock loss to the list.
+- **Accounts** (`/admin/accounts`, link next to the date): balances by group, "Debits = Credits",
+  and each account's ledger with a running balance.
+- The **day report** printed when the day closes has the profit lines too, and **Close day** on
+  the terminal shows the net.
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

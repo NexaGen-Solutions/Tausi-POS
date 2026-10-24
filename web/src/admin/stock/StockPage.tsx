@@ -14,7 +14,7 @@ import {
   useToast,
   type Column,
 } from '../../shared/ui';
-import { AwaitingApproval } from './AwaitingApproval';
+import { AwaitingApproval } from '../approvals/AwaitingApproval';
 import { MovementsDialog } from './MovementsDialog';
 import { RecipePanel } from './RecipePanel';
 import { StockItemDialog } from './StockItemDialog';
@@ -166,7 +166,7 @@ export function StockPage() {
           </div>
         </div>
 
-        <AwaitingApproval />
+        <AwaitingApproval only="stock" />
 
         {data && data.noRecipe.length > 0 && (
           <Banner

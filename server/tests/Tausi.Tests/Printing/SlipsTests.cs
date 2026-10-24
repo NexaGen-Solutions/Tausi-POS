@@ -186,6 +186,20 @@ public class SlipsTests
                 [new("CAROL", "Counter A", 0m)], 200m),
             "Mau's Village", At.AddHours(-10), At, "MAU", new SlipStyle(columns, true, null)));
 
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void The_day_report_has_the_profit_lines_from_the_books(int columns) =>
+        Golden($"day-report-profit-{columns}", Tausi.Application.Cash.CashSlips.DayReport(
+            new Tausi.Application.Day.DaySummaryDto(4, 2240m, 0m, 300m, 250m, 1931.04m, 308.96m,
+                [new("VAT 16%", 1931.04m, 308.96m)],
+                [new("Cash", 1, 370m), new("M-Pesa", 2, 1300m), new("Card", 2, 570m)], 2240m, 0m,
+                [new("CAROL", "Counter A", -100m)], 200m,
+                new Tausi.Application.Money.DailySummaryDto(new DateOnly(2026, 10, 20), 2240m, 308.96m, 1931.04m, 820m, 1111.04m, 57.5m,
+                    1700m, [new("Repairs", 1500m), new("Transport", 200m)], 220m, [new("Waste", 120m), new("Cash over/short", 100m)],
+                    50m, 0m, -858.96m, ["Pool Table"])),
+            "Mau's Village", At.AddHours(-10), At, "MAU", new SlipStyle(columns, true, null)));
+
     [Fact]
     public void A_zero_rated_item_is_in_the_vat_lines_at_0_percent_and_only_exempt_items_say_vat_exempt()
     {

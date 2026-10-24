@@ -72,6 +72,11 @@ public static class AuditActions
     public const string StockCountChanged = "stock.count";
     public const string StockDocumentApproved = "stock.approved";
     public const string StockDocumentRejected = "stock.rejected";
+    public const string MoneyRecorded = "money.recorded";
+    public const string MoneyApproved = "money.approved";
+    public const string MoneyRejected = "money.rejected";
+    public const string MoneyReversed = "money.reversed";
+    public const string ExpenseCategoryChanged = "money.category_changed";
 }
 
 /// <summary>Entity types of audit entries that more than one place writes or reads.</summary>

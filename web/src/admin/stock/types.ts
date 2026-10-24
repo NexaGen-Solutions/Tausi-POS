@@ -83,7 +83,7 @@ export interface RecipeMenuItem {
 
 export interface StockActivity {
   id: string;
-  kind: 'Waste' | 'Transfer' | 'Delivery' | 'Reversal' | 'Count';
+  kind: 'Waste' | 'Transfer' | 'Delivery' | 'Reversal' | 'Count' | 'Money' | 'MoneyReversal';
   at: string;
   summary: string;
   location: string;

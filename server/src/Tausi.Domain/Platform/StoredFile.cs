@@ -9,4 +9,7 @@ public class StoredFile : Entity
     public string ContentType { get; set; } = "";
     public long Size { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Not served at /files/{id} (e.g. an expense receipt): only through its own checked endpoint.</summary>
+    public bool IsPrivate { get; set; }
 }

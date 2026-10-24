@@ -128,6 +128,20 @@ public static class CashSlips
             foreach (var s in d.ShiftDifferences) b.Columns2($"{s.Cashier} · {s.Terminal}", Signed(s.Difference));
         }
         b.Columns2("Pay-outs", Amount(d.PayOuts));
+        if (d.Profit is { } profit)
+        {
+            // The day's profit from the books (late entries made after the close aren't on it).
+            b.Separator().Text("Profit", TextStyle.Bold)
+                .Columns2("Net sales", Amount(profit.NetSales))
+                .Columns2("Cost of sales", "-" + Amount(profit.CostOfSales))
+                .Columns2("Gross profit", Amount(profit.GrossProfit))
+                .Columns2("Expenses", "-" + Amount(profit.Expenses))
+                .Columns2("Stock loss, cash diff.", Signed(-profit.StockLossAndCash));
+            if (profit.BankCharges != 0) b.Columns2("Bank charges", "-" + Amount(profit.BankCharges));
+            if (profit.OtherIncome != 0) b.Columns2("Other income", Amount(profit.OtherIncome));
+            b.Columns2("NET FOR THE DAY", Slips.Money(profit.Net, style.Currency), TextStyle.Bold);
+            if (profit.NoRecipeItems.Count > 0) b.Text($"Cost of sales missing for {profit.NoRecipeItems.Count} items with no recipe");
+        }
         return b.Cut().Build();
     }
 }

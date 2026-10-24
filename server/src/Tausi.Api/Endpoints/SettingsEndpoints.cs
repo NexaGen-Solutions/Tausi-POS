@@ -37,7 +37,8 @@ public static class SettingsEndpoints
 
         app.MapGet("/files/{id:guid}", async (Guid id, TausiDbContext db, IFileStorage files, CancellationToken ct) =>
         {
-            var meta = await db.StoredFiles.AsNoTracking().FirstOrDefaultAsync(f => f.Id == id, ct);
+            // Private files (expense receipts) are served only through their own checked endpoint.
+            var meta = await db.StoredFiles.AsNoTracking().FirstOrDefaultAsync(f => f.Id == id && !f.IsPrivate, ct);
             var stream = meta is null ? null : files.Open(id);
             return stream is null
                 ? Results.NotFound()

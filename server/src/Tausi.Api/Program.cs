@@ -61,6 +61,7 @@ app.MapDayEndpoints();
 app.MapStaffEndpoints();
 app.MapPermissionEndpoints();
 app.MapStockEndpoints();
+app.MapMoneyEndpoints();
 app.MapMenuEndpoints();
 app.MapTicketEndpoints();
 app.MapHub<PosHub>(PosHub.Path);

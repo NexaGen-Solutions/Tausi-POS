@@ -74,6 +74,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
     public DbSet<Domain.Stock.StockTransferLine> StockTransferLines => Set<Domain.Stock.StockTransferLine>();
     public DbSet<Domain.Stock.StockCount> StockCounts => Set<Domain.Stock.StockCount>();
     public DbSet<Domain.Stock.StockCountLine> StockCountLines => Set<Domain.Stock.StockCountLine>();
+    public DbSet<Domain.Money.MoneyDocument> MoneyDocuments => Set<Domain.Money.MoneyDocument>();
 
     /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
     public const string TicketNumberSequence = "TicketNumbers";

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Tausi.Application.Abstractions;
 using Tausi.Application.Ledger;
+using Tausi.Application.Money;
 using Tausi.Application.Security;
 using Tausi.Domain.Common;
 using Tausi.Domain.Ledger;
@@ -21,6 +22,13 @@ public sealed class LedgerPostingService(ITausiDb db, ICurrentSession session, T
         if (missing.Count > 0)
             throw new DomainException($"Unknown or inactive ledger account: {string.Join(", ", missing)}.");
 
+        // The business date: as chosen (admin forms), else the work period's, else the open day's, else today.
+        var date = draft.BusinessDate
+            ?? (draft.WorkPeriodId is { } period ? await BusinessDates.OfPeriod(db, period, ct) : null)
+            ?? await db.WorkPeriods.AsNoTracking().Where(p => p.IsOpen).Select(p => p.BusinessDate).FirstOrDefaultAsync(ct)
+            ?? await BusinessDates.Today(db, clock, ct);
+        var late = await BusinessDates.IsClosed(db, date, ct);
+
         var entry = new JournalEntry
         {
             Date = draft.Date,
@@ -31,17 +39,23 @@ public sealed class LedgerPostingService(ITausiDb db, ICurrentSession session, T
             CreatedByUserId = session.User?.UserId,
             WorkPeriodId = draft.WorkPeriodId,
             ShiftId = draft.ShiftId,
+            BusinessDate = date,
+            IsLate = late,
+            ReversesEntryId = draft.ReversesEntryId,
             Lines = draft.Lines.Select(l => new JournalLine
             {
                 AccountId = accounts[l.AccountCode].Id,
                 Debit = l.Debit,
                 Credit = l.Credit,
                 Memo = l.Memo,
+                ExpenseCategoryId = l.ExpenseCategoryId,
                 SourceType = draft.SourceType,
                 SourceId = draft.SourceId,
             }).ToList(),
         };
         db.JournalEntries.Add(entry);
+        if (draft.ReversesEntryId is { } reversed)
+            await db.JournalEntries.Where(e => e.Id == reversed).ExecuteUpdateAsync(u => u.SetProperty(e => e.ReversedByEntryId, entry.Id), ct);
         return entry;
     }
 }

@@ -212,7 +212,7 @@ public static class ShiftPosting
     public static JournalEntryDraft Movement(CashierShift shift, DrawerMovement m, DateTimeOffset now) =>
         m.Kind == DrawerMovementKind.PayOut
             ? new JournalEntryDraft(now, $"Pay out · {m.CategoryName}", SourceType, m.Id.ToString(),
-                [JournalLineDraft.Dr(LedgerAccountCodes.Expenses, m.Amount, m.CategoryName ?? "Other"),
+                [JournalLineDraft.Dr(LedgerAccountCodes.Expenses, m.Amount, m.CategoryName ?? "Other", m.CategoryId),
                  JournalLineDraft.Cr(LedgerAccountCodes.Cash, m.Amount, "Paid from the drawer")],
                 shift.WorkPeriodId, shift.Id)
             : new JournalEntryDraft(now, "Cash drop", SourceType, m.Id.ToString(),

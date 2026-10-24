@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import { ApiError, api } from '../../shared/api/client';
 import type { Brand } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
-import { formatAmount, formatMoney } from '../../shared/format/money';
+import { formatAmount, formatMoney, formatSigned } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { Button, Modal, TopBar, useToast } from '../../shared/ui';
 import { usePinSession } from '../usePinSession';
@@ -24,6 +24,8 @@ interface DaySummary {
   rounding: number;
   shiftDifferences: { cashier: string; terminal: string; difference: number }[];
   payOuts: number;
+  /** The day's profit from the ledger (cash book daily summary). */
+  profit?: { net: number } | null;
 }
 
 interface DayStatus {
@@ -216,6 +218,12 @@ export function DayPage() {
                   />
                 ))}
                 <Line label={t('pos.day.payOuts')} value={formatAmount(summary.payOuts)} />
+                {summary.profit && (
+                  <div className="cash-row cash-row--total">
+                    <span>{t('pos.day.netForDay')}</span>
+                    <span className="cash-amount">{formatSigned(summary.profit.net)}</span>
+                  </div>
+                )}
               </>
             )}
             <Button
