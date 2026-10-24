@@ -455,7 +455,7 @@ public class SlipsTests
             .Should().Be("Print on Counter B: 1. Bill → no printer set · 2. Dispense slip \"Counter B\" → no printer set");
     }
 
-    private static void Golden(string name, PrintDocument doc, [CallerFilePath] string source = "")
+    internal static void Golden(string name, PrintDocument doc, [CallerFilePath] string source = "")
     {
         var path = Path.Combine(Path.GetDirectoryName(source)!, "Golden", name + ".txt");
         var text = doc.Text.Replace("\r\n", "\n");
