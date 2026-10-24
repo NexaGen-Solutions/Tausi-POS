@@ -127,7 +127,7 @@ describe('Stock', () => {
               ? overview({ items: [whiteCap, guiness] })
               : overview(),
           ),
-        'GET /api/admin/stock/awaiting': () => json(200, awaiting),
+        'GET /api/admin/awaiting': () => json(200, awaiting),
         'GET /api/admin/stock/recipes': () =>
           json(200, [
             { id: 'm-tot', name: 'Viceroy Tot', category: 'Spirits', hasRecipe: true },
@@ -372,7 +372,7 @@ describe('Deliveries', () => {
         'GET /api/brand': () =>
           json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock': () => json(200, overview()),
-        'GET /api/admin/stock/awaiting': () => json(200, []),
+        'GET /api/admin/awaiting': () => json(200, []),
         'GET /api/admin/deliveries': () => json(200, []),
         'GET /api/admin/suppliers': () =>
           json(200, [

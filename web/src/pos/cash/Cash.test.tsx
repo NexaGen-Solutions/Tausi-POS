@@ -339,6 +339,7 @@ describe('cash screens', () => {
                 rounding: 0,
                 shiftDifferences: [{ cashier: 'CAROL', terminal: 'Counter A', difference: 0 }],
                 payOuts: 200,
+                profit: { net: -150 },
               },
         }),
       'POST /api/pos/day/close': () => json(200, {}),
@@ -360,6 +361,7 @@ describe('cash screens', () => {
     await user.click(await screen.findByRole('button', { name: 'Close day' }));
     expect(await screen.findByText('Nothing blocks the close')).toBeInTheDocument();
     expect(screen.getByText('KSh 2,240')).toBeInTheDocument();
+    expect(screen.getByText('Net for the day').nextSibling).toHaveTextContent('− 150');
     await user.click(screen.getAllByRole('button', { name: 'Close day' }).at(-1)!);
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Close day' }),

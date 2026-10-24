@@ -12,6 +12,8 @@ import { StockPage } from '../admin/stock/StockPage';
 import { DeliveriesPage } from '../admin/stock/DeliveriesPage';
 import { CountsPage } from '../admin/stock/CountsPage';
 import { CountPage } from '../admin/stock/CountPage';
+import { CashBookPage } from '../admin/money/CashBookPage';
+import { AccountsPage } from '../admin/money/AccountsPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
@@ -120,6 +122,9 @@ export const routes: RouteObject[] = [
       { path: 'deliveries', element: <DeliveriesPage /> },
       { path: 'stock-counts', element: <CountsPage /> },
       { path: 'stock-counts/:id', element: <CountPage /> },
+      { path: 'cash-book', element: <CashBookPage /> },
+      { path: 'cashbook', element: <Navigate to="/admin/cash-book" replace /> },
+      { path: 'accounts', element: <AccountsPage /> },
       ...adminNav
         .filter(
           (item) =>
@@ -133,6 +138,7 @@ export const routes: RouteObject[] = [
               'stock',
               'deliveries',
               'stock-counts',
+              'cash-book',
             ].includes(item.path),
         )
         .map((item) => ({

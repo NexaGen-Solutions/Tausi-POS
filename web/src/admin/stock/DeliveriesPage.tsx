@@ -4,7 +4,7 @@ import { ApiError, api } from '../../shared/api/client';
 import { formatAmount } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { Button, Field, Modal, Table, Toggle, useToast, type Column } from '../../shared/ui';
-import { AwaitingApproval } from './AwaitingApproval';
+import { AwaitingApproval } from '../approvals/AwaitingApproval';
 import { DeliveryForm } from './DeliveryForm';
 import type { Delivery, StockOverview, Supplier } from './types';
 import './stock.css';
@@ -130,7 +130,7 @@ export function DeliveriesPage() {
             </Button>
           </div>
         </div>
-        <AwaitingApproval />
+        <AwaitingApproval only="stock" />
         {deliveries.data && (
           <Table
             caption={t('admin.deliveries.title')}

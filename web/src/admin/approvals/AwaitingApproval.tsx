@@ -6,10 +6,14 @@ import { formatDayTime } from '../../shared/format/dates';
 import { formatAmount } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
 import { Button } from '../../shared/ui';
-import type { StockActivity } from './types';
+import type { StockActivity } from '../stock/types';
+import '../stock/stock.css';
 
-/** Where approving and rejecting each kind of stock document goes. */
+/** Where approving and rejecting each kind of document goes. */
 function endpoint(item: StockActivity, how: 'approve' | 'reject') {
+  // A money document and a reversal waiting on one both use the money endpoints.
+  if (item.kind === 'Money' || item.kind === 'MoneyReversal')
+    return `/api/admin/money/${item.id}/${how}`;
   if (item.kind === 'Delivery') return `/api/admin/deliveries/${item.id}/${how}`;
   if (item.kind === 'Reversal')
     return how === 'approve'
@@ -19,15 +23,18 @@ function endpoint(item: StockActivity, how: 'approve' | 'reject') {
 }
 
 /**
- * "Awaiting approval": stock documents saved as Pending because the creator's key needs approval.
- * Someone Allowed for that key (not the creator) approves; only then does stock move.
+ * "Awaiting approval", shared by stock and money pages: documents saved as Pending because the
+ * creator's key needs approval. Someone Allowed for that key (not the creator) approves; only
+ * then does stock move or money post. Each page shows the queue for what it covers.
  */
-export function AwaitingApproval() {
+export function AwaitingApproval({ only }: { only: 'stock' | 'money' }) {
   const queries = useQueryClient();
   const awaiting = useQuery({
-    queryKey: ['stock', 'awaiting'],
-    queryFn: () => api<StockActivity[]>('/api/admin/stock/awaiting'),
+    queryKey: ['awaiting'],
+    queryFn: () => api<StockActivity[]>('/api/admin/awaiting'),
   });
+  const isMoney = (item: StockActivity) => item.kind === 'Money' || item.kind === 'MoneyReversal';
+  const items = (awaiting.data ?? []).filter((item) => isMoney(item) === (only === 'money'));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +46,11 @@ export function AwaitingApproval() {
         method: 'POST',
         body: how === 'reject' ? { note: null } : undefined,
       });
-      await queries.invalidateQueries({ queryKey: ['stock'] });
-      await queries.invalidateQueries({ queryKey: ['deliveries'] });
+      await Promise.all(
+        ['awaiting', 'stock', 'deliveries', 'cashbook', 'accounts'].map((key) =>
+          queries.invalidateQueries({ queryKey: [key] }),
+        ),
+      );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
@@ -48,11 +58,11 @@ export function AwaitingApproval() {
     }
   };
 
-  if (!awaiting.data?.length) return null;
+  if (!items.length) return null;
   return (
     <section className="stock-awaiting" aria-labelledby="stock-awaiting">
       <h2 id="stock-awaiting" className="stock-section-title">
-        {t('admin.stock.awaiting', { count: awaiting.data.length })}
+        {t('admin.stock.awaiting', { count: items.length })}
       </h2>
       {error && (
         <p className="nx-field__error" role="alert">
@@ -60,14 +70,17 @@ export function AwaitingApproval() {
         </p>
       )}
       <ul className="stock-awaiting__list">
-        {awaiting.data.map((item) => (
+        {items.map((item) => (
           <li key={`${item.kind}-${item.id}`} className="stock-awaiting__item">
             <div>
               <strong>{t(`admin.stock.kind.${item.kind}`)}</strong> · {item.summary}
               <span className="stock-muted">
                 {' '}
-                · {item.location} ·{' '}
-                {t('admin.stock.byWhen', { name: item.by, when: formatDayTime(item.at) })}
+                ·{' '}
+                {isMoney(item)
+                  ? t('admin.cashbook.dated', { date: item.location })
+                  : item.location}{' '}
+                · {t('admin.stock.byWhen', { name: item.by, when: formatDayTime(item.at) })}
                 {item.value != null && ` · KSh ${formatAmount(item.value)}`}
               </span>
               {item.note && <span className="stock-muted"> · {item.note}</span>}

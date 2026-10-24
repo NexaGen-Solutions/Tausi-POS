@@ -72,6 +72,12 @@ export function LiveUpdates() {
         void queries.invalidateQueries({ queryKey: ['stock'] });
         void queries.invalidateQueries({ queryKey: ['deliveries'] });
       }),
+      onPosEvent('money.changed', () => {
+        void queries.invalidateQueries({ queryKey: ['cashbook'] });
+        void queries.invalidateQueries({ queryKey: ['accounts'] });
+        void queries.invalidateQueries({ queryKey: ['awaiting'] });
+        void queries.invalidateQueries({ queryKey: ['stock', 'suppliers'] });
+      }),
       onPosEvent('print.failed', (payload) => {
         const job = payload as PrintFailed;
         if (!onItsOrderScreen(job)) setFailed((list) => [...list, job]);

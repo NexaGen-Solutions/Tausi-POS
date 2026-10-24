@@ -1,0 +1,282 @@
+/* Wireframe 14: cash book and daily summary; the Accounts view. Layout comes from stock.css. */
+/* Header and tiles across the page; the entries and the summary side by side underneath. */
+.money-page {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+.money-page > .stock {
+  padding: 0;
+  margin-top: var(--space-2);
+}
+.money-dates {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.money-dates__picker .nx-field__input {
+  min-height: var(--touch-min);
+  font-family: var(--font-mono);
+}
+.money-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.money-tile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.money-tile__label {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.money-tile__amount {
+  font-family: var(--font-mono);
+  font-size: 26px;
+}
+.money-tile__note,
+.money-muted {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.money-tag {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.nx-table tr.money-row--reversed td {
+  color: var(--color-text-muted);
+}
+.nx-table tr.money-row--selected td {
+  background: var(--color-selected-tint);
+}
+
+/* The right panel: daily summary, print and export. */
+.money-summary-box {
+  position: sticky;
+  top: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.money-summary {
+  display: grid;
+  gap: var(--space-1);
+}
+.money-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-1) 0;
+}
+.money-line--total {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-weight: 600;
+}
+.money-line--button {
+  width: 100%;
+  min-height: var(--touch-min);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.money-parts {
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  list-style: none;
+}
+.money-line--part {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.money-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.money-warning {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+  font-size: 14px;
+}
+.money-warning a {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* The More menu: a list under its button. */
+.money-more {
+  position: relative;
+}
+.money-more__list {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  min-width: 220px;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  list-style: none;
+}
+.money-more__item {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.money-more__item:focus-visible,
+.money-more__item:active {
+  background: var(--color-selected-tint);
+}
+
+/* Forms and dialogs. */
+.money-amount .nx-field__input {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.money-owed {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.money-deliveries {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.money-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+}
+.money-check input {
+  width: 20px;
+  height: 20px;
+}
+.money-opening {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+.money-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+.money-facts dt {
+  color: var(--color-text-muted);
+}
+.money-facts dd {
+  margin: 0;
+}
+.money-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.money-categories {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.money-categories__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.money-categories__row .nx-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* Accounts: the trial balance banner, groups, and the ledger beside them. */
+.money-accounts {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+}
+.money-trial {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+.money-trial--ok {
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+.money-trial--off {
+  border: 1px solid var(--color-warning-text);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.money-group {
+  display: grid;
+  gap: var(--space-2);
+}
+.money-group__title {
+  display: flex;
+  justify-content: space-between;
+}
+.money-ledger {
+  position: sticky;
+  top: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+@media (max-width: 900px) {
+  .money-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .money-accounts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .money-summary-box,
+  .money-ledger {
+    position: static;
+  }
+}
