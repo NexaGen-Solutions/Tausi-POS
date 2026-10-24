@@ -68,6 +68,10 @@ export function LiveUpdates() {
         );
       }),
       onPosEvent('menu.changed', () => void queries.invalidateQueries({ queryKey: ['pos-menu'] })),
+      onPosEvent('stock.changed', () => {
+        void queries.invalidateQueries({ queryKey: ['stock'] });
+        void queries.invalidateQueries({ queryKey: ['deliveries'] });
+      }),
       onPosEvent('print.failed', (payload) => {
         const job = payload as PrintFailed;
         if (!onItsOrderScreen(job)) setFailed((list) => [...list, job]);

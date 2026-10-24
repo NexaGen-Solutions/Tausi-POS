@@ -23,7 +23,8 @@ public sealed record SeededUser(string Name, string Role, string Pin);
 /// every business. The demo seed adds the first customer's business, staff, terminals and printers.
 /// Existing rows are never changed, so running it again keeps any edits.
 /// </summary>
-public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, ITicketDatabase? ticketNumbers = null)
+public sealed partial class Seeder(
+    ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, ITicketDatabase? ticketNumbers = null, TimeProvider? clock = null)
 {
     public const string AdminPasswordVariable = "TAUSI_ADMIN_PASSWORD";
     public const string OldAdminPasswordVariable = "NEXAGEN_ADMIN_PASSWORD";
@@ -68,6 +69,8 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         var codes = await db.LedgerAccounts.Select(a => a.Code).ToListAsync(ct);
         foreach (var (code, name, type) in LedgerAccountCodes.Defaults.Where(d => !codes.Contains(d.Code)))
             db.LedgerAccounts.Add(new LedgerAccount { Code = code, Name = name, Type = type });
+
+        await SeedStockLocations(ct);
 
         // Pay-out categories (Task 12 adds the admin screen for them).
         if (!await db.ExpenseCategories.AnyAsync(ct))
@@ -160,6 +163,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
         await SeedDemoMenu(ct);
         await SeedDemoTemperature(ct);
         await SeedDemoTables(ct);
+        await SeedDemoStock(ct);
         await SeedDemoTickets(ct, openDemoDay);
         return created;
     }

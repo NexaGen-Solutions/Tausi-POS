@@ -27,10 +27,10 @@ public static class DefaultPermissions
         ([OrderVoid], NeedsApproval, NeedsApproval, Allowed, Allowed),
         ([OrderGift, OrderDiscount], NotAllowed, NeedsApproval, Allowed, Allowed),
         ([TicketReprint], NeedsApproval, Allowed, Allowed, Allowed),
-        ([OrderChangePrice, StockCount, StockAdjust], NotAllowed, NotAllowed, NeedsApproval, Allowed),
+        ([OrderChangePrice, StockAdjust], NotAllowed, NotAllowed, NeedsApproval, Allowed),
         ([TicketSettle], NotAllowed, Allowed, Allowed, Allowed),
         ([CashExpense], NotAllowed, NeedsApproval, Allowed, Allowed),
-        ([StockReceive, StockWaste, CashBook, ReportsAll, DayOpenClose, StaffManage], NotAllowed, NotAllowed, Allowed, Allowed),
+        ([StockReceive, StockWaste, StockCount, CashBook, ReportsAll, DayOpenClose, StaffManage], NotAllowed, NotAllowed, Allowed, Allowed),
         ([MenuEdit, MenuEditPrices, PermissionsManage, DevicesManage, SettingsManage, ErpManage], NotAllowed, NotAllowed, NotAllowed, Allowed),
     ];
 

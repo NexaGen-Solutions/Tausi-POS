@@ -40,7 +40,9 @@ public sealed record TerminalRow(
     bool Paired,
     IReadOnlyList<string> LocalPrinters,
     string RoutingPreview,
-    long RowVersion);
+    long RowVersion,
+    Guid? SellsFromLocationId = null,
+    string? SellsFromLocationName = null);
 
 public sealed record TerminalRequest(
     string Name,
@@ -49,7 +51,8 @@ public sealed record TerminalRequest(
     string? DispenseHeader,
     Guid? ReceiptPrinterId,
     bool Active,
-    long RowVersion);
+    long RowVersion,
+    Guid? SellsFromLocationId = null);
 
 /// <summary>Shared by the terminal use cases: the permission check and building rows.</summary>
 public sealed class TerminalAdmin(
@@ -74,6 +77,7 @@ public sealed class TerminalAdmin(
             .Where(t => onlyId == null || t.Id == onlyId)
             .OrderBy(t => t.Name).ToListAsync(ct);
         var lists = await db.PriceLists.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Name, ct);
+        var locations = await db.StockLocations.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Name, ct);
         var idle = (await PosSettings.Load(db, ct)).IdleLimit;
         var now = clock.GetUtcNow();
         var ids = terminals.Select(t => t.Id).ToList();
@@ -101,7 +105,7 @@ public sealed class TerminalAdmin(
                 t.Active, t.IsPaired,
                 LocalPrinters(t.LocalPrintersJson),
                 PrintRouting.Preview(t.Name, t.ReceiptPrinter?.Name, t.EffectiveDispenseHeader, t.DispensePrinter?.Name),
-                t.RowVersion);
+                t.RowVersion, t.SellsFromLocationId, t.SellsFromLocationId is { } l ? locations.GetValueOrDefault(l) : null);
         }).ToList();
     }
 }
@@ -117,8 +121,8 @@ public sealed class ListTerminals(TerminalAdmin admin)
 }
 
 /// <summary>
-/// Edits a terminal: name, price list, dispense printer and header, receipt printer, active. Any
-/// active printer can be chosen for either role.
+/// Edits a terminal: name, price list, dispense printer and header, receipt printer, active, and the
+/// stock location it sells from (null keeps it). Any active printer can be chosen for either role.
 /// </summary>
 public sealed class UpdateTerminal(ITausiDb db, TerminalAdmin admin, IAuditLog audit, IPosEvents events)
 {
@@ -140,11 +144,13 @@ public sealed class UpdateTerminal(ITausiDb db, TerminalAdmin admin, IAuditLog a
         if (header?.Length > 40) throw new DomainException("The dispense header can be at most 40 characters.");
         if (request.PriceListId is { } list && !await db.PriceLists.AnyAsync(l => l.Id == list && l.Active, ct))
             throw new DomainException("Choose an active price list.");
+        if (request.SellsFromLocationId is { } location && !await db.StockLocations.AnyAsync(l => l.Id == location && l.Active, ct))
+            throw new DomainException("Choose an active stock location.");
         foreach (var printerId in new[] { request.DispensePrinterId, request.ReceiptPrinterId }.OfType<Guid>())
             if (!await db.Printers.AnyAsync(p => p.Id == printerId && p.Active, ct))
                 throw new DomainException("Choose an active printer.");
 
-        var before = new { terminal.Name, terminal.PriceListId, terminal.DispensePrinterId, terminal.DispenseHeader, terminal.ReceiptPrinterId, terminal.Active };
+        var before = new { terminal.Name, terminal.PriceListId, terminal.DispensePrinterId, terminal.DispenseHeader, terminal.ReceiptPrinterId, terminal.Active, terminal.SellsFromLocationId };
         var priceListChanged = terminal.PriceListId != request.PriceListId;
         terminal.Name = name;
         terminal.PriceListId = request.PriceListId;
@@ -152,9 +158,10 @@ public sealed class UpdateTerminal(ITausiDb db, TerminalAdmin admin, IAuditLog a
         terminal.DispenseHeader = header;
         terminal.ReceiptPrinterId = request.ReceiptPrinterId;
         terminal.Active = request.Active;
+        if (request.SellsFromLocationId is { } sellsFrom) terminal.SellsFromLocationId = sellsFrom;
 
         audit.Write(new AuditRecord("terminal.changed", "Terminal", id.ToString(), before,
-            new { terminal.Name, terminal.PriceListId, terminal.DispensePrinterId, terminal.DispenseHeader, terminal.ReceiptPrinterId, terminal.Active },
+            new { terminal.Name, terminal.PriceListId, terminal.DispensePrinterId, terminal.DispenseHeader, terminal.ReceiptPrinterId, terminal.Active, terminal.SellsFromLocationId },
             grant.ApprovedByUserId));
         try
         {

@@ -41,6 +41,17 @@ public static class DependencyInjection
         services.AddScoped<Approvals.Approvers>();
         services.AddScoped<Approvals.ExpireApprovals>();
         services.AddScoped<Settling.PaymentCommands>();
+        services.AddScoped<Stock.StockBook>();
+        services.AddScoped<Stock.StockSelling>();
+        services.AddScoped<Stock.StockAccess>();
+        services.AddScoped<Stock.StockCatalog>();
+        services.AddScoped<Stock.StockItemCommands>();
+        services.AddScoped<Stock.RecipeCommands>();
+        services.AddScoped<Stock.SupplierCommands>();
+        services.AddScoped<Stock.DeliveryCommands>();
+        services.AddScoped<Stock.WasteAndTransferCommands>();
+        services.AddScoped<Stock.AwaitingApproval>();
+        services.AddScoped<Stock.StockCountCommands>();
         services.AddScoped<Settling.SettleTicket>();
         services.AddScoped<Settling.CloseVoidedTicket>();
         services.AddScoped<Settling.BroughtByChoices>();

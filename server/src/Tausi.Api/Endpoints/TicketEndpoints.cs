@@ -56,7 +56,9 @@ public static class TicketEndpoints
         pos.MapPost("/approvals", (CreateApprovalRequestDto r, CreateApprovalRequest create, CancellationToken ct) => create.Execute(r, ct));
         pos.MapGet("/approvals", (string? status, ListApprovals list, CancellationToken ct) => list.Execute(status, ct));
         pos.MapGet("/approvals/approvers", (ApprovalKind kind, Approvers approvers, CancellationToken ct) => approvers.Execute(kind, ct));
-        pos.MapPost("/approvals/{id:guid}/approve", (Guid id, ApproveRequest approve, CancellationToken ct) => approve.Execute(id, ct));
+        // The body is optional: the approver's answer to "Was it already poured?" for a void.
+        pos.MapPost("/approvals/{id:guid}/approve", async (Guid id, HttpRequest http, ApproveRequest approve, CancellationToken ct) =>
+            await approve.Execute(id, ct, http.ContentLength is > 0 ? await http.ReadFromJsonAsync<ApproveRequestDto>(ct) : null));
         pos.MapPost("/approvals/{id:guid}/reject", (Guid id, RejectApprovalRequestDto? r, RejectRequest reject, CancellationToken ct) =>
             reject.Execute(id, r ?? new RejectApprovalRequestDto(null), ct));
         pos.MapPost("/approvals/{id:guid}/cancel", (Guid id, CancelRequest cancel, CancellationToken ct) => cancel.Execute(id, ct));

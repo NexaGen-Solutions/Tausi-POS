@@ -18,6 +18,9 @@ export interface TerminalRow {
   localPrinters: string[];
   routingPreview: string;
   rowVersion: number;
+  /** The stock location its sales come from. */
+  sellsFromLocationId?: string | null;
+  sellsFromLocationName?: string | null;
 }
 
 export type ConnectionMode = 'Network9100' | 'WindowsShare' | 'ViaTerminal' | 'File';

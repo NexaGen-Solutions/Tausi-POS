@@ -178,3 +178,24 @@
     align-items: stretch;
   }
 }
+.approvals-card__poured {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.approvals-yesno {
+  min-width: 72px;
+  min-height: var(--touch-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  font: inherit;
+}
+.approvals-yesno--on {
+  border-color: var(--color-selected);
+  background: var(--color-selected-tint);
+  color: var(--color-selected);
+  font-weight: 600;
+}

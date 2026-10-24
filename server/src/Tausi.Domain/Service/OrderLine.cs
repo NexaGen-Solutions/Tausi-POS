@@ -79,6 +79,15 @@ public class OrderLine : Entity
     /// <summary>The dispense printer that printed this line (its print round's printer), for a VOID slip.</summary>
     public Guid? DispensePrinterId { get; set; }
 
+    /// <summary>
+    /// The line this one was split off (for a partial void, gift or price change), back to the first:
+    /// its stock moved when that line was printed, so a void here returns a share of those movements.
+    /// </summary>
+    public Guid? SplitFromLineId { get; set; }
+
+    /// <summary>The line whose sale moved the stock for this one.</summary>
+    public Guid SaleLineId => SplitFromLineId ?? Id;
+
     public bool IsVoided => Status == OrderLineStatus.Voided || VoidedAt is not null;
 
     /// <summary>On the ticket and the bill: not cancelled and not voided.</summary>
@@ -123,7 +132,7 @@ public class OrderLine : Entity
             OptionIds = OptionIds, Note = Note, Status = Status, PrintRound = PrintRound, UnitPrice = UnitPrice,
             VatRate = VatRate, VatExempt = VatExempt, IsGift = IsGift, OriginalUnitPrice = OriginalUnitPrice,
             AddedByUserId = AddedByUserId, AddedTerminalId = AddedTerminalId, AddedAt = AddedAt,
-            PrintedAt = PrintedAt, DispensePrinterId = DispensePrinterId,
+            PrintedAt = PrintedAt, DispensePrinterId = DispensePrinterId, SplitFromLineId = SaleLineId,
         };
         part.SetQuantity(quantity);
         SetQuantity(Quantity - quantity);

@@ -161,6 +161,29 @@ describe('approvals screen', () => {
     expect(await screen.findByText('Nothing is waiting for you.')).toBeInTheDocument();
   });
 
+  it('the approver confirms or changes "Was it already poured?" and their answer is sent', async () => {
+    const user = userEvent.setup();
+    pending = [request('r1', { wasPoured: true })];
+    renderRoutes(routes, '/pos/approvals');
+    const card = (
+      await screen.findByRole('heading', { name: 'Void 1 × Guiness · KSh 300' })
+    ).closest('li')!;
+    const poured = within(card).getByRole('group', { name: 'Was it already poured?' });
+    expect(within(poured).getByRole('button', { name: 'Yes' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(within(poured).getByRole('button', { name: 'No' }));
+    await user.click(within(card).getByRole('button', { name: 'Approve void' }));
+
+    await waitFor(() =>
+      expect(calls.find((c) => c.path === '/api/pos/approvals/r1/approve')!.body).toEqual({
+        wasPoured: false,
+      }),
+    );
+  });
+
   it('rejects with a note', async () => {
     const user = userEvent.setup();
     renderRoutes(routes, '/pos/approvals');

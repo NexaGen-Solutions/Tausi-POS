@@ -103,12 +103,48 @@ public class CheckConnectionTests
     [Fact]
     public async Task No_answer_says_check_the_printer_is_on()
     {
-        // A documentation-only address: nothing answers there, so the connection times out
-        // (or, on a network with no route at all, is unreachable).
-        var ex = await FluentActions.Awaiting(() => NetworkPrinter.Probe("192.0.2.1:9100", TimeSpan.FromMilliseconds(300), CancellationToken.None))
+        using var silent = SilentListener.Start();
+
+        var ex = await FluentActions.Awaiting(() => NetworkPrinter.Probe(silent.Address, TimeSpan.FromMilliseconds(300), CancellationToken.None))
             .Should().ThrowAsync<PrinterTransportException>();
-        ex.Which.Message.Should().Match(m =>
-            m == "No answer from 192.0.2.1:9100 — is the printer on and plugged into the network?" || m.StartsWith("Can't reach 192.0.2.1"));
+        ex.Which.Message.Should().Be($"No answer from {silent.Address} — is the printer on and plugged into the network?");
+    }
+}
+
+/// <summary>
+/// A local port that never answers, whatever network the tests run on: it listens but never
+/// accepts, and its backlog is filled first, so the kernel drops further connection attempts and
+/// they time out (as with a printer that is switched off).
+/// </summary>
+internal sealed class SilentListener : IDisposable
+{
+    private readonly Socket _listener;
+    private readonly List<Socket> _fillers = [];
+
+    private SilentListener(Socket listener) => _listener = listener;
+
+    public string Address => $"127.0.0.1:{((IPEndPoint)_listener.LocalEndPoint!).Port}";
+
+    public static SilentListener Start()
+    {
+        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        socket.Listen(0);
+        var silent = new SilentListener(socket);
+        // Connect until one attempt hangs: from then on the backlog is full.
+        for (var i = 0; i < 64; i++)
+        {
+            var filler = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            silent._fillers.Add(filler);
+            if (!filler.ConnectAsync(socket.LocalEndPoint!).Wait(TimeSpan.FromMilliseconds(200))) return silent;
+        }
+        throw new InvalidOperationException("Could not fill the listen backlog.");
+    }
+
+    public void Dispose()
+    {
+        foreach (var filler in _fillers) filler.Dispose();
+        _listener.Dispose();
     }
 }
 

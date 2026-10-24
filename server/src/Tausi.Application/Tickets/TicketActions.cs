@@ -54,7 +54,7 @@ public static class PendingRequests
 /// the tracked ticket and adds logs, audit and print jobs to the caller's unit of work; the caller
 /// saves and commits. Print jobs never undo the change: without a usable printer nothing prints.
 /// </summary>
-public sealed class TicketActions(ITausiDb db, TicketPrints prints, IAuditLog audit, TimeProvider clock)
+public sealed class TicketActions(ITausiDb db, TicketPrints prints, Stock.StockSelling stock, IAuditLog audit, TimeProvider clock)
 {
     // ---- Void (printed lines only) ----
 
@@ -94,6 +94,8 @@ public sealed class TicketActions(ITausiDb db, TicketPrints prints, IAuditLog au
             RequestedByUserId = actor.UserId, ApprovedByUserId = actor.ApprovedById, TerminalId = actor.TerminalId, At = now,
             ApprovalRequestId = actor.RequestId,
         });
+        var day = await Day.WorkPeriods.Current(db, ct);
+        await stock.Void(ticket, part, poured, actor.UserId, day?.Id, now, ct);
         var slip = await prints.VoidSlip(ticket, part, actor.TerminalId, summary.Reason!, actor.UserName, actor.ApproverName, ct);
         var bill = await prints.CorrectedBillIfBilled(ticket, actor.TerminalId, ct);
         audit.Write(new AuditRecord(AuditActions.LineVoided, nameof(Ticket), ticket.Id.ToString(),

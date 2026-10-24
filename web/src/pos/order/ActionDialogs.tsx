@@ -252,7 +252,12 @@ export function VoidDialog({
       />
       {askPoured && !spilled && (
         <div className="action-dialog__poured" role="group" aria-label={t('pos.actions.poured')}>
-          <span>{t('pos.actions.poured')}</span>
+          <span>
+            {t('pos.actions.poured')}
+            {permission === 'NeedsApproval' && (
+              <span className="action-dialog__hint"> {t('pos.actions.pouredConfirm')}</span>
+            )}
+          </span>
           {[false, true].map((yes) => (
             <button
               key={String(yes)}

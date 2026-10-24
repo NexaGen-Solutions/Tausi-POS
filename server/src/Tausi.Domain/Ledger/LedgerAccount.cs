@@ -37,6 +37,7 @@ public static class LedgerAccountCodes
     public const string Rounding = "ROUNDING";
     public const string Safe = "SAFE";
     public const string CashOverShort = "CASH_OVER_SHORT";
+    public const string OpeningBalances = "OPENING_BALANCES";
 
     public static readonly IReadOnlyList<(string Code, string Name, AccountType Type)> Defaults =
     [
@@ -54,5 +55,6 @@ public static class LedgerAccountCodes
         (Rounding, "Rounding", AccountType.Income),
         (Safe, "Safe", AccountType.Asset),
         (CashOverShort, "Cash over/short", AccountType.Expense),
+        (OpeningBalances, "Opening balances", AccountType.Equity),
     ];
 }
