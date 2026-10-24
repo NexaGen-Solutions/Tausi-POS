@@ -11,6 +11,7 @@ public static class SessionEndReasons
     public const string PinReset = "pin_reset";
     public const string Deactivated = "deactivated";
     public const string Revoked = "revoked";
+    public const string DayClosed = "day_closed";
 }
 
 /// <summary>

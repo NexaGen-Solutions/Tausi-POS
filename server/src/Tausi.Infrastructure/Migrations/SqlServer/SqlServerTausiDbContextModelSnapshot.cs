@@ -73,6 +73,165 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.ToTable("AuditEntries");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Cash.CashierShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CashierUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CountJson")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("Counted")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset?>("CountedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal?>("Difference")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Expected")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FloatCountsJson")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("OpeningFloat")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SignedOffByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WorkPeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkPeriodId");
+
+                    b.HasIndex("CashierUserId", "Status")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Open'");
+
+                    b.HasIndex("TerminalId", "Status")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Open'");
+
+                    b.ToTable("CashierShifts");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.DrawerMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CategoryName")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WorkPeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.ToTable("DrawerMovements");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.ExpenseCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("ExpenseCategories");
+                });
+
             modelBuilder.Entity("Tausi.Domain.Devices.Printer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -271,6 +430,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("SourceId")
                         .HasMaxLength(64)
@@ -1485,6 +1647,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid?>("RemovedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1521,6 +1686,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.HasIndex("MpesaCode")
                         .IsUnique()
                         .HasFilter("[MpesaCode] IS NOT NULL");
+
+                    b.HasIndex("ShiftId");
 
                     b.HasIndex("TakenByUserId");
 
@@ -1614,6 +1781,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("datetimeoffset");
 
                     b.Property<Guid?>("SettledByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SettledShiftId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("SettledTerminalId")
@@ -1756,6 +1926,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<DateTimeOffset?>("SessionsEndedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IsOpen")
@@ -1865,6 +2038,36 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.HasKey("Id");
 
                     b.ToTable("Licences");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.CashierShift", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("CashierUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Devices.Terminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.WorkPeriod", null)
+                        .WithMany()
+                        .HasForeignKey("WorkPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.DrawerMovement", b =>
+                {
+                    b.HasOne("Tausi.Domain.Cash.CashierShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Tausi.Domain.Devices.Printer", b =>

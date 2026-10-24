@@ -35,6 +35,8 @@ public static class LedgerAccountCodes
     public const string Expenses = "EXPENSES";
     public const string SupplierPayables = "SUPPLIER_PAYABLES";
     public const string Rounding = "ROUNDING";
+    public const string Safe = "SAFE";
+    public const string CashOverShort = "CASH_OVER_SHORT";
 
     public static readonly IReadOnlyList<(string Code, string Name, AccountType Type)> Defaults =
     [
@@ -50,5 +52,7 @@ public static class LedgerAccountCodes
         (Expenses, "Expenses", AccountType.Expense),
         (SupplierPayables, "Supplier payables", AccountType.Liability),
         (Rounding, "Rounding", AccountType.Income),
+        (Safe, "Safe", AccountType.Asset),
+        (CashOverShort, "Cash over/short", AccountType.Expense),
     ];
 }

@@ -51,6 +51,9 @@ public interface ITausiDb
     DbSet<GiftLog> GiftLogs { get; }
     DbSet<DiscountLog> DiscountLogs { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<Domain.Cash.CashierShift> CashierShifts { get; }
+    DbSet<Domain.Cash.DrawerMovement> DrawerMovements { get; }
+    DbSet<Domain.Cash.ExpenseCategory> ExpenseCategories { get; }
 
     DatabaseFacade Database { get; }
 

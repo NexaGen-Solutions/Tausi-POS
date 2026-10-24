@@ -15,7 +15,8 @@ public sealed record JournalEntryDraft(
     string SourceType,
     string? SourceId,
     IReadOnlyList<JournalLineDraft> Lines,
-    Guid? WorkPeriodId = null)
+    Guid? WorkPeriodId = null,
+    Guid? ShiftId = null)
 {
     public decimal TotalDebit => Lines.Sum(l => l.Debit);
     public decimal TotalCredit => Lines.Sum(l => l.Credit);

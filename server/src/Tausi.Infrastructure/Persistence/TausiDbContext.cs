@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Tausi.Application.Abstractions;
 using Tausi.Domain.Audit;
+using Tausi.Domain.Cash;
 using Tausi.Domain.Common;
 using Tausi.Domain.Devices;
 using Tausi.Domain.Ledger;
@@ -57,6 +58,9 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
     public DbSet<GiftLog> GiftLogs => Set<GiftLog>();
     public DbSet<DiscountLog> DiscountLogs => Set<DiscountLog>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
+    public DbSet<DrawerMovement> DrawerMovements => Set<DrawerMovement>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
 
     /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -78,6 +82,9 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
 
     /// <summary>A unique index over a nullable column: SQL Server needs "IS NOT NULL" to allow many nulls.</summary>
     protected virtual string? NotNullFilter(string column) => null;
+
+    /// <summary>Filter for the "one open shift" indexes; the SQL differs per provider.</summary>
+    protected virtual string? OpenShiftFilter => null;
 
     /// <summary>The database sequence for receipt numbers: global, never reused, separate from ticket numbers.</summary>
     public const string ReceiptNumberSequence = "ReceiptNumbers";
@@ -398,6 +405,42 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             e.HasOne<MenuItem>().WithMany().HasForeignKey(x => x.MenuItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        m.Entity<CashierShift>(e =>
+        {
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.FloatCountsJson).HasMaxLength(500);
+            e.Property(x => x.CountJson).HasMaxLength(500);
+            e.Property(x => x.Note).HasMaxLength(CashierShift.MaxNoteLength);
+            e.Ignore(x => x.IsOpen);
+            // One open shift per cashier and one per drawer, even if two terminals try at once.
+            var perCashier = e.HasIndex(x => new { x.CashierUserId, x.Status }).IsUnique();
+            var perDrawer = e.HasIndex(x => new { x.TerminalId, x.Status }).IsUnique();
+            if (OpenShiftFilter is { } open)
+            {
+                perCashier.HasFilter(open);
+                perDrawer.HasFilter(open);
+            }
+            e.HasIndex(x => x.WorkPeriodId);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.CashierUserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<WorkPeriod>().WithMany().HasForeignKey(x => x.WorkPeriodId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<DrawerMovement>(e =>
+        {
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.CategoryName).HasMaxLength(ExpenseCategory.MaxNameLength);
+            e.Property(x => x.Note).HasMaxLength(DrawerMovement.MaxNoteLength);
+            e.HasIndex(x => x.ShiftId);
+            e.HasOne<CashierShift>().WithMany().HasForeignKey(x => x.ShiftId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<ExpenseCategory>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(ExpenseCategory.MaxNameLength);
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+
         m.Entity<Payment>(e =>
         {
             e.Property(x => x.MpesaCode).HasMaxLength(Payment.MpesaCodeLength);
@@ -410,6 +453,7 @@ public class TausiDbContext(DbContextOptions options) : DbContext(options), ITau
             if (NotNullFilter(nameof(Payment.MpesaCode)) is { } codeFilter) code.HasFilter(codeFilter);
             e.HasIndex(x => new { x.TicketId, x.Status });
             e.HasIndex(x => x.WorkPeriodId);
+            e.HasIndex(x => x.ShiftId);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.TakenByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.BroughtByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);

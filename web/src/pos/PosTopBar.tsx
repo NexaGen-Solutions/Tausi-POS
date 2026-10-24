@@ -5,6 +5,7 @@ import type { Brand } from '../shared/api/types';
 import { t } from '../shared/i18n/i18n';
 import { Button, TopBar } from '../shared/ui';
 import { ApprovalsButton } from './approvals/ApprovalsButton';
+import { CashButtons } from './cash/CashButtons';
 import { useLogout } from './useLogout';
 import { usePinSession } from './usePinSession';
 
@@ -25,6 +26,7 @@ export function PosTopBar({ extra }: { extra?: ReactNode } = {}) {
       end={
         <>
           <ApprovalsButton />
+          <CashButtons />
           {extra}
           <Button variant="ghost-dark" onClick={() => void logout()}>
             {t('common.logOut')}

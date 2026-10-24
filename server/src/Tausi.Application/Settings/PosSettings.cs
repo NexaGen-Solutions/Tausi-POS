@@ -88,5 +88,7 @@ public sealed record PosSettings(
                 approvalExpiryMinutes = DefaultApprovalExpiryMinutes,
             },
             print = new { logoOnBill = true, poweredByFooter = false },
+            cash = new { defaultFloat = 0, denominations = CashSettings.KenyanNotes },
+            cashup = new { blind = true },
         });
 }

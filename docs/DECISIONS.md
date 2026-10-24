@@ -210,6 +210,23 @@ Each entry: date, decision, reason.
 | 2026-10-21 | `seed --demo` opens a demo day when none is open and moves open tickets left in a closed day into it. The test fixtures don't open a day. | The old closed demo day is gone; demo tickets always belong to an open day. |
 | 2026-10-21 | Journal entries record their work period (`WorkPeriodId`). | The prompt: the entry records the cashier and the work period. |
 
+## My sales, shifts and cash-up (task 9)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-23 | **Blind count, on by default** (`cashup.blind`): the cashier sees the expected cash and the difference only after submitting the count, and can submit it once; the supervisor sees both. With it off, the cashier can count again until sign-off. | Stops cashiers counting towards the expected figure. |
+| 2026-10-23 | **Open tickets don't block a cashier's shift.** The wireframe's note said open bills "must be settled or handed over"; handing over just means leaving them open for the next cashier. Only closing the day is blocked. | The prompt's rule. |
+| 2026-10-23 | A shift can't close while cash it took on a part-paid ticket is still pending: settle the ticket or remove the payment first. After the count, settling, pay-outs and drops on that shift are refused. | The drawer, the count and the books stay in step. |
+| 2026-10-23 | Every payment type needs the cashier's open shift on the terminal (not only cash), so every payment records its shift and the cash-up shows M-Pesa and card too. | One rule; the prompt's acceptance starts the shift on the first Settle. |
+| 2026-10-23 | The sign-off is the supervisor's single-use PIN token for `day.open_close`, checked whatever the cashier's own permission (`RequireSignOff`); the cashier's own PIN is refused at the pad and again at use. Of two sign-offs at once, the conditional update lets one through. | The prompt's rule, without giving cashiers day.open_close. |
+| 2026-10-23 | Ledger: opening float Dr Cash / Cr Safe; pay-out Dr Expenses (category on the line) / Cr Cash; drop Dr Safe / Cr Cash; at close, short Dr Cash over/short, over Cr Cash over/short, then the counted cash Dr Safe / Cr Cash. Journal entries now carry their shift. | Part C; the drawer is back at 0 after each shift. |
+| 2026-10-23 | `cash.expense` defaults to NeedsApproval for cashiers in new installs (the prompt's grid); design.md's table said Allowed. Existing installs keep what they have. | The newer prompt wins for new installs; nothing existing is overwritten. |
+| 2026-10-23 | My sales says "today" (the current work period), not "this shift": waiters don't have shifts. | The prompt's wording change. |
+| 2026-10-23 | The day summary counts settled tickets: gross (gifts at 0), discounts, gifts at their price and voids (for information), net and VAT by rate, payments by type, rounding, each shift's difference and pay-outs. Gross − discounts + rounding = payments, exactly. | The prompt's list, and it adds up. |
+| 2026-10-23 | Closing the day publishes `day.closed` with a logout time 60 seconds later; terminals show the warning and log out then, and the server ends every session that was open at the close once the minute is over (the background sweep). | The prompt's warning, enforced on the server too. |
+| 2026-10-23 | Cash slips (cash-up, pay-out, drop, waiter, day report) print on the terminal's receipt printer as print jobs of kind CashUp; without a printer the action still completes. | Print failures never undo a business action. |
+| 2026-10-23 | My sales leaves out the wireframe's "Long item names wrap instead of being cut off": it describes the layout (names do wrap) rather than telling the waiter anything. The note keeps "Supervisors see this for every waiter in the admin reports." | A design note, not screen text. |
+
 ## Follow-ups
 
 - **Powered-by footer toggle:** add `print.poweredByFooter` to Settings → Printing when that screen is built (it is set in the settings JSON until then).
@@ -228,7 +245,6 @@ Each entry: date, decision, reason.
 - **Settings → POS:** add `pos.tableIdleMinutes` to the settings screen when it is built (set in the settings JSON until then).
 - **Remove the `close-day` development command** when cash-up closes days.
 - **CI runner image:** GitHub notes that `ubuntu-latest` moves to Ubuntu 26 from 19 Oct 2026; pin `ubuntu-24.04` if that causes trouble.
-- **Close the day:** `WorkPeriod` has the closing fields; closing comes with cash-up.
 - **Default option in the admin menu:** let Menu → Modifiers set an option's `IsDefault` (seeded only for now).
 - **Printing mode setting:** add `printMode` to Settings → Printing when that screen is built (set in the settings JSON until then).
 - **Logout from the order screen:** if a logout is added there, it should run the same leave check.
@@ -244,7 +260,12 @@ Each entry: date, decision, reason.
 - **M-Pesa till confirmation** through the Daraja API.
 - **Card terminal integration.**
 - **Tips.**
-- **Close-day screen (Task 9):** call `CloseWorkPeriod` from the cash-up screen and show its list of open tickets with close-empty for zero-total ones.
 - **Cost of sales (Task 11):** `SalePosting.CostOfSales` is where stock and cost of sales are posted.
 - **Receipt reprint by request:** add an approval kind for it if cashiers ever need a supervisor elsewhere.
-
+- **Reopening or recounting a closed shift**, with the manager's approval.
+- **Several cashiers sharing one drawer.**
+- **Bank deposit from the safe** (Task 12's cash book).
+- **A daily email of the day report.**
+- **Expense categories admin** (Task 12): the five seeded categories can't be edited yet.
+- **design.md's permission table:** update "Expenses" for cashiers to Needs approval, to match the defaults.
+- **Approval pad after a refused PIN:** a refusal (such as the cashier's own PIN at shift sign-off) closes the pad with a toast, so the cashier taps Close shift again for the supervisor. Consider keeping the pad open with the message for 403s, for every approval.

@@ -73,6 +73,165 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.ToTable("AuditEntries");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Cash.CashierShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CashierUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CountJson")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal?>("Counted")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("CountedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("Difference")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("Expected")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("FloatCountsJson")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("OpeningFloat")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SignedOffByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkPeriodId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkPeriodId");
+
+                    b.HasIndex("CashierUserId", "Status")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'Open'");
+
+                    b.HasIndex("TerminalId", "Status")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'Open'");
+
+                    b.ToTable("CashierShifts");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.DrawerMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CategoryName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkPeriodId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.ToTable("DrawerMovements");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.ExpenseCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("ExpenseCategories");
+                });
+
             modelBuilder.Entity("Tausi.Domain.Devices.Printer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -270,6 +429,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ShiftId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("SourceId")
                         .HasMaxLength(64)
@@ -1480,6 +1642,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid?>("RemovedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ShiftId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1516,6 +1681,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.HasIndex("MpesaCode")
                         .IsUnique()
                         .HasFilter("\"MpesaCode\" IS NOT NULL");
+
+                    b.HasIndex("ShiftId");
 
                     b.HasIndex("TakenByUserId");
 
@@ -1609,6 +1776,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("SettledByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SettledShiftId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("SettledTerminalId")
@@ -1751,6 +1921,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<DateTimeOffset?>("SessionsEndedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IsOpen")
@@ -1860,6 +2033,36 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.HasKey("Id");
 
                     b.ToTable("Licences");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.CashierShift", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("CashierUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Devices.Terminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.WorkPeriod", null)
+                        .WithMany()
+                        .HasForeignKey("WorkPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Cash.DrawerMovement", b =>
+                {
+                    b.HasOne("Tausi.Domain.Cash.CashierShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Tausi.Domain.Devices.Printer", b =>

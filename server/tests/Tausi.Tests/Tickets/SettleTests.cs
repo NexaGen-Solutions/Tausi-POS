@@ -30,6 +30,7 @@ public class SettleTests : ApprovalsFixtureBase
         ticket.Total.Should().Be(1370m);
         await F.LoginOn("CAROL", "Counter A");
         await TakeLock(ticket.Id);
+        if ((await F.Get<Tausi.Application.Cash.ShiftQueries>().Current(None)).Shift is null) await StartShift();
         Later();
         return ticket;
     }
@@ -395,14 +396,22 @@ public class SettleTests : ApprovalsFixtureBase
         var refused = await FluentActions.Awaiting(() => F.Get<CloseWorkPeriod>().Execute(None)).Should().ThrowAsync<OpenTicketsException>();
         refused.Which.Tickets.Single().Should().Be(new OpenTicketDto(ticket.Id, ticket.Number, "Table 7", "edna", 1370m, 1000m));
         refused.Which.Message.Should().Contain($"#{ticket.Number} Table 7 · edna · 1,370 (part paid)");
+        refused.Which.Shifts.Single().Should().Match<OpenShiftDto>(sh => sh.Cashier == "CAROL" && sh.Terminal == "Counter A");
+        refused.Which.Message.Should().Contain("1 cashier shift is open: CAROL on Counter A");
         (await F.Get<GetTableMap>().Execute(null, None)).Tables.Single(t => t.Name == "7").Tickets.Single().Left.Should().Be(370m);
 
         await F.LoginOn("CAROL", "Counter A");
         await TakeLock(ticket.Id);
         await Pay(ticket.Id, PaymentType.Cash, tendered: 370m);
         await Settle(ticket.Id);
+        // CAROL counts her drawer and MAU signs her shift off.
+        var shift = (await F.Get<Tausi.Application.Cash.ShiftQueries>().Current(None)).Shift!;
+        await F.Get<Tausi.Application.Cash.CountShift>().Execute(shift.Id,
+            new Tausi.Application.Cash.CountShiftRequest(new Tausi.Application.Cash.CashCount(Total: 1370m)), None);
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.DayOpenClose, "MAU");
+        await F.Get<Tausi.Application.Cash.CloseShift>().Execute(shift.Id, None);
         await F.LoginOn("MAU", "Counter B");
-        (await F.Get<CloseWorkPeriod>().Execute(None)).Should().BeTrue();
+        (await F.Get<CloseWorkPeriod>().Execute(None)).Should().NotBeNull();
         F.Read().WorkPeriods.Should().OnlyContain(w => !w.IsOpen);
     }
 
@@ -420,6 +429,6 @@ public class SettleTests : ApprovalsFixtureBase
 
         await F.Get<CloseEmptyTicket>().Execute(ticket.Id, None);
         F.Ticket(ticket.Number).Status.Should().Be(TicketStatus.Cancelled);
-        (await F.Get<CloseWorkPeriod>().Execute(None)).Should().BeTrue();
+        (await F.Get<CloseWorkPeriod>().Execute(None)).Should().NotBeNull();
     }
 }

@@ -16,6 +16,9 @@ public class WorkPeriod : VersionedEntity
     public Guid? ClosedByUserId { get; set; }
     public Guid? ClosedTerminalId { get; set; }
 
+    /// <summary>When the POS sessions still open at the close were logged out (60 seconds after it).</summary>
+    public DateTimeOffset? SessionsEndedAt { get; set; }
+
     /// <summary>True until the day is closed. Kept as a column so "only one open" can be a unique index.</summary>
     public bool IsOpen { get; set; } = true;
 }

@@ -66,6 +66,11 @@ public abstract class ApprovalsFixtureBase : IAsyncLifetime
         F.Read().PrintJobs.Include(j => j.Printer).Where(j => j.TicketId == ticketId).AsEnumerable()
             .OrderBy(j => j.CreatedAt).ThenBy(j => j.Id).ToList();
 
+    /// <summary>The current user starts their cashier shift on their terminal (settling needs one).</summary>
+    protected Task<Tausi.Application.Cash.ShiftDto> StartShift(decimal openingFloat = 0m) =>
+        F.Get<Tausi.Application.Cash.OpenShift>().Execute(
+            new Tausi.Application.Cash.OpenShiftRequest(new Tausi.Application.Cash.CashCount(Total: openingFloat)), None);
+
     /// <summary>Lets the fake clock move on, so print jobs of later rounds sort after earlier ones.</summary>
     protected void Later() => F.Clock.Advance(TimeSpan.FromSeconds(2));
 }

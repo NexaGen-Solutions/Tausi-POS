@@ -262,6 +262,29 @@ Log in as **edna** on one terminal, order on Table 7 and press **Print**. Log in
 - To check the ledger: `SELECT a."Code", l."Debit", l."Credit" FROM "JournalLines" l JOIN
   "LedgerAccounts" a ON a."Id" = l."AccountId" ORDER BY l."JournalEntryId";` on PostgreSQL.
 
+### Shifts, cash-up and closing the day
+
+- **Start a shift:** as CAROL on Counter A, press **Settle** on a ticket (or **My shift** in the
+  top bar). "Start your shift" asks for the float, counted by note (or the default,
+  `cash.defaultFloat`); settling then carries on. Every payment belongs to that shift.
+- **Pay out / Cash drop** on **My shift**: a pay-out needs a category and a note, and cashiers
+  need a supervisor's PIN for it (`cash.expense`); a drop goes to the safe. Neither can take the
+  drawer below 0, and each prints a small slip.
+- **Count:** type how many of each note and the coins, then **Submit count**. With
+  `cashup.blind` on (the default) the expected cash and the difference show only now.
+- **Close shift · supervisor PIN to sign off:** MAU types his PIN on the approval pad (CAROL's own
+  is refused). The cash-up slip prints, the difference goes to Cash over/short and the drawer to
+  the Safe account.
+- **My sales** (waiters): today's own figures, the money brought, open bills, and **Print my
+  cash-up slip**.
+- **Close day** (MAU, in the top bar): lists open tickets (with Part paid), open shifts and waiting
+  requests, each with a link. When nothing blocks, it shows the day's summary; **Close day** prints
+  "DAY REPORT · Z", warns every terminal and logs everyone out 60 seconds later.
+- Settings (in the settings JSON, as above):
+  `{"cash":{"defaultFloat":0,"denominations":[1000,500,200,100,50]},"cashup":{"blind":true}}`.
+
+`close-day` (development) uses the same checks: it refuses while tickets or shifts are open.
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

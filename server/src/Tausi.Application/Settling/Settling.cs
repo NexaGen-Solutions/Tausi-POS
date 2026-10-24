@@ -54,7 +54,7 @@ public sealed record SettledTicketDto(
 /// </summary>
 public sealed class PaymentCommands(
     ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
-    IAuditLog audit, TicketEvents events, TimeProvider clock)
+    Cash.ShiftReader shifts, IAuditLog audit, TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketDetailDto> Add(Guid ticketId, AddPaymentRequest r, CancellationToken ct)
     {
@@ -65,6 +65,7 @@ public sealed class PaymentCommands(
         var remaining = ticket.Remaining;
         if (remaining <= 0) throw new DomainException("Nothing is left to pay.", SettleCodes.Overpaid);
         var day = await WorkPeriods.Current(db, ct) ?? throw new DomainException("The day isn't open.");
+        var shift = await SettleShift.Require(shifts, edit.User.UserId, edit.TerminalId, ct);
 
         var broughtBy = r.BroughtByUserId ?? ticket.OpenedByUserId;
         if (!await db.Users.AnyAsync(u => u.Id == broughtBy, ct)) throw new DomainException("Choose who brought it.");
@@ -72,7 +73,7 @@ public sealed class PaymentCommands(
         var payment = new Payment
         {
             TicketId = ticket.Id, Type = r.Type, TakenByUserId = edit.User.UserId, BroughtByUserId = broughtBy,
-            TerminalId = edit.TerminalId, WorkPeriodId = day.Id, TakenAt = clock.GetUtcNow(),
+            TerminalId = edit.TerminalId, WorkPeriodId = day.Id, ShiftId = shift.Id, TakenAt = clock.GetUtcNow(),
         };
         switch (r.Type)
         {
@@ -188,7 +189,7 @@ public sealed class PaymentCommands(
 public sealed class SettleTicket(
     ITausiDb db, ICurrentSession session, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
     ITicketDatabase tickets, ILedgerPostingService ledger, TicketPrints prints, SessionKeeper sessions,
-    IAuditLog audit, IPosEvents posEvents, TicketEvents events, TimeProvider clock)
+    Cash.ShiftReader shifts, IAuditLog audit, IPosEvents posEvents, TicketEvents events, TimeProvider clock)
 {
     public async Task<SettleResult> Execute(Guid ticketId, CancellationToken ct)
     {
@@ -220,12 +221,14 @@ public sealed class SettleTicket(
                 ticket.Remaining > 0 ? $"{ticket.Remaining:#,##0.##} is still to pay." : "The payments are more than the amount due.",
                 SettleCodes.NotPaid);
         var day = await WorkPeriods.Current(db, ct) ?? throw new DomainException("The day isn't open.");
+        var shift = await SettleShift.Require(shifts, edit.User.UserId, edit.TerminalId, ct);
 
         var now = clock.GetUtcNow();
         ticket.Status = TicketStatus.Settled;
         ticket.SettledAt = now;
         ticket.SettledByUserId = edit.User.UserId;
         ticket.SettledTerminalId = edit.TerminalId;
+        ticket.SettledShiftId = shift.Id;
         ticket.ReceiptNumber = await tickets.NextReceiptNumber(ct);
         ticket.ClearLock();
         ticket.Touch(now);
@@ -365,5 +368,18 @@ public sealed class ReprintReceipt(
         audit.Write(new AuditRecord(AuditActions.ReceiptReprinted, nameof(Ticket), ticket.Id.ToString(), null,
             new { ticket = ticket.Number, receipt = ticket.ReceiptNumber, printJobId = job.Id }, grant.ApprovedByUserId));
         await db.SaveChangesAsync(ct);
+    }
+}
+
+/// <summary>Settling needs the cashier's open shift on this terminal (its drawer), not yet counted.</summary>
+public static class SettleShift
+{
+    public static async Task<Domain.Cash.CashierShift> Require(Cash.ShiftReader shifts, Guid userId, Guid terminalId, CancellationToken ct)
+    {
+        var shift = await shifts.OpenFor(userId, terminalId, ct)
+            ?? throw new ConflictException("Start your shift first: settling needs your shift on this terminal's drawer.", Cash.ShiftCodes.ShiftRequired);
+        if (shift.CountedAt is not null)
+            throw new ConflictException("Your cash is counted already. Close the shift, then start a new one to settle.", Cash.ShiftCodes.AlreadyCounted);
+        return shift;
     }
 }

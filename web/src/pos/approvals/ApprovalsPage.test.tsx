@@ -97,6 +97,15 @@ describe('approvals screen', () => {
             user: { id: 'id-MAU', name: 'MAU', role: 'Supervisor' },
             permissions: { 'order.void': 'Allowed' },
           }),
+        'GET /api/pos/tables': () =>
+          json(200, {
+            version: 1,
+            serverTime: new Date().toISOString(),
+            dayOpen: true,
+            tableIdleMinutes: 30,
+            areas: [],
+            tables: [],
+          }),
         'POST /api/pos/approvals/r1/approve': () => {
           pending = [];
           return json(200, { ...request('r1'), status: 'Approved' });
@@ -168,7 +177,7 @@ describe('approvals screen', () => {
 
   it('a new request raises the badge and shows a toast that opens the screen', async () => {
     const user = userEvent.setup();
-    const router = renderRoutes(routes, '/pos/my-sales');
+    const router = renderRoutes(routes, '/pos/tables');
     expect(await screen.findByRole('button', { name: 'Approvals, 1 waiting' })).toBeInTheDocument();
 
     pending = [
@@ -206,9 +215,18 @@ describe('approvals screen', () => {
             permissions: { 'order.void': 'NeedsApproval' },
           }),
         'GET /api/pos/approvals': () => json(200, []),
+        'GET /api/pos/tables': () =>
+          json(200, {
+            version: 1,
+            serverTime: new Date().toISOString(),
+            dayOpen: true,
+            tableIdleMinutes: 30,
+            areas: [],
+            tables: [],
+          }),
       }),
     );
-    renderRoutes(routes, '/pos/my-sales');
+    renderRoutes(routes, '/pos/tables');
     await screen.findByRole('button', { name: 'Log out' });
     expect(screen.queryByRole('button', { name: /Approvals/ })).not.toBeInTheDocument();
   });

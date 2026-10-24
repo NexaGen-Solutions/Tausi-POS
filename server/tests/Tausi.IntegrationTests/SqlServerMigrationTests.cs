@@ -232,6 +232,8 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
                 .SetProperty(k => k.LockUserId, carolSession.User!.UserId)
                 .SetProperty(k => k.LockSessionId, carolSession.User!.SessionId)
                 .SetProperty(k => k.LockExpiresAt, DateTimeOffset.UtcNow.AddMinutes(5)));
+        await using (var scope = carol.CreateAsyncScope())
+            await scope.ServiceProvider.GetRequiredService<Application.Cash.OpenShift>().Execute(new Application.Cash.OpenShiftRequest(), CancellationToken.None);
         foreach (var id in ids)
         {
             await using var scope = carol.CreateAsyncScope();

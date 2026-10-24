@@ -104,8 +104,8 @@ public static class Commands
         try
         {
             var closed = await scope.ServiceProvider.GetRequiredService<Tausi.Application.Day.CloseWorkPeriod>()
-                .Close(null, null, null, CancellationToken.None);
-            Console.WriteLine(closed ? "The day is closed." : "No day was open.");
+                .Close(null, "close-day command", null, null, CancellationToken.None);
+            Console.WriteLine(closed is not null ? "The day is closed." : "No day was open.");
         }
         catch (Tausi.Application.Day.OpenTicketsException e)
         {

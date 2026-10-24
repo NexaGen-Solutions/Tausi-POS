@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n/i18n';
-import { Banner } from '../ui';
+import { Banner, useToast } from '../ui';
+import { endPinSession, pinSession } from '../session/session';
 import { onPosEvent, startHub, stopHub } from './hub';
 
 interface PrintFailed {
@@ -22,6 +23,8 @@ const onItsOrderScreen = (job: PrintFailed) =>
 export function LiveUpdates() {
   const queries = useQueryClient();
   const [failed, setFailed] = useState<PrintFailed[]>([]);
+  const toast = useToast();
+  const logoutTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     startHub();
@@ -39,9 +42,18 @@ export function LiveUpdates() {
         () => void queries.invalidateQueries({ queryKey: ['terminals'] }),
       ),
       onPosEvent('day.opened', () => void queries.invalidateQueries({ queryKey: ['device'] })),
-      onPosEvent('day.closed', () => {
+      onPosEvent('day.closed', (payload) => {
         void queries.invalidateQueries({ queryKey: ['device'] });
         void queries.invalidateQueries({ queryKey: ['table-map'] });
+        // A 60-second warning, then everyone is logged out (the server ends the sessions too).
+        const logoutAt = (payload as { logoutAt?: string } | null)?.logoutAt;
+        if (!logoutAt || !pinSession()) return;
+        toast(t('pos.day.closingWarning'), { tone: 'warning' });
+        window.clearTimeout(logoutTimer.current);
+        logoutTimer.current = window.setTimeout(
+          () => endPinSession('logout'),
+          Math.max(0, Date.parse(logoutAt) - Date.now()),
+        );
       }),
       onPosEvent('menu.changed', () => void queries.invalidateQueries({ queryKey: ['pos-menu'] })),
       onPosEvent('print.failed', (payload) => {
@@ -55,7 +67,7 @@ export function LiveUpdates() {
       unsubscribe.forEach((off) => off());
       void stopHub();
     };
-  }, [queries]);
+  }, [queries, toast]);
 
   return (
     <>

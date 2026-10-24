@@ -15,6 +15,8 @@ import { MySalesPage } from '../pos/MySalesPage';
 import { TablesPage } from '../pos/tables/TablesPage';
 import { OrderPage } from '../pos/order/OrderPage';
 import { SettlePage } from '../pos/settle/SettlePage';
+import { ShiftPage } from '../pos/cash/ShiftPage';
+import { DayPage } from '../pos/cash/DayPage';
 import { ApprovalsPage } from '../pos/approvals/ApprovalsPage';
 import { TablesAdminPage } from '../admin/tables/TablesAdminPage';
 import { t } from '../shared/i18n/i18n';
@@ -37,7 +39,22 @@ export const routes: RouteObject[] = [
         ),
       },
       // The table map shows "The day isn't open yet" itself now.
-      { path: 'day', element: <Navigate to="/pos/tables" replace /> },
+      {
+        path: 'day',
+        element: (
+          <RequireSession>
+            <DayPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'shift',
+        element: (
+          <RequireSession>
+            <ShiftPage />
+          </RequireSession>
+        ),
+      },
       {
         path: 'tables',
         element: (

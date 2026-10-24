@@ -46,6 +46,20 @@ public class SettleApiTests(TicketsApp app) : IAsyncLifetime
         return terminal;
     }
 
+    /// <summary>
+    /// A cashier on a new terminal with a shift open on it. Tests share the database, so a shift
+    /// this cashier left open on another test's terminal is closed first.
+    /// </summary>
+    private async Task<TerminalClient> Cashier(string name = "CAROL")
+    {
+        var userId = app.Db(db => db.Users.Single(u => u.Name == name).Id);
+        app.Db(db => db.CashierShifts.Where(s => s.CashierUserId == userId && s.Status == Domain.Cash.ShiftStatus.Open)
+            .ExecuteUpdate(u => u.SetProperty(s => s.Status, Domain.Cash.ShiftStatus.Closed)));
+        var terminal = await On(name);
+        (await terminal.Http.PostAsJsonAsync("/api/pos/shifts", new { @float = new { total = 0 } })).EnsureSuccessStatusCode();
+        return terminal;
+    }
+
     private static async Task<JsonElement> Ok(HttpResponseMessage response)
     {
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
@@ -80,7 +94,7 @@ public class SettleApiTests(TicketsApp app) : IAsyncLifetime
     public async Task M_pesa_and_cash_settle_once_with_a_receipt_a_free_table_and_a_balanced_entry()
     {
         var edna = await On("edna");
-        var carol = await On("CAROL");
+        var carol = await Cashier();
         var id = await Printed(edna, carol, punches: 5, table: "Bar 1"); // 1,350
 
         var mpesa = await Ok(await carol.Http.PostAsJsonAsync($"/api/pos/tickets/{id}/payments",
@@ -134,7 +148,7 @@ public class SettleApiTests(TicketsApp app) : IAsyncLifetime
     public async Task Two_settles_of_one_ticket_at_once_settle_it_once()
     {
         var edna = await On("edna");
-        var carol = await On("CAROL");
+        var carol = await Cashier();
         var id = await Printed(edna, carol);
         await Ok(await carol.Http.PostAsJsonAsync($"/api/pos/tickets/{id}/payments", new { type = "Card", amount = 270 }));
 
@@ -149,16 +163,16 @@ public class SettleApiTests(TicketsApp app) : IAsyncLifetime
     public async Task Receipt_numbers_never_repeat_when_settled_in_parallel()
     {
         var edna = await On("edna");
-        var cashiers = new List<(TerminalClient Client, Guid Ticket)>();
+        var carol = await Cashier();
+        var ids = new List<Guid>();
         for (var i = 0; i < 5; i++)
         {
-            var carol = await On("CAROL");
             var id = await Printed(edna, carol);
             await Ok(await carol.Http.PostAsJsonAsync($"/api/pos/tickets/{id}/payments", new { type = "Card", amount = 270 }));
-            cashiers.Add((carol, id));
+            ids.Add(id);
         }
 
-        var settled = await Task.WhenAll(cashiers.Select(async c => await Ok(await c.Client.Http.PostAsync($"/api/pos/tickets/{c.Ticket}/settle", null))));
+        var settled = await Task.WhenAll(ids.Select(async id => await Ok(await carol.Http.PostAsync($"/api/pos/tickets/{id}/settle", null))));
 
         settled.Select(s => s.GetProperty("receiptNumber").GetInt64()).Should().OnlyHaveUniqueItems().And.HaveCount(5);
     }

@@ -69,6 +69,8 @@ public class Ticket : VersionedEntity
     public Guid? SettledByUserId { get; set; }
     public Guid? SettledTerminalId { get; set; }
     public long? ReceiptNumber { get; set; }
+    /// <summary>The cashier's shift it was settled in (for the cash-up's receipt numbers).</summary>
+    public Guid? SettledShiftId { get; set; }
 
     /// <summary>
     /// Due minus total under the rounding setting (e.g. -0.40 when 1,370.40 is due as 1,370). Kept
