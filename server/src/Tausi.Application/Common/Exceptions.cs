@@ -20,3 +20,13 @@ public class ForbiddenException(string message, string code) : Exception(message
 
 /// <summary>No valid session or device token. Becomes HTTP 401.</summary>
 public class UnauthenticatedException(string message) : Exception(message);
+
+/// <summary>
+/// Some fields of a form are wrong: one message per field (a setting key, or "form" for the whole).
+/// Becomes HTTP 400 with <c>fieldErrors</c>.
+/// </summary>
+public class FieldErrorsException(IReadOnlyDictionary<string, string> errors, string message = "Some values need fixing.")
+    : Exception(message)
+{
+    public IReadOnlyDictionary<string, string> Errors { get; } = errors;
+}

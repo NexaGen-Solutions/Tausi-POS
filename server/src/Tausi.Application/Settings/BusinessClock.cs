@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Tausi.Application.Abstractions;
 using Tausi.Domain.Settings;
 
@@ -12,8 +11,8 @@ public sealed class BusinessClock(ITausiDb db, TimeProvider clock)
 {
     public async Task<TimeZoneInfo> Zone(CancellationToken ct)
     {
-        var name = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).Select(s => s.TimeZone).FirstOrDefaultAsync(ct);
-        return BusinessTimeZone.Find(name);
+        var settings = await SettingsRegistry.Load(db, ct);
+        return BusinessTimeZone.Find(settings.String(SettingsRegistry.BusinessTimeZoneKey));
     }
 
     /// <summary>Now, in the business's time zone.</summary>

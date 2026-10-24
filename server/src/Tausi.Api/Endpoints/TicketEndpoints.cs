@@ -74,6 +74,11 @@ public static class TicketEndpoints
             await reprint.Execute(id, ct);
             return Results.NoContent();
         });
+        pos.MapPost("/tickets/{id:guid}/close-voided", async (Guid id, CloseVoidedTicket close, CancellationToken ct) =>
+        {
+            await close.Execute(id, ct);
+            return Results.NoContent();
+        });
         pos.MapPost("/tickets/{id:guid}/close-empty", async (Guid id, CloseEmptyTicket close, CancellationToken ct) =>
         {
             await close.Execute(id, ct);

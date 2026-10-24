@@ -71,7 +71,7 @@ public sealed class PermissionService(ITausiDb db, TimeProvider clock) : IPermis
     }
 
     /// <summary>Actions a supervisor can't approve for someone else: NeedsApproval counts as NotAllowed.</summary>
-    public static readonly IReadOnlySet<string> NotApprovable = new HashSet<string> { PermissionKeys.TicketSettle };
+    public static IReadOnlySet<string> NotApprovable => PermissionCatalog.NotApprovable;
 
     private async Task<PermissionValue> CheckRole(Guid roleId, string permissionKey, CancellationToken ct)
     {

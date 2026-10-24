@@ -6,6 +6,7 @@ using Tausi.Application.Common;
 using Tausi.Application.Day;
 using Tausi.Application.Events;
 using Tausi.Application.Security;
+using Tausi.Application.Settings;
 using Tausi.Application.Tickets;
 using Tausi.Domain.Common;
 using Tausi.Domain.People;
@@ -20,6 +21,7 @@ public static class ApprovalCodes
     public const string AlreadyDecided = "already_decided";
     public const string Expired = "request_expired";
     public const string RequestsPending = "requests_pending";
+    public const string RequestsOff = "requests_off";
 }
 
 /// <summary>
@@ -168,7 +170,9 @@ public sealed record AfterApproval(List<Ticket> Changed, List<Guid> MergedAway, 
 /// <summary>
 /// Sends a request for an action the requester may only do with approval. Allowed users do the
 /// action themselves; NotAllowed users can't ask. The action is checked now (and again when it is
-/// approved); a line or ticket can have only one request of a kind waiting.
+/// approved); a line or ticket can have only one request of a kind waiting. With
+/// <c>pos.approvalsFromOwnCounter</c> off nobody can send a request (a supervisor enters their PIN on
+/// the spot); requests already waiting can still be decided.
 /// </summary>
 public sealed class CreateApprovalRequest(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, ITicketDatabase tickets,
@@ -179,6 +183,8 @@ public sealed class CreateApprovalRequest(
         var user = session.RequireUser();
         if (user.TerminalId is not { } terminalId)
             throw new ForbiddenException("Requests are sent from a terminal.", "terminal_required");
+        if (!(await PosSettings.Load(db, ct)).ApprovalsFromOwnCounter)
+            throw new ForbiddenException("Requests are switched off. Ask a supervisor to enter their PIN here.", ApprovalCodes.RequestsOff);
         var key = ApprovalKinds.Permission(dto.Kind);
         switch (await permissions.Check(user, key, ct))
         {

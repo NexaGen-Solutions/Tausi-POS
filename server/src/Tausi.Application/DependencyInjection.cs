@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<Approvals.ExpireApprovals>();
         services.AddScoped<Settling.PaymentCommands>();
         services.AddScoped<Settling.SettleTicket>();
+        services.AddScoped<Settling.CloseVoidedTicket>();
         services.AddScoped<Settling.BroughtByChoices>();
         services.AddScoped<Settling.GetSettledTickets>();
         services.AddScoped<Settling.ReprintReceipt>();
@@ -89,7 +90,11 @@ public static class DependencyInjection
         services.AddScoped<MenuImport>();
         services.AddScoped<SetTerminalPriceList>();
         services.AddScoped<ListTerminals>();
-        services.AddScoped<SetRolePermission>();
+        services.AddScoped<PermissionGrid>();
+        services.AddScoped<GetPermissions>();
+        services.AddScoped<SavePermissions>();
+        services.AddScoped<RoleCommands>();
+        services.AddScoped<PermissionsHistory>();
         services.AddScoped<AdminLogin>();
         services.AddScoped<IssueApproval>();
         services.AddScoped<StartPairing>();
@@ -108,9 +113,12 @@ public static class DependencyInjection
         services.AddScoped<ClaimPairing>();
         services.AddScoped<GetDeviceInfo>();
         services.AddScoped<GetBrand>();
-        services.AddScoped<GetBusinessSettings>();
-        services.AddScoped<UpdateBusinessSettings>();
-        services.AddScoped<UploadBusinessLogo>();
+        services.AddScoped<GetSettings>();
+        services.AddScoped<UpdateSettings>();
+        services.AddScoped<SettingsHistory>();
+        services.AddScoped<LogoCommands>();
+        services.AddScoped<LogoPrintPreview>();
+        services.AddScoped<ReceiptPreview>();
         services.AddScoped<TestPrint>();
 
         // Tables and tickets

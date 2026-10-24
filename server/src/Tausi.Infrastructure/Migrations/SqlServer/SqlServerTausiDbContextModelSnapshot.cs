@@ -1959,6 +1959,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid?>("LogoFileId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("LogoWebFileId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

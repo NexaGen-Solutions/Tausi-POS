@@ -58,6 +58,19 @@ public static class AuditActions
     public const string ApprovalRejected = "approval.rejected";
     public const string ApprovalCancelled = "approval.cancelled";
     public const string ApprovalExpired = "approval.expired";
+    public const string TicketClosedVoided = "ticket.closed_voided";
+    public const string RoleCreated = "permissions.role_created";
+    public const string RoleRenamed = "permissions.role_renamed";
+    public const string RoleDeleted = "permissions.role_deleted";
+}
+
+/// <summary>Entity types of audit entries that more than one place writes or reads.</summary>
+public static class AuditEntities
+{
+    /// <summary>One setting; the entity id is its key, e.g. "pos.idleLogoutMinutes".</summary>
+    public const string Setting = "Setting";
+
+    public const string Role = "Role";
 }
 
 /// <summary>

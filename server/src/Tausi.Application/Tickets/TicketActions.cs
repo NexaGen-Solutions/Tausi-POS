@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Tausi.Application.Abstractions;
 using Tausi.Application.Auditing;
 using Tausi.Application.Common;
+using Tausi.Application.Settings;
 using Tausi.Domain.Common;
 using Tausi.Domain.Menu;
 using Tausi.Domain.Service;
@@ -81,7 +82,10 @@ public sealed class TicketActions(ITausiDb db, TicketPrints prints, IAuditLog au
         ticket.SpreadDiscount();
         ticket.Touch(now);
 
-        var poured = string.Equals(r.Reason?.Trim(), ActionReasons.SpilledOrBroken, StringComparison.OrdinalIgnoreCase) || r.WasPoured == true;
+        // With stock.returnOnVoidIfNotServed off nobody is asked: every void counts as poured.
+        var returnsStock = (await SettingsRegistry.Load(db, ct)).Bool(SettingsRegistry.StockReturnOnVoidIfNotServed);
+        var poured = !returnsStock
+            || string.Equals(r.Reason?.Trim(), ActionReasons.SpilledOrBroken, StringComparison.OrdinalIgnoreCase) || r.WasPoured == true;
         db.VoidLogs.Add(new VoidLog
         {
             TicketId = ticket.Id, OrderLineId = part.Id, MenuItemId = part.MenuItemId, ItemName = part.Name,

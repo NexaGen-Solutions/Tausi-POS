@@ -14,6 +14,9 @@ public class BusinessSettings : VersionedEntity
 {
     public string Name { get; set; } = "";
     public Guid? LogoFileId { get; set; }
+
+    /// <summary>The logo resized for screens (the PIN screen and admin site); <see cref="LogoFileId"/> is the original.</summary>
+    public Guid? LogoWebFileId { get; set; }
     public string Address { get; set; } = "";
     public string Phone { get; set; } = "";
     public decimal VatRate { get; set; } = 16m;

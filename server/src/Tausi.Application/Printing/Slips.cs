@@ -18,12 +18,13 @@ public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string C
 /// One line on a slip: "2 x Tusker Lager (Cold)   500". <see cref="Vat"/> is the line's own VAT
 /// (stored per line); <see cref="ShortName"/> and <see cref="Note"/> are for the dispense slip.
 /// <see cref="VatExempt"/> lines are listed as "VAT exempt"; a zero-rated line (rate 0, not exempt)
-/// is part of "Total includes VAT 0%".
+/// is part of "Total includes VAT 0%". <see cref="IsVoid"/> lines (on the receipt when
+/// <c>print.showVoidsOnReceipt</c> is on) are marked VOID at 0 and count in no total.
 /// </summary>
 public sealed record SlipLine(
     decimal Quantity, string Name, string? Options, decimal Amount,
     decimal UnitPrice = 0, decimal VatRate = 0, decimal Vat = 0, string? ShortName = null, string? Note = null,
-    bool VatExempt = false, bool IsGift = false, decimal Discount = 0);
+    bool VatExempt = false, bool IsGift = false, decimal Discount = 0, bool IsVoid = false);
 
 /// <summary>The business as printed at the top and bottom of customer slips.</summary>
 public sealed record BusinessInfo(string Name, string? Address = null, string? Phone = null, string? Footer = null);
@@ -48,17 +49,21 @@ public sealed record VoidSlip(
     string Header, string Where, long TicketNumber, DateTimeOffset At, IReadOnlyList<SlipLine> Lines, string Reason,
     string RequestedBy, string ApprovedBy);
 
-/// <summary>One payment on the receipt. <see cref="Type"/> is "Cash", "M-Pesa" or "Card".</summary>
+/// <summary>
+/// One payment on the receipt. <see cref="Type"/> is "Cash", "M-Pesa" or "Card"; an M-Pesa payment
+/// without a code (when the code is optional) shows "No code".
+/// </summary>
 public sealed record ReceiptPayment(string Type, decimal Amount, decimal? Tendered, decimal? Change, string? Reference, string BroughtBy);
 
 /// <summary>
 /// The final receipt, printed when the ticket is settled. <see cref="Copy"/> for a reprint.
-/// <see cref="Rounding"/> is due minus total (e.g. -0.40).
+/// <see cref="Rounding"/> is due minus total (e.g. -0.40). Without <see cref="ShowBroughtBy"/>
+/// (<c>payments.recordBroughtBy</c> off) there is no "Cash brought by" line.
 /// </summary>
 public sealed record ReceiptSlip(
     BusinessInfo Business, long ReceiptNumber, long TicketNumber, bool Copy, string Where, string Waiter, string Cashier,
     string Terminal, DateTimeOffset At, IReadOnlyList<SlipLine> Lines, string? DiscountLabel, decimal Rounding,
-    IReadOnlyList<ReceiptPayment> Payments, bool OpenDrawer = false);
+    IReadOnlyList<ReceiptPayment> Payments, bool OpenDrawer = false, bool ShowBroughtBy = true);
 
 public sealed record TestSlip(
     string Business, string PrinterName, string Connection, int PaperWidthMm, decimal VatRate, DateTimeOffset At);
@@ -100,7 +105,7 @@ public static class Slips
 
     /// <summary>Lines with the same item, options and price, added together (the bill shows them once).</summary>
     public static IReadOnlyList<SlipLine> AddUp(IEnumerable<SlipLine> lines) =>
-        lines.GroupBy(l => (l.Name, l.Options, l.UnitPrice, l.VatRate, l.VatExempt, l.IsGift))
+        lines.GroupBy(l => (l.Name, l.Options, l.UnitPrice, l.VatRate, l.VatExempt, l.IsGift, l.IsVoid))
             .Select(g => g.First() with
             {
                 Quantity = g.Sum(l => l.Quantity),
@@ -133,13 +138,19 @@ public static class Slips
         return WriteVat(b, lines, style);
     }
 
-    /// <summary>The items as on the bill (gifts marked GIFT), then Subtotal and the discount if any, then TOTAL.</summary>
+    /// <summary>
+    /// The items as on the bill (gifts marked GIFT, voids marked VOID at 0), then Subtotal and the
+    /// discount if any, then TOTAL. Returns the lines that count, for the VAT.
+    /// </summary>
     private static IReadOnlyList<SlipLine> WriteItems(ReceiptBuilder b, IReadOnlyList<SlipLine> items, string? discountLabel, SlipStyle style)
     {
-        var lines = AddUp(items);
-        foreach (var line in lines)
-            b.Columns2(line.IsGift ? LineText(line) + " GIFT" : LineText(line), Amount(line.Amount));
+        var all = AddUp(items);
+        foreach (var line in all)
+            b.Columns2(
+                line.IsVoid ? LineText(line) + " VOID" : line.IsGift ? LineText(line) + " GIFT" : LineText(line),
+                Amount(line.IsVoid ? 0 : line.Amount));
         b.Separator();
+        var lines = all.Where(l => !l.IsVoid).ToList();
         var discount = lines.Sum(l => l.Discount);
         if (discount != 0)
             b.Columns2("Subtotal", Money(lines.Sum(l => l.Amount), style.Currency))
@@ -249,7 +260,7 @@ public static class Slips
             var label = p.Type switch
             {
                 "Cash" when p.Change is > 0 => $"Cash {Amount(p.Tendered ?? p.Amount)} · Change {Amount(p.Change.Value)}",
-                "M-Pesa" => $"M-Pesa {p.Reference}",
+                "M-Pesa" => string.IsNullOrWhiteSpace(p.Reference) ? "M-Pesa No code" : $"M-Pesa {p.Reference}",
                 "Card" when !string.IsNullOrWhiteSpace(p.Reference) => $"Card · ref {p.Reference}",
                 _ => p.Type,
             };
@@ -259,8 +270,9 @@ public static class Slips
         WriteVat(b, lines, style);
         b.Separator().Text($"Served by {d.Waiter}");
         // "Cash brought by edna", once per type and person.
-        foreach (var brought in d.Payments.Select(p => (p.Type, p.BroughtBy)).Distinct())
-            b.Text($"{brought.Type} brought by {brought.BroughtBy}");
+        if (d.ShowBroughtBy)
+            foreach (var brought in d.Payments.Select(p => (p.Type, p.BroughtBy)).Distinct())
+                b.Text($"{brought.Type} brought by {brought.BroughtBy}");
         return WriteFooter(b, d.Business, style).Cut().Build();
     }
 

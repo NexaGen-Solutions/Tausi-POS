@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Tausi.Application.Common;
 using Tausi.Application.Menu;
-using Tausi.Application.Roles;
 
 namespace Tausi.Api.Endpoints;
 
@@ -61,11 +60,6 @@ public static class MenuEndpoints
 
         app.MapGet("/api/pos/menu", (GetPosMenu get, CancellationToken ct) => get.Execute(ct)).WithTags("Menu");
 
-        app.MapPut("/api/admin/roles/{id:guid}/permissions", async (Guid id, RolePermissionRequest r, SetRolePermission set, CancellationToken ct) =>
-        {
-            await set.Execute(id, r, ct);
-            return Results.NoContent();
-        }).WithTags("Roles").RequireAuthorization();
     }
 
     private const long MaxImportBytes = 5 * 1024 * 1024;
