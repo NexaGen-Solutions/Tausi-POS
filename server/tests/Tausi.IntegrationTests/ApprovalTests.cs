@@ -25,7 +25,7 @@ public class ApprovalTests(TausiApp app)
         var terminal = await app.PairTerminal();
         await terminal.LoginWithPin(app.Pins["WAMBOO"]);
 
-        var response = await terminal.Http.GetAsync("/api/settings/business");
+        var response = await terminal.Http.GetAsync("/api/admin/settings");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var problem = await response.Json();

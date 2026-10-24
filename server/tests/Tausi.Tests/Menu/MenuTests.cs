@@ -102,14 +102,10 @@ public class MenuTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Edit_prices_with_needs_approval_wants_a_token_and_logs_the_approver()
+    public async Task Edit_prices_can_not_be_approved_so_needs_approval_counts_as_not_allowed()
     {
         await _f.SetPermission("Supervisor", PermissionKeys.MenuEditPrices, PermissionValue.NeedsApproval);
         _f.ActAs("MAU", _f.CounterA);
-
-        await FluentActions.Awaiting(() => SetPrices("Heineken", new() { [Standard] = 320m }))
-            .Should().ThrowAsync<ApprovalRequiredException>();
-
         var token = SecureTokens.New();
         _f.Db.ApprovalGrants.Add(new ApprovalGrant
         {
@@ -119,12 +115,9 @@ public class MenuTests : IAsyncLifetime
         await _f.Db.SaveChangesAsync();
         _f.ApprovalToken = token;
 
-        await SetPrices("Heineken", new() { [Standard] = 320m });
-
-        var log = await _f.Read().PriceChangeLogs.SingleAsync();
-        log.ChangedByUserId.Should().Be(_f.Users["MAU"].Id);
-        log.ApprovedByUserId.Should().Be(_f.Users["Administrator"].Id);
-        log.TerminalId.Should().Be(_f.CounterA.Id);
+        await FluentActions.Awaiting(() => SetPrices("Heineken", new() { [Standard] = 320m }))
+            .Should().ThrowAsync<PermissionDeniedException>();
+        (await _f.Read().PriceChangeLogs.CountAsync()).Should().Be(0);
     }
 
     // ---- Prices ----

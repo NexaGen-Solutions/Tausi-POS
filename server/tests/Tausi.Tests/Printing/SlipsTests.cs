@@ -345,6 +345,60 @@ public class SlipsTests
         Golden($"receipt-copy-{columns}", Slips.Receipt(Receipt([new("Cash", 1370m, 1370m, 0m, null, "edna")], copy: true),
             new SlipStyle(columns, true, null)));
 
+    // ---- Settings that change the receipt (Task 10) ----
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void With_voids_shown_a_voided_item_is_marked_void_at_0_and_counts_in_no_total(int columns)
+    {
+        var voided = OL("Guiness", 1, 300m);
+        voided.Status = OrderLineStatus.Voided;
+        voided.VoidedAt = At;
+        var ticket = Table7(voided);
+        var lines = Tausi.Application.Tickets.TicketPrints.ReceiptLines(ticket, showVoids: true);
+        Tausi.Application.Tickets.TicketPrints.ReceiptLines(ticket, showVoids: false).Should().HaveCount(5, "off: voids are left out");
+
+        var receipt = new ReceiptSlip(Mau, 2041, 1042, false, "Table 7", "edna", "CAROL", "Counter A", At, lines, null, 0m,
+            [new("M-Pesa", 1000m, null, null, null, "edna"), new("Cash", 370m, 500m, 130m, null, "edna")], ShowBroughtBy: false);
+
+        var doc = Slips.Receipt(receipt, new SlipStyle(columns, true, null));
+        doc.Text.Should().Contain("1 x Guiness VOID").And.Contain("M-Pesa No code").And.NotContain("brought by");
+        Golden($"receipt-voids-nocode-{columns}", doc);
+    }
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void A_cash_up_marks_m_pesa_taken_without_a_code(int columns) =>
+        Golden($"cashup-nocode-{columns}", Tausi.Application.Cash.CashSlips.CashUp(
+            CashUpShift(1170m, new Dictionary<string, int> { ["1000"] = 1, ["100"] = 1, ["50"] = 1 }, 20m) with
+            {
+                MpesaNoCodeCount = 1, MpesaNoCodeTotal = 500m,
+            },
+            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+
+    [Theory]
+    [InlineData(42)]
+    [InlineData(32)]
+    public void The_receipt_preview_is_the_real_bill_and_receipt_for_the_same_settings(int columns)
+    {
+        var values = Tausi.Application.Settings.SettingsRegistry.Read(new Tausi.Domain.Settings.BusinessSettings
+        {
+            Name = "Mau's Village", Address = "Ruaka Road, Nairobi", Phone = "Tel 0712 345 678", ReceiptFooter = "Thank you. Karibu tena!",
+            VatRate = 16m, Currency = "KES", TimeZone = "Africa/Nairobi",
+            OtherJson = """{"print":{"showVoidsOnReceipt":true,"poweredByFooter":true}}""",
+        });
+        var (bill, receipt) = Tausi.Application.Settings.ReceiptPreview.Render(values, columns, null, At);
+
+        bill.Text.Should().Be(Slips.Bill(
+            new BillSlip(Mau, 1, 1042, false, "Table 7", "edna", "Counter A", At, Slips.SampleLines(16m)),
+            new SlipStyle(columns, true, null, "KES", PoweredBy: true)).Text);
+        receipt.Text.Should().Contain("1 x Guiness VOID").And.Contain("Cash brought by edna").And.Contain(Slips.PoweredByText);
+        Golden($"preview-bill-{columns}", bill);
+        Golden($"preview-receipt-{columns}", receipt);
+    }
+
     [Fact]
     public void Void_and_receipt_slips_render()
     {

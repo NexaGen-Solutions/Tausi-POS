@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.SignalR.Client;
+using SkiaSharp;
 using Tausi.Application.Auditing;
 using Tausi.IntegrationTests.Support;
 
@@ -12,114 +13,178 @@ namespace Tausi.IntegrationTests;
 [Collection(AppCollection.Name)]
 public class SettingsTests(TausiApp app)
 {
-    private static object Update(JsonElement s, string name) => new
-    {
-        name,
-        address = s.GetProperty("address").GetString(),
-        phone = s.GetProperty("phone").GetString(),
-        vatRate = s.GetProperty("vatRate").GetDecimal(),
-        currency = s.GetProperty("currency").GetString(),
-        rounding = s.GetProperty("rounding").GetString(),
-        receiptFooter = s.GetProperty("receiptFooter").GetString(),
-        printMode = s.GetProperty("printMode").GetString(),
-        otherJson = s.GetProperty("otherJson").GetString(),
-        rowVersion = s.GetProperty("rowVersion").GetInt64(),
-    };
+    private static readonly SemaphoreSlim One = new(1, 1);
 
     [Fact]
-    public async Task Admin_updates_settings_and_the_change_is_audited_and_announced()
+    public async Task Admin_saves_the_changed_keys_and_each_is_audited_and_announced()
+    {
+        await One.WaitAsync();
+        try
+        {
+            var admin = await app.AdminClient();
+            var settings = await (await admin.GetAsync("/api/admin/settings")).Json();
+            var version = settings.GetProperty("version").GetInt64();
+            settings.GetProperty("sections").EnumerateArray().Select(s => s.GetProperty("key").GetString())
+                .Should().ContainInOrder("business", "rules", "pos", "printing", "money", "cashup");
+            (await admin.Setting("business.vatRate")).GetDecimal().Should().Be(16m);
+            (await admin.Setting("print.mode")).GetString().Should().Be("OneButton");
+
+            var terminal = await app.PairTerminal();
+            await terminal.LoginWithPin(app.Pins["edna"]);
+            var changed = new TaskCompletionSource<JsonElement>();
+            await using var hub = new HubConnectionBuilder()
+                .WithUrl(new Uri(app.Server.BaseAddress, $"/hubs/pos?device_token={terminal.DeviceToken}"), o =>
+                {
+                    o.HttpMessageHandlerFactory = _ => app.Server.CreateHandler();
+                    o.AccessTokenProvider = () => Task.FromResult(terminal.SessionToken);
+                    o.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
+                })
+                .Build();
+            hub.On<JsonElement>("settings.changed", payload => changed.TrySetResult(payload));
+            await hub.StartAsync();
+            var audits = app.Db(db => db.AuditEntries.Count(a => a.Action == AuditActions.SettingsChanged));
+
+            var response = await admin.PutAsJsonAsync("/api/admin/settings", new
+            {
+                values = new Dictionary<string, object> { ["business.name"] = "Mau's Village Bar", ["pos.tableIdleMinutes"] = 45, ["pos.logoutAfterSettle"] = false },
+                version,
+            });
+            response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+            (await response.Json()).GetProperty("version").GetInt64().Should().BeGreaterThan(version);
+
+            var payload = await changed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            payload.GetProperty("keys").EnumerateArray().Select(k => k.GetString())
+                .Should().BeEquivalentTo("business.name", "pos.tableIdleMinutes"); // logoutAfterSettle was already off
+            app.Db(db => db.AuditEntries.Count(a => a.Action == AuditActions.SettingsChanged)).Should().Be(audits + 2);
+            (await (await app.CreateClient().GetAsync("/api/brand")).Json()).GetProperty("name").GetString().Should().Be("Mau's Village Bar");
+
+            var history = await (await admin.GetAsync("/api/admin/settings/history")).Json();
+            var latest = history.EnumerateArray().First(h => h.GetProperty("key").GetString() == "business.name");
+            latest.GetProperty("new").GetString().Should().Be("Mau's Village Bar");
+            latest.GetProperty("who").GetString().Should().Be("Administrator");
+
+            var stale = await admin.PutAsJsonAsync("/api/admin/settings", new { values = new { pos_x = 1 }, version });
+            stale.StatusCode.Should().Be(HttpStatusCode.BadRequest, "unknown keys are refused before anything else");
+            var conflict = await admin.PutAsJsonAsync("/api/admin/settings",
+                new { values = new Dictionary<string, object> { ["business.name"] = "Lost update" }, version });
+            conflict.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            (await conflict.Json()).GetProperty("detail").GetString().Should().Be("Someone else saved settings. Reload to see their changes.");
+
+            await admin.SaveSettings(new() { ["business.name"] = "Mau's Village", ["pos.tableIdleMinutes"] = 30 });
+        }
+        finally
+        {
+            One.Release();
+        }
+    }
+
+    [Fact]
+    public async Task Bad_values_and_unknown_keys_come_back_per_field()
     {
         var admin = await app.AdminClient();
-        var settings = await (await admin.GetAsync("/api/settings/business")).Json();
-        settings.GetProperty("vatRate").GetDecimal().Should().Be(16m);
-        settings.GetProperty("printMode").GetString().Should().Be("OneButton");
+        (await admin.Setting("business.timeZone")).GetString().Should().Be("Africa/Nairobi");
 
+        var bad = await admin.SaveSettings(new()
+        {
+            ["business.timeZone"] = "Mars/Olympus",
+            ["pos.idleLogoutMinutes"] = 500,
+            ["print.poweredByFooter"] = "yes",
+            ["business.logo"] = "x",
+            ["nope.key"] = 1,
+        });
+
+        bad.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var errors = (await bad.Json()).GetProperty("fieldErrors");
+        errors.GetProperty("business.timeZone").GetString().Should().Contain("Africa/Nairobi");
+        errors.GetProperty("pos.idleLogoutMinutes").GetString().Should().Be("Enter a whole number from 1 to 120.");
+        errors.GetProperty("print.poweredByFooter").GetString().Should().Be("Choose on or off.");
+        errors.GetProperty("business.logo").GetString().Should().NotBeEmpty();
+        errors.GetProperty("nope.key").GetString().Should().Be("Unknown setting.");
+    }
+
+    [Fact]
+    public async Task A_waiter_can_not_see_settings()
+    {
         var terminal = await app.PairTerminal();
         await terminal.LoginWithPin(app.Pins["edna"]);
-        var changed = new TaskCompletionSource();
-        await using var hub = new HubConnectionBuilder()
-            .WithUrl(new Uri(app.Server.BaseAddress, $"/hubs/pos?device_token={terminal.DeviceToken}"), o =>
-            {
-                o.HttpMessageHandlerFactory = _ => app.Server.CreateHandler();
-                o.AccessTokenProvider = () => Task.FromResult(terminal.SessionToken);
-                o.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
-            })
-            .Build();
-        hub.On<JsonElement>("settings.changed", _ => changed.TrySetResult());
-        await hub.StartAsync();
-
-        var response = await admin.PutAsJsonAsync("/api/settings/business", Update(settings, "Mau's Village Bar"));
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await response.Json()).GetProperty("name").GetString().Should().Be("Mau's Village Bar");
-
-        await changed.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        app.Db(db => db.AuditEntries.Count(a => a.Action == AuditActions.SettingsChanged)).Should().BeGreaterThan(0);
-
-        var stale = await admin.PutAsJsonAsync("/api/settings/business", Update(settings, "Lost update"));
-        stale.StatusCode.Should().Be(HttpStatusCode.Conflict);
-
-        var fresh = await (await admin.GetAsync("/api/settings/business")).Json();
-        (await admin.PutAsJsonAsync("/api/settings/business", Update(fresh, "Mau's Village"))).EnsureSuccessStatusCode();
+        (await terminal.Http.GetAsync("/api/admin/settings")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
-    public async Task The_business_time_zone_is_seeded_and_must_be_an_iana_name()
+    public async Task The_receipt_preview_uses_unsaved_values()
     {
         var admin = await app.AdminClient();
-        var settings = await (await admin.GetAsync("/api/settings/business")).Json();
-        settings.GetProperty("timeZone").GetString().Should().Be("Africa/Nairobi");
+        var values = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["business.name"] = "Preview Bar", ["business.receiptFooter"] = "Karibu tena", ["payments.recordBroughtBy"] = false,
+        });
 
-        var update = JsonSerializer.SerializeToElement(Update(settings, settings.GetProperty("name").GetString()!))
-            .Deserialize<Dictionary<string, object?>>()!;
-        update["timeZone"] = "Mars/Olympus";
-        var bad = await admin.PutAsJsonAsync("/api/settings/business", update);
-        bad.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await bad.Content.ReadAsStringAsync()).Should().Contain("Africa/Nairobi");
+        var preview = await (await admin.GetAsync($"/api/admin/settings/receipt-preview?width=32&values={Uri.EscapeDataString(values)}")).Json();
 
-        update["timeZone"] = "Africa/Kampala";
-        var good = await (await admin.PutAsJsonAsync("/api/settings/business", update)).Json();
-        good.GetProperty("timeZone").GetString().Should().Be("Africa/Kampala");
+        preview.GetProperty("width").GetInt32().Should().Be(32);
+        preview.GetProperty("bill").GetString().Should().Contain("Preview Bar").And.Contain("Karibu tena");
+        preview.GetProperty("receipt").GetString().Should().Contain("RECEIPT No. 2041").And.NotContain("brought by");
+        (await admin.Setting("business.name")).GetString().Should().NotBe("Preview Bar", "nothing was saved");
 
-        var back = JsonSerializer.SerializeToElement(Update(good, good.GetProperty("name").GetString()!))
-            .Deserialize<Dictionary<string, object?>>()!;
-        back["timeZone"] = "Africa/Nairobi";
-        (await admin.PutAsJsonAsync("/api/settings/business", back)).EnsureSuccessStatusCode();
+        var posted = await admin.PostAsJsonAsync("/api/admin/settings/receipt-preview", new { width = 42, values = new Dictionary<string, object> { ["pos.idleLogoutMinutes"] = 0 } });
+        posted.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    [Fact]
-    public async Task The_powered_by_footer_setting_must_be_true_or_false()
+    private static byte[] Png(int width, int height)
     {
-        var admin = await app.AdminClient();
-        var settings = await (await admin.GetAsync("/api/settings/business")).Json();
-        var update = Update(settings, settings.GetProperty("name").GetString()!);
-        var bad = JsonSerializer.SerializeToElement(update).Deserialize<Dictionary<string, object?>>()!;
-        bad["otherJson"] = """{"print":{"poweredByFooter":"yes"}}""";
-
-        var response = await admin.PutAsJsonAsync("/api/settings/business", bad);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("print.poweredByFooter must be true or false.");
+        using var bitmap = new SKBitmap(width, height);
+        bitmap.Erase(SKColors.Black);
+        using var image = SKImage.FromBitmap(bitmap);
+        return image.Encode(SKEncodedImageFormat.Png, 100).ToArray();
     }
 
-    [Fact]
-    public async Task Logo_upload_is_served_and_shows_in_the_brand()
+    private static MultipartFormDataContent Form(byte[] bytes, string type, string name)
     {
-        var admin = await app.AdminClient();
-        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
         var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent(png);
-        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-        form.Add(file, "file", "logo.png");
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue(type);
+        form.Add(file, "file", name);
+        return form;
+    }
 
-        var upload = await admin.PostAsync("/api/settings/business/logo", form);
-        upload.StatusCode.Should().Be(HttpStatusCode.OK);
-        var logoId = (await upload.Json()).GetProperty("logoFileId").GetGuid();
+    [Fact]
+    public async Task A_logo_is_checked_kept_with_a_screen_copy_printed_in_1_bit_and_removed()
+    {
+        await One.WaitAsync();
+        try
+        {
+            var admin = await app.AdminClient();
+            (await admin.PostAsync("/api/admin/settings/logo", Form("GIF89a"u8.ToArray(), "image/gif", "logo.gif")))
+                .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await admin.PostAsync("/api/admin/settings/logo", Form("not a picture"u8.ToArray(), "image/png", "logo.png")))
+                .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await admin.PostAsync("/api/admin/settings/logo", Form(new byte[2 * 1024 * 1024 + 1], "image/png", "big.png")))
+                .StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        var brand = await (await app.CreateClient().GetAsync("/api/brand")).Json();
-        brand.GetProperty("logoFileId").GetGuid().Should().Be(logoId);
+            var png = Png(1200, 300);
+            var upload = await admin.PostAsync("/api/admin/settings/logo", Form(png, "image/png", "logo.png"));
+            upload.StatusCode.Should().Be(HttpStatusCode.OK, await upload.Content.ReadAsStringAsync());
+            var webId = (await upload.Json()).GetProperty("logoFileId").GetGuid();
 
-        var served = await app.CreateClient().GetAsync($"/files/{logoId}");
-        served.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
-        (await served.Content.ReadAsByteArrayAsync()).Should().Equal(png);
+            var brand = await (await app.CreateClient().GetAsync("/api/brand")).Json();
+            brand.GetProperty("logoFileId").GetGuid().Should().Be(webId);
+            var web = SKBitmap.Decode(await (await app.CreateClient().GetAsync($"/files/{webId}")).Content.ReadAsByteArrayAsync());
+            web.Width.Should().Be(512, "the screen copy is resized");
+            var original = app.Db(db => db.BusinessSettings.Single().LogoFileId!.Value);
+            (await (await app.CreateClient().GetAsync($"/files/{original}")).Content.ReadAsByteArrayAsync()).Should().Equal(png);
+
+            var print = await admin.GetAsync("/api/admin/settings/logo/print.png?paper=58");
+            print.StatusCode.Should().Be(HttpStatusCode.OK);
+            SKBitmap.Decode(await print.Content.ReadAsByteArrayAsync()).Width.Should().Be(256, "the 58 mm raster is made from the new logo");
+
+            var removed = await (await admin.DeleteAsync("/api/admin/settings/logo")).Json();
+            removed.GetProperty("logoFileId").ValueKind.Should().Be(JsonValueKind.Null);
+            (await admin.GetAsync("/api/admin/settings/logo/print.png")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+            app.Db(db => db.AuditEntries.Count(a => a.Action == AuditActions.LogoChanged)).Should().BeGreaterThanOrEqualTo(2);
+        }
+        finally
+        {
+            One.Release();
+        }
     }
 }
