@@ -269,7 +269,8 @@ public sealed class MoneyActions(
     /// <summary>The words the cash book shows for it: "Paid KBL", "Banked cash", "Ice and charcoal (expense)".</summary>
     public static string Title(MoneyDocument d, IReadOnlyDictionary<Guid, string> categories, IReadOnlyDictionary<Guid, string> suppliers) => d.Kind switch
     {
-        MoneyDocumentKind.Expense => $"{d.Payee ?? d.Note ?? (d.CategoryId is { } c ? categories.GetValueOrDefault(c) : null) ?? "Expense"} (expense)",
+        // What was bought reads best ("Ice and charcoal (expense)"), then the category, then who was paid.
+        MoneyDocumentKind.Expense => $"{d.Note ?? (d.CategoryId is { } c ? categories.GetValueOrDefault(c) : null) ?? d.Payee ?? "Expense"} (expense)",
         MoneyDocumentKind.SupplierPayment => $"Paid {(d.SupplierId is { } s ? suppliers.GetValueOrDefault(s, "supplier") : "supplier")}",
         MoneyDocumentKind.MoveMoney => (d.From, d.To) switch
         {

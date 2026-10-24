@@ -175,7 +175,7 @@ public sealed class CashBook(ITausiDb db, ICurrentSession session, MoneyAccess a
         if (money.Count > 0)
         {
             var counter = other.FirstOrDefault()?.Account!.Name;
-            var place = Name(money[0]);
+            var place = string.Join(", ", money.Select(Name).Distinct());
             yield return Row(text, counter is null ? place : $"{counter} · {place}", ins.Sum(l => l.Debit), outs.Sum(l => l.Credit));
             yield break;
         }

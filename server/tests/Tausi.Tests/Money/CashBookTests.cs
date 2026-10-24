@@ -126,7 +126,7 @@ public class CashBookTests : StockTestBase
         var expense = await Actions.AddExpense(new ExpenseRequest(null, 1500, repairs, from, "Fundi Joe", "INV-9", "Tap fixed", null), None);
 
         expense.Status.Should().Be("Posted");
-        expense.Title.Should().Be("Fundi Joe (expense)");
+        expense.Title.Should().Be("Tap fixed (expense)", "what was bought reads first");
         var entry = Entry(expense.JournalEntryId);
         entry.Lines.Single(l => l.Account!.Code == LedgerAccountCodes.Expenses).Should().Match<JournalLine>(l => l.Debit == 1500 && l.ExpenseCategoryId == repairs);
         entry.Lines.Single(l => l.Account!.Code == code).Credit.Should().Be(1500);
@@ -307,7 +307,7 @@ public class CashBookTests : StockTestBase
         await AsAdmin();
         await Deliver("D1", DeliveryPayment.Cash);
         await F.Get<WasteAndTransferCommands>().RecordWaste(new RecordWasteRequest(Location("Bar"), Item("Guiness"), 1, null, "Broken", null), None);
-        await Actions.AddExpense(new ExpenseRequest(null, 1500, await Category(), MoneyAccount.Safe, "Ice and charcoal", null, null, null), None);
+        await Actions.AddExpense(new ExpenseRequest(null, 1500, await Category(), MoneyAccount.Safe, "Duka", null, "Ice and charcoal", null), None);
         await Actions.MoveMoney(new MoveMoneyRequest(MoneyAccount.Safe, MoneyAccount.Bank, 500, 50, null, null), None);
     }
 
