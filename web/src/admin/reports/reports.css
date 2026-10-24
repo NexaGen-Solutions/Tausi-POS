@@ -1,0 +1,312 @@
+/* Wireframe 19: reports, and the ticket detail opened from them. */
+.reports {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-5);
+}
+.reports__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.reports__buttons,
+.reports__dialog-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.reports__dialog-buttons {
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* The tab row: pills that wrap, never scroll sideways. */
+.reports__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.report-tab {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.report-tab--on {
+  border-color: var(--color-topbar);
+  background: var(--color-topbar);
+  color: var(--color-topbar-text);
+  font-weight: 600;
+}
+.report-more-menu {
+  position: relative;
+}
+.report-more-menu__list {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  min-width: 240px;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  list-style: none;
+}
+.reports__buttons .report-more-menu__list {
+  right: 0;
+  left: auto;
+}
+.report-more-menu__item {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.report-more-menu__item[aria-current='true'],
+.report-more-menu__item:focus-visible {
+  background: var(--color-selected-tint);
+}
+
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.report-filters .nx-field {
+  min-width: 160px;
+}
+.report-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.report-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+}
+.report-check input {
+  width: 20px;
+  height: 20px;
+}
+.report-period,
+.report-note,
+.report-muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.report-notes {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+  font-size: 14px;
+  list-style: none;
+}
+.report-result {
+  display: grid;
+  gap: var(--space-4);
+}
+.report-table {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.report-table__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* The table: a box that scrolls inside the page; the header stays while the rows scroll. */
+.report-box {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.report {
+  width: 100%;
+  border-collapse: collapse;
+}
+.report thead th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.report td,
+.report .report-group th {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-ground);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.report .report-cell--number {
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+.report .report-group th {
+  background: var(--color-ground);
+  font-weight: 600;
+}
+.report-row--muted td {
+  color: var(--color-text-muted);
+}
+.report-row--total td {
+  border-top: 1px solid var(--color-border);
+  font-weight: 600;
+}
+.report-row--grand td {
+  border-top: 2px solid var(--color-text);
+  font-weight: 700;
+}
+.report-footer td {
+  padding-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.report-more__button,
+.report-link {
+  min-height: var(--touch-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-selected);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.report-ticket {
+  color: var(--color-selected);
+  font-family: var(--font-mono);
+}
+.report-json summary {
+  min-height: var(--touch-min);
+  color: var(--color-selected);
+  cursor: pointer;
+}
+.report-json pre {
+  max-width: 420px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.report-empty,
+.report-empty-state {
+  margin: 0;
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.report-empty-state {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+
+/* Ticket detail. */
+.ticket-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.ticket-facts dt {
+  color: var(--color-text-muted);
+}
+.ticket-facts dd {
+  margin: 0;
+}
+.ticket-section {
+  display: grid;
+  gap: var(--space-2);
+}
+.ticket-sub {
+  display: block;
+}
+.ticket-status,
+.ticket-event {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--color-ground);
+  font-size: 13px;
+}
+.ticket-status--voided,
+.ticket-status--cancelled,
+.ticket-event--void {
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.ticket-status--gift,
+.ticket-event--gift {
+  background: var(--color-selected-tint);
+  color: var(--color-selected);
+}
+.ticket-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ticket-entry {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.ticket-entry__memo {
+  margin: 0 0 var(--space-1);
+  font-weight: 600;
+}
+.ticket-entry__line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ticket-slip {
+  margin: 0;
+  padding: var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-ground);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.35;
+}

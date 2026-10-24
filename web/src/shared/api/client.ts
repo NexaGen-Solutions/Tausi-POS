@@ -98,6 +98,8 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Set when the caller retries a write itself, so the server sees the same request. */
   idempotencyKey?: string;
+  /** A POST that only reads (it carries filters, e.g. running a report): no Idempotency-Key. */
+  readOnly?: boolean;
   /** Let the request finish while the page unloads (e.g. giving back a ticket's edit lock). */
   keepalive?: boolean;
   /** A supervisor's approval token already in hand (their PIN typed in the action's own pop-up). */
@@ -114,7 +116,9 @@ export interface RequestOptions {
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET';
   const idempotencyKey =
-    method === 'GET' ? undefined : (options.idempotencyKey ?? crypto.randomUUID());
+    method === 'GET' || options.readOnly
+      ? undefined
+      : (options.idempotencyKey ?? crypto.randomUUID());
 
   let response = await send(path, method, options, idempotencyKey, options.approvalToken);
   if (response.status === 403) {
@@ -143,6 +147,29 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (response.status === 204) return undefined as T;
   const type = response.headers.get('content-type') ?? '';
   return (type.includes('json') ? await response.json() : await response.text()) as T;
+}
+
+/** A file the server sends back (Excel, CSV, PDF), with the name it suggests. */
+export interface ApiFile {
+  blob: Blob;
+  fileName: string;
+}
+
+/** Calls the API for a file. Errors come back as {@link ApiError}s, like {@link api}. */
+export async function apiFile(path: string, options: RequestOptions = {}): Promise<ApiFile> {
+  const method = options.method ?? 'GET';
+  const idempotencyKey =
+    method === 'GET' || options.readOnly
+      ? undefined
+      : (options.idempotencyKey ?? crypto.randomUUID());
+  const response = await send(path, method, options, idempotencyKey, options.approvalToken);
+  if (!response.ok) throw new ApiError(await readProblem(response));
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+  return {
+    blob: await response.blob(),
+    fileName: match ? decodeURIComponent(match[1]) : 'download',
+  };
 }
 
 async function send(

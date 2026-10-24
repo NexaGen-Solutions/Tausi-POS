@@ -286,7 +286,11 @@ describe('cash screens', () => {
   it('close day lists what blocks it with links, then shows the summary', async () => {
     const user = userEvent.setup();
     setPinSession(sessionFor('MAU', 'Supervisor'));
-    permissions = { 'day.open_close': 'Allowed', 'ticket.settle': 'Allowed' };
+    permissions = {
+      'day.open_close': 'Allowed',
+      'ticket.settle': 'Allowed',
+      'reports.all': 'Allowed',
+    };
     let blocked = true;
     extra = {
       'GET /api/pos/day': () =>
@@ -343,6 +347,7 @@ describe('cash screens', () => {
               },
         }),
       'POST /api/pos/day/close': () => json(200, {}),
+      'POST /api/pos/reports/sales-by-user/print': () => new Response(null, { status: 204 }),
     };
     renderRoutes(routes, '/pos/tables');
     await user.click(await screen.findByRole('button', { name: 'Close day' }));
@@ -362,6 +367,11 @@ describe('cash screens', () => {
     expect(await screen.findByText('Nothing blocks the close')).toBeInTheDocument();
     expect(screen.getByText('KSh 2,240')).toBeInTheDocument();
     expect(screen.getByText('Net for the day').nextSibling).toHaveTextContent('− 150');
+    await user.click(screen.getByRole('button', { name: 'Print sales by user' }));
+    expect(await screen.findByText('Sales by user is printing.')).toBeInTheDocument();
+    expect(
+      calls.some((c) => c.method === 'POST' && c.path === '/api/pos/reports/sales-by-user/print'),
+    ).toBe(true);
     await user.click(screen.getAllByRole('button', { name: 'Close day' }).at(-1)!);
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Close day' }),

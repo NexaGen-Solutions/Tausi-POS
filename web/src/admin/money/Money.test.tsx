@@ -35,6 +35,7 @@ const summary: DailySummary = {
   otherIncome: 0,
   net: 4350,
   noRecipeItems: ['Pool Table', 'Darts'],
+  rounding: -0.5,
 };
 
 function book(extra: Partial<CashBook> = {}): CashBook {
@@ -277,6 +278,7 @@ describe('Cash book', () => {
     renderRoutes(routes, `/admin/cash-book?date=${yesterday}`);
     const panel = await screen.findByRole('region', { name: 'Daily summary' });
     expect(within(panel).getByText('Net sales').nextSibling).toHaveTextContent('10,000');
+    expect(within(panel).getByText('Rounding').nextSibling).toHaveTextContent('− 0.5');
     expect(within(panel).getByText('Gross profit').parentElement).toHaveTextContent('60%');
     expect(within(panel).getByText('Net for the day').nextSibling).toHaveTextContent('4,350');
     expect(within(panel).queryByText('Repairs')).not.toBeInTheDocument();
