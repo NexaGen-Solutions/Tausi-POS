@@ -227,9 +227,28 @@ Each entry: date, decision, reason.
 | 2026-10-23 | Cash slips (cash-up, pay-out, drop, waiter, day report) print on the terminal's receipt printer as print jobs of kind CashUp; without a printer the action still completes. | Print failures never undo a business action. |
 | 2026-10-23 | My sales leaves out the wireframe's "Long item names wrap instead of being cut off": it describes the layout (names do wrap) rather than telling the waiter anything. The note keeps "Supervisors see this for every waiter in the admin reports." | A design note, not screen text. |
 
+## Permissions and settings (task 10)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-24 | One registry (`SettingsRegistry`) holds every setting; everything reads through it. The business details, rounding and print mode keep their columns; the rest stay in `OtherJson` under their key (`pos.idleLogoutMinutes` is `{"pos":{"idleLogoutMinutes":…}}`), so existing data needs no conversion. A stored value that no longer passes its check falls back to the default (before, some were clamped). New installs start with `{}`. | Defaults live in one place, and values the owner never changed follow them. |
+| 2026-10-24 | Setting labels and help come from the registry (the API), not `en.json`; the screen's own words are in `en.json`. | The prompt puts label and help in the registry; one source for both. Translating them later means translating the registry. |
+| 2026-10-24 | `pos.idleLogoutMinutes` is 1–120 (it was up to 1,440). | The prompt's range. |
+| 2026-10-24 | The logo takes PNG or JPG only (WebP no longer); the file must really be one. A 512 px PNG copy (`LogoWebFileId`, new column) is what screens show; the original is printed. The print rasters are cleared and made again on upload and remove. | The prompt's types; a small copy for the PIN screen. |
+| 2026-10-24 | The receipt preview is `POST /api/admin/settings/receipt-preview` with the unsaved values in the body (what the screen uses); `GET …?width=42&values={…}` does the same. It returns the bill and receipt as text and the printed logo as a base64 PNG. | "Unsaved values sent as query or body". |
+| 2026-10-24 | `print.mode` shows as the switch "One Print button". In Send and Print bill mode the server refuses the one-button Print; Send and Print bill work in either mode. Settle's "Print, then settle" sends in that mode. | A server-side change for the switch, without breaking anything that sends. |
+| 2026-10-24 | Voids show only on the receipt when switched on (bills unchanged), as "1 x Guiness VOID 0", in no total or VAT line. | The prompt names the receipt. |
+| 2026-10-24 | **Close ticket** (`POST …/close-voided`, `ticket.settle`) marks the ticket Cancelled with no receipt number, no ledger entry and no shift needed, as no money moves. Settling such a ticket with a 0 receipt still works with the switch on or off. | Nothing to pay or post; the 0 receipt stays possible. |
+| 2026-10-24 | With "Record who brought the cash" off the server ignores a sent Brought by and records the opener; the cash-up's "Cash brought by" list stays. | The prompt's rule for settling and the receipt; the cash-up still needs whose cash it was. |
+| 2026-10-24 | An optional M-Pesa code left blank is stored as none; the cash-up adds "M-Pesa no code (n)". | "No code" on receipt and cash-up. |
+| 2026-10-24 | Keys that can't be approved: `ticket.settle`, `menu.*`, `reports.*`, `day.open_close` and the admin keys. A NeedsApproval cell already stored for one counts as Not allowed (also in `/api/auth/me`). Task 3's test that approved a menu price change now expects Not allowed. | The prompt's list; the newer prompt wins. |
+| 2026-10-24 | The four built-in roles can be renamed but not deleted. A role anyone has, active or not, can't be deleted. | `SystemKey` drives who may manage whom; keeping the built-ins avoids an install with no Admin role. |
+| 2026-10-24 | The grid's version is a hash of every role name and cell. The lock-out check counts active users; "nobody can approve" counts roles, with or without users. | One version for the whole grid without a new column. |
+| 2026-10-24 | The old endpoints are gone: `/api/settings/business` (GET, PUT, logo) and `PUT /api/admin/roles/{id}/permissions`. | The new ones check more (versions, lock-out); keeping the old ones would bypass that. |
+| 2026-10-24 | The Stock section has no setting outside Rules yet, so it isn't shown. | No empty panels. |
+
 ## Follow-ups
 
-- **Powered-by footer toggle:** add `print.poweredByFooter` to Settings → Printing when that screen is built (it is set in the settings JSON until then).
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
 - **Updater:** the updater plugin is installed but has no public key or endpoint yet (`plugins.updater` in `tauri.conf.json`). Generate signing keys, publish `latest.json`, turn on `createUpdaterArtifacts`.
 - **Real-hardware check:** `print_raw` on the Windows spooler and server-side Windows share printing compile in CI but are untested against a real printer until the owner runs RUNNING.md "Testing on real hardware".
@@ -239,22 +258,18 @@ Each entry: date, decision, reason.
 - **Licence checks:** the `Licence` table exists; checking and the grace period come with the setup wizard.
 - **Backups:** nightly database backup plus the data directory (it holds the PIN pepper).
 - **Server installer:** a Windows installer for Tausi Server (service + SQL Server Express) and a Linux package.
-- **Edit roles and permissions** (Permissions screen): until then, added roles can only be created in the database.
 - **Approvals on the admin site:** an action that needs approval can't be approved there yet (the approval pad needs a terminal).
 - **Optional move slip to the dispense printer** when a ticket moves tables (nothing is printed now).
-- **Settings → POS:** add `pos.tableIdleMinutes` to the settings screen when it is built (set in the settings JSON until then).
 - **Remove the `close-day` development command** when cash-up closes days.
 - **CI runner image:** GitHub notes that `ubuntu-latest` moves to Ubuntu 26 from 19 Oct 2026; pin `ubuntu-24.04` if that causes trouble.
 - **Default option in the admin menu:** let Menu → Modifiers set an option's `IsDefault` (seeded only for now).
-- **Printing mode setting:** add `printMode` to Settings → Printing when that screen is built (set in the settings JSON until then).
 - **Logout from the order screen:** if a logout is added there, it should run the same leave check.
 - **Draft ticket note:** allow a note before the first item if waiters ask for it.
-- **Time zone in Settings:** add `timeZone` to the settings screen when it is built (set through the settings API until then).
 - **On-screen times:** the terminal and admin screens show times in the browser's time zone; format them in the business's zone if a terminal's clock is ever set differently.
 - **Stock (Task 11):** use `VoidLog.WasPoured` (poured voids still use stock) and `GiftLog` (gifts count as sold).
 - **Ledger and ERPNext (Task 8+):** post discounts from each line's `Discount` share; gifts at 0 with their `UnitPrice` kept for reports.
 - **Approvals on the admin site:** decide requests from the admin site too, if supervisors work there.
-- **Approval sound setting:** let a business switch the chime off or choose its volume.
+- **Approval sound volume:** the chime can be switched off (`pos.approvalChime`); its volume is not a setting yet.
 - **Refunds** of a settled ticket, with approval, a refund slip and a reversing journal entry.
 - **Un-settling** a ticket settled by mistake.
 - **M-Pesa till confirmation** through the Daraja API.
@@ -269,3 +284,6 @@ Each entry: date, decision, reason.
 - **Expense categories admin** (Task 12): the five seeded categories can't be edited yet.
 - **design.md's permission table:** update "Expenses" for cashiers to Needs approval, to match the defaults.
 - **Approval pad after a refused PIN:** a refusal (such as the cashier's own PIN at shift sign-off) closes the pad with a toast, so the cashier taps Close shift again for the supervisor. Consider keeping the pad open with the message for 403s, for every approval.
+- **Network-dependent test:** `CheckConnectionTests.No_answer_says_check_the_printer_is_on` expects no answer from 192.0.2.1; some networks refuse it at once, and the test fails there. Use a local listener that never answers instead.
+- **"Not served" when approving a void** (Task 11): with `stock.returnOnVoidIfNotServed` on, the supervisor should tick "not served" on the approval.
+- **Voids on bills:** `print.showVoidsOnReceipt` affects the receipt only; decide whether bills should list voids too.

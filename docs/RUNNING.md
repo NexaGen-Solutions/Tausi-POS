@@ -107,15 +107,9 @@ dotnet run --project src/Tausi.Api -- require-pin-change edna
 
 ### Idle logout
 
-Terminals log out after 10 minutes without use. To try it quickly, set it to 1 minute (admin
-cookie from the sign-in above):
-
-```bash
-curl -s -b /tmp/nx.cookies http://localhost:5080/api/settings/business > /tmp/settings.json
-# edit otherJson in /tmp/settings.json to {"pos":{"idleLogoutMinutes":1,"logoutAfterSettle":false}}
-curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/settings.json \
-  http://localhost:5080/api/settings/business
-```
+Terminals log out after 10 minutes without use. To try it quickly, set **Idle logout (minutes)**
+to 1 on the admin site's **Settings** page and save; terminals pick it up at once. Switching
+**Log out after 10 minutes idle** off stops idle logout (the 12-hour limit stays).
 
 ### Menu and prices
 
@@ -124,18 +118,8 @@ Open **Menu and prices** on the admin site to edit items, prices (with the price
 groups and price lists, and to import or export CSV. The ticket screen on a terminal (tap a table
 twice) shows a temporary "Menu (for testing)" list; it refreshes when the menu changes.
 
-For now these are API only (admin cookie from the sign-in above):
-
-```bash
-# A terminal sells from another price list (null: back to the default)
-curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
-  -d '{"priceListId":"<price list id>"}' http://localhost:5080/api/admin/terminals/<terminal id>/price-list
-# Change one cell of the permission grid, e.g. give Supervisors menu.edit
-curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' \
-  -d '{"permissionKey":"menu.edit","value":"Allowed"}' http://localhost:5080/api/admin/roles/<role id>/permissions
-```
-
-Role ids are in `GET /api/admin/staff` (`roleId`, `assignableRoles`).
+A terminal sells from another price list: choose it under **Terminals and printers → Edit**.
+Permissions, e.g. giving Supervisors `menu.edit`, are changed on the **Permissions** page.
 
 ### Table map and tickets
 
@@ -152,11 +136,10 @@ day when none is open. Running it again adds only the tickets that are missing.
   logged out for being idle, is released within 5 seconds.
 - **Merge** on Table 7: Merge tickets, tick both, confirm "Merge #… into #…?". The oldest is kept and
   every line keeps its waiter. **Move**: Move to another table, then tap the new table.
-- To try approvals, set waiters' `ticket.merge` to NeedsApproval (curl in the Menu section above);
+- To try approvals, set waiters' **Merge tickets** to Needs approval on the **Permissions** page;
   merging then asks for a supervisor PIN.
 - **Idle tables** turn orange after `pos.tableIdleMinutes` (default 30) without activity. To see it
-  quickly, set it to 1 in the settings JSON (as for idle logout above, with
-  `{"pos":{"idleLogoutMinutes":10,"logoutAfterSettle":false,"tableIdleMinutes":1}}`).
+  quickly, set **Table idle warning (minutes)** to 1 on the **Settings** page.
 - **Offline:** stop the server; the map shows "Not connected to the server. Reconnecting…" and
   every button is disabled until it is back.
 - **Admin site → Tables** lists areas and tables, with **Quick add** ("from 1 to 16 in Main", with
@@ -197,20 +180,12 @@ item and gets its number then.
   it back to File and press Retry.
 
 **Send and bill mode** (two buttons: **Send (n new)** prints only the dispense slip, **Print
-bill** prints the bill): set `printMode` in the business settings, as for idle logout above:
-
-```bash
-curl -s -b /tmp/nx.cookies http://localhost:5080/api/settings/business > /tmp/settings.json
-# change "printMode": "OneButton" to "printMode": "SendAndBill"
-curl -b /tmp/nx.cookies -X PUT -H 'content-type: application/json' --data @/tmp/settings.json \
-  http://localhost:5080/api/settings/business
-```
-
-Reload the terminal to pick it up.
+bill** prints the bill): switch **One Print button** off on the **Settings** page. Terminals
+pick it up at once; the server then refuses the one-button print.
 
 **Time zone:** bills and slips print the business's time (`timeZone`, an IANA name; the demo is
-`Africa/Nairobi`), whatever zone the server runs in. Change it the same way: set `"timeZone"` in
-`/tmp/settings.json` (for example `"Africa/Kampala"`) and PUT it back. Unknown names are refused.
+`Africa/Nairobi`), whatever zone the server runs in. Change it under **Time zone** on the
+**Settings** page (a searchable list); unknown names are refused.
 
 **VAT on bills:** an item marked **VAT exempt** (admin site → Menu → item → VAT rate) is listed as
 "VAT exempt: KSh …"; a **Zero-rated (0%)** item is in the VAT lines as "Total includes VAT 0%:
@@ -236,7 +211,7 @@ and as **MAU** (supervisor) on Counter B. Open a table on Pillar 1, add 2 Tusker
   (supervisors ask the Administrator, the "manager" of the demo) work the same way.
 - **Reprint, Move and Merge** needing approval open the approval pad with **Send request** too.
 - A request not decided within `pos.approvalExpiryMinutes` (30) expires. To try it quickly, set
-  it in the settings JSON as for idle logout above: `{"pos":{…,"approvalExpiryMinutes":1}}`.
+  **Approval requests expire after (minutes)** to 1 on the **Settings** page.
 
 ### Settling (cashier only)
 
@@ -272,7 +247,7 @@ Log in as **edna** on one terminal, order on Table 7 and press **Print**. Log in
   drawer below 0, and each prints a small slip.
 - **Count:** type how many of each note and the coins, then **Submit count**. With
   `cashup.blind` on (the default) the expected cash and the difference show only now.
-- **Close shift · supervisor PIN to sign off:** MAU types his PIN on the approval pad (CAROL's own
+- **Close shift · supervisor PIN to sign off:** MAU types their PIN on the approval pad (CAROL's own
   is refused). The cash-up slip prints, the difference goes to Cash over/short and the drawer to
   the Safe account.
 - **My sales** (waiters): today's own figures, the money brought, open bills, and **Print my
@@ -280,10 +255,39 @@ Log in as **edna** on one terminal, order on Table 7 and press **Print**. Log in
 - **Close day** (MAU, in the top bar): lists open tickets (with Part paid), open shifts and waiting
   requests, each with a link. When nothing blocks, it shows the day's summary; **Close day** prints
   "DAY REPORT · Z", warns every terminal and logs everyone out 60 seconds later.
-- Settings (in the settings JSON, as above):
-  `{"cash":{"defaultFloat":0,"denominations":[1000,500,200,100,50]},"cashup":{"blind":true}}`.
+- Settings (on the **Settings** page, Cash-up): usual opening float, the notes to count, and
+  blind count.
 
 `close-day` (development) uses the same checks: it refuses while tickets or shifts are open.
+
+### Settings and permissions
+
+Sign in to the admin site as `admin` (or the Administrator).
+
+- **Settings** (`/admin/settings`): business details on the left (name, logo, address, phone, VAT
+  rate, currency, time zone, receipt footer), the **Rules** switches on the right, then POS,
+  Printing, Money and Cash-up. **Save changes** is enabled once something changes; each changed
+  setting is one entry in **History**. Terminals reload what changed at once: change the business
+  name and the PIN screens show it within a second or two.
+- **Logo:** **Upload logo** takes a PNG or JPG up to 2 MB. The colour copy shows on screens; the
+  black-and-white box next to it is what receipts print. **Remove** takes it off.
+- **Preview receipt** opens a sample bill and receipt at 42 or 32 columns, made by the real slip
+  code with the values in the form, saved or not.
+- **Rules** and what they change: One Print button (off: Send and Print bill), Supervisors approve
+  from their own counter (off: only a PIN on the spot; requests are refused), Record who brought
+  the cash (off: no Brought by field or receipt line), Show voided items on the receipt, Close a
+  fully voided ticket without a receipt (a **Close ticket** button on the order and settle
+  screens), Return stock on void if not yet served (off: no "already poured?" question), M-Pesa
+  code required (off: optional, "No code" on the receipt and cash-up), Log out after n minutes idle.
+- **Permissions** (`/admin/permissions`): tap a cell to step through Allowed, Needs approval and
+  Not allowed (settle, menu, reports, day and admin keys have no Needs approval). Changes are
+  outlined until **Save changes (n)**; **Discard** drops them. The Admin role's Permissions cell is
+  locked. Saving is refused if nobody active would keep Permissions or Staff and PINs, or if a key
+  needs approval for some role and no role may approve it (the warning shows). **Who approves what**
+  lists the roles that can approve each action. Open POS screens follow at once: give Waiter
+  **Gift an item** Needs approval and edna's line pop-up shows Gift without logging out.
+- **+ Add role** copies another role's permissions; give the role to someone under **Staff and
+  PINs**. **Rename** and **Delete** are in each role's column; a role someone has can't be deleted.
 
 ### Admin site
 
