@@ -188,6 +188,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             var openIndex = e.HasIndex(x => x.IsOpen).IsUnique();
             if (OpenWorkPeriodFilter is not null) openIndex.HasFilter(OpenWorkPeriodFilter);
             e.HasIndex(x => x.OpenedAt);
+            e.HasIndex(x => x.BusinessDate);
         });
 
         m.Entity<Terminal>(e =>
@@ -254,6 +255,10 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.DiscardReason).HasMaxLength(500);
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasIndex(x => x.TicketId);
+            // The nightly clean-up of old slip text.
+            e.HasIndex(x => x.CreatedAt);
+            e.Property(x => x.Label).HasMaxLength(120);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         m.Entity<LedgerAccount>(e =>
@@ -373,6 +378,8 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
         {
             e.HasIndex(x => x.Number).IsUnique();
             e.HasIndex(x => new { x.Status, x.TableId });
+            // Reports: a period's tickets by status.
+            e.HasIndex(x => new { x.WorkPeriodId, x.Status });
             e.Property(x => x.CustomerName).HasMaxLength(Ticket.MaxCustomerNameLength);
             e.Property(x => x.Note).HasMaxLength(Ticket.MaxNoteLength);
             e.Ignore(x => x.IsOpen);
@@ -513,6 +520,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.OldValue).HasPrecision(18, 2);
             e.Property(x => x.Reason).HasMaxLength(VoidLog.MaxReasonLength);
             e.HasIndex(x => x.TicketId);
+            e.HasIndex(x => x.At);
         });
 
         ConfigureStock(m);

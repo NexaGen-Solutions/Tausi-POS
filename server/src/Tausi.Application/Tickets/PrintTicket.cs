@@ -188,7 +188,7 @@ public sealed class TicketPrints(
             ?? printer.Name;
         var slip = new Printing.VoidSlip(header, Where(ticket), ticket.Number, BusinessClock.ToLocal(clock.GetUtcNow(), await businessClock.Zone(ct)),
             [ToSlipLine(voided)], reason, requestedBy, approvedBy);
-        return queue.Enqueue(printer, PrintJobKind.Void, Slips.Void(slip, SlipStyle.For(printer, null)), ticket.Id);
+        return queue.Enqueue(printer, PrintJobKind.Void, Slips.Void(slip, SlipStyle.For(printer, null)), ticket.Id, $"VOID · {voided.Name}");
     }
 
     /// <summary>
@@ -225,7 +225,8 @@ public sealed class TicketPrints(
             OpenDrawer: !copy && printer.OpenDrawerOnReceipt && payments.Any(p => p.Type == PaymentType.Cash),
             ShowBroughtBy: PaymentSettings.From(values).RecordBroughtBy);
         var document = Slips.Receipt(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
-        return queue.Enqueue(printer, PrintJobKind.Receipt, document, ticket.Id);
+        return queue.Enqueue(printer, PrintJobKind.Receipt, document, ticket.Id,
+            copy ? $"Receipt {ticket.ReceiptNumber} · copy" : $"Receipt {ticket.ReceiptNumber}", reprint: copy);
     }
 
     public Task<Terminal> TerminalWithPrinters(Guid terminalId, CancellationToken ct) =>
@@ -253,7 +254,8 @@ public sealed class TicketPrints(
             ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList(),
             corrected, DiscountLabel(ticket));
         var document = Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
-        return queue.Enqueue(printer, PrintJobKind.Bill, document, ticket.Id);
+        var label = reprint ? $"Bill {ticket.BillNumber} · reprint" : corrected ? $"Corrected bill {ticket.BillNumber}" : $"Bill {ticket.BillNumber}";
+        return queue.Enqueue(printer, PrintJobKind.Bill, document, ticket.Id, label, reprint);
     }
 
     public async Task<PrintJob> Dispense(
@@ -265,7 +267,8 @@ public sealed class TicketPrints(
         var header = terminal.DispenseHeader ?? printer.DispenseHeader ?? terminal.Name;
         var at = BusinessClock.ToLocal(now, await businessClock.Zone(ct));
         var slip = new DispenseSlip(header, Where(ticket), ticket.Number, at, groups, string.IsNullOrWhiteSpace(ticket.Note) ? null : ticket.Note);
-        return queue.Enqueue(printer, PrintJobKind.Dispense, Slips.Dispense(slip, SlipStyle.For(printer, null)), ticket.Id);
+        return queue.Enqueue(printer, PrintJobKind.Dispense, Slips.Dispense(slip, SlipStyle.For(printer, null)), ticket.Id,
+            $"Dispense slip · round {lines.Max(l => l.PrintRound) ?? ticket.PrintRound}");
     }
 
     /// <summary>"Discount 10% (Regular customer)" or "Discount (Promotion)".</summary>

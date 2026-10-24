@@ -1316,14 +1316,24 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DiscardReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsReprint")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("LastError")
                         .HasMaxLength(1000)
@@ -1336,6 +1346,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("SlipClearedAt")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Status")
@@ -1351,6 +1364,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("PrinterId");
 
@@ -1560,6 +1577,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("At");
 
                     b.HasIndex("TicketId");
 
@@ -1967,9 +1986,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("TerminalId");
 
-                    b.HasIndex("WorkPeriodId");
-
                     b.HasIndex("Status", "TableId");
+
+                    b.HasIndex("WorkPeriodId", "Status");
 
                     b.ToTable("Tickets");
                 });
@@ -2080,6 +2099,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BusinessDate");
 
                     b.HasIndex("IsOpen")
                         .IsUnique()
@@ -2993,6 +3014,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
             modelBuilder.Entity("Tausi.Domain.Printing.PrintJob", b =>
                 {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Tausi.Domain.Devices.Printer", "Printer")
                         .WithMany()
                         .HasForeignKey("PrinterId")
