@@ -271,7 +271,7 @@ public sealed class AwaitingApproval(ITausiDb db, ICurrentSession session, Stock
         }
         foreach (var c in await db.StockCounts.AsNoTracking().Where(c => c.Status == StockCountStatus.Submitted).ToListAsync(ct))
             result.Add(new StockActivityDto(c.Id, "Count", c.SubmittedAt ?? c.AsAt,
-                $"{(c.IsOpening ? "Opening stock" : c.Kind == StockCountKind.Full ? "Full count" : "Partial count")} · {locations.GetValueOrDefault(c.LocationId, "?")}",
+                c.IsOpening ? "Opening stock" : c.Kind == StockCountKind.Full ? "Full count" : "Partial count",
                 locations.GetValueOrDefault(c.LocationId, "?"), c.VarianceValue, "Pending", users.GetValueOrDefault(c.CountedByUserId, "?"), null, null,
                 PermissionKeys.StockAdjust));
         return result.OrderBy(r => r.At).ToList();
