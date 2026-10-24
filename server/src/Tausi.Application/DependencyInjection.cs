@@ -41,8 +41,17 @@ public static class DependencyInjection
         services.AddScoped<Approvals.Approvers>();
         services.AddScoped<Approvals.ExpireApprovals>();
         services.AddScoped<Settling.PaymentCommands>();
+        services.AddScoped<Money.LedgerBackfill>();
+        services.AddScoped<Money.MoneyAccess>();
+        services.AddScoped<Money.MoneyActions>();
+        services.AddScoped<Money.ExpenseCategories>();
+        services.AddScoped<Money.MoneyAttachments>();
+        services.AddScoped<Money.CashBook>();
+        services.AddScoped<Money.CashBookPrint>();
+        services.AddScoped<Money.Accounts>();
         services.AddScoped<Stock.StockBook>();
         services.AddScoped<Stock.StockSelling>();
+        services.AddScoped<Approvals.AdminApprovals>();
         services.AddScoped<Stock.StockAccess>();
         services.AddScoped<Stock.StockCatalog>();
         services.AddScoped<Stock.StockItemCommands>();

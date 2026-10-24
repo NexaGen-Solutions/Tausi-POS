@@ -274,9 +274,9 @@ public class CashupTests : ApprovalsFixtureBase
         entries.Select(e => e.Memo).Should().Contain(["Opening float", "Pay out · Transport", "Cash drop", "Cash-up"]);
         Sum(entries, LedgerAccountCodes.CashOverShort, debit: true).Should().Be(100m);
         Sum(entries, LedgerAccountCodes.Expenses, debit: true).Should().Be(200m);
-        // The drawer ends at 0: float in, the sales' cash, then pay-out, drop, short and the rest to the safe.
-        var sales = F.Read().JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).Where(e => e.SourceType == "Sale").ToArray();
-        (Sum(entries.Concat(sales), LedgerAccountCodes.Cash, true) - Sum(entries.Concat(sales), LedgerAccountCodes.Cash, false)).Should().Be(0m);
+        // The drawer ends at 0: float in, the sales' cash (sales carry their shift), then pay-out, drop, short and the rest to the safe.
+        entries.Should().Contain(e => e.SourceType == "Sale");
+        (Sum(entries, LedgerAccountCodes.Cash, true) - Sum(entries, LedgerAccountCodes.Cash, false)).Should().Be(0m);
         Sum(entries, LedgerAccountCodes.Safe, true).Should().Be(1000m + 1070m);
         Sum(entries, LedgerAccountCodes.Safe, false).Should().Be(2000m);
     }

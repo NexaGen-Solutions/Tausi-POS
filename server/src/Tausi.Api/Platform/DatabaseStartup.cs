@@ -42,5 +42,6 @@ public sealed class DatabaseStartup(IServiceScopeFactory scopes, IConfiguration 
         await using var scope = scopes.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<TausiDbContext>().Database.MigrateAsync(ct);
         await scope.ServiceProvider.GetRequiredService<Seeder>().SeedBase(ct);
+        await scope.ServiceProvider.GetRequiredService<Application.Money.LedgerBackfill>().Run(ct);
     }
 }

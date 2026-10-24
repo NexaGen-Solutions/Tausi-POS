@@ -137,6 +137,7 @@ public sealed partial class Seeder
             db.JournalEntries.Add(new JournalEntry
             {
                 Date = now, Memo = $"Opening stock · {location.Name}", SourceType = "StockCount", SourceId = count.Id.ToString(),
+                BusinessDate = Application.Money.BusinessDates.Of(now, await Application.Money.BusinessDates.Zone(db, ct)),
                 CreatedAt = now, CreatedByUserId = admin,
                 Lines =
                 [

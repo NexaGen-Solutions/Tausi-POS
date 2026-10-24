@@ -172,7 +172,7 @@ public sealed class WasteAndTransferCommands(
         if (waste.Cost > 0)
             await ledger.Post(new JournalEntryDraft(clock.GetUtcNow(), $"Waste · {waste.Reason}", WasteSource, waste.Id.ToString(),
                 [JournalLineDraft.Dr(LedgerAccountCodes.StockLoss, waste.Cost), JournalLineDraft.Cr(LedgerAccountCodes.Stock, waste.Cost)],
-                day?.Id), ct);
+                day?.Id, BusinessDate: await Money.BusinessDates.Today(db, clock, ct)), ct);
     }
 
     private async Task PostTransfer(StockTransfer transfer, Guid userId, Guid? approvedBy, CancellationToken ct)
@@ -250,13 +250,23 @@ public sealed class WasteAndTransferCommands(
     }
 }
 
-/// <summary>Everything waiting for someone to approve: pending deliveries, reversals, waste and transfers, and submitted counts.</summary>
-public sealed class AwaitingApproval(ITausiDb db, ICurrentSession session, StockAccess access, WasteAndTransferCommands activity)
+/// <summary>
+/// The shared admin approvals queue: everything waiting for someone to approve. Stock (pending
+/// deliveries, reversals, waste, transfers, submitted counts) for people who see stock; money
+/// documents and their reversals for people who see the cash book.
+/// </summary>
+public sealed class AwaitingApproval(
+    ITausiDb db, ICurrentSession session, StockAccess access, Money.MoneyAccess money, WasteAndTransferCommands activity)
 {
     public async Task<IReadOnlyList<StockActivityDto>> Execute(CancellationToken ct)
     {
-        await access.RequireAny(session.RequireUser(), ct);
-        var result = (await activity.Activity(null, null, StockDocumentStatus.Pending, ct)).ToList();
+        var user = session.RequireUser();
+        var seesStock = await Sees(() => access.RequireAny(user, ct));
+        var seesMoney = await Sees(() => money.RequireView(user, ct));
+        if (!seesStock && !seesMoney) throw new Security.PermissionDeniedException(PermissionKeys.StockReceive);
+        var result = seesStock ? (await activity.Activity(null, null, StockDocumentStatus.Pending, ct)).ToList() : [];
+        if (seesMoney) result.AddRange(await MoneyPending(ct));
+        if (!seesStock) return result.OrderBy(r => r.At).ToList();
         var suppliers = await db.Suppliers.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Name, ct);
         var locations = await db.StockLocations.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Name, ct);
         var users = await db.Users.AsNoTracking().ToDictionaryAsync(u => u.Id, u => u.Name, ct);
@@ -275,5 +285,36 @@ public sealed class AwaitingApproval(ITausiDb db, ICurrentSession session, Stock
                 locations.GetValueOrDefault(c.LocationId, "?"), c.VarianceValue, "Pending", users.GetValueOrDefault(c.CountedByUserId, "?"), null, null,
                 PermissionKeys.StockAdjust));
         return result.OrderBy(r => r.At).ToList();
+    }
+
+    private static async Task<bool> Sees(Func<Task> require)
+    {
+        try
+        {
+            await require();
+            return true;
+        }
+        catch (Security.PermissionDeniedException)
+        {
+            return false;
+        }
+    }
+
+    private async Task<IEnumerable<StockActivityDto>> MoneyPending(CancellationToken ct)
+    {
+        var pending = await db.MoneyDocuments.AsNoTracking()
+            .Where(d => d.Status == Domain.Money.MoneyDocumentStatus.Pending || d.ReversalStatus == Domain.Money.MoneyDocumentStatus.Pending)
+            .ToListAsync(ct);
+        var users = await db.Users.AsNoTracking().ToDictionaryAsync(u => u.Id, u => u.Name, ct);
+        var categories = await db.ExpenseCategories.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+        var suppliers = await db.Suppliers.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+        return pending.Select(d =>
+        {
+            var reversal = d.Status == Domain.Money.MoneyDocumentStatus.Posted;
+            return new StockActivityDto(d.Id, reversal ? "MoneyReversal" : "Money", d.CreatedAt,
+                Money.MoneyActions.Title(d, categories, suppliers), d.BusinessDate.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture),
+                d.Amount, "Pending", users.GetValueOrDefault(reversal ? d.ReversalRequestedByUserId ?? d.CreatedByUserId : d.CreatedByUserId, "?"),
+                null, reversal ? d.ReversalReason : d.Note, reversal ? PermissionKeys.CashBook : Money.MoneyActions.KeyFor(d.Kind));
+        });
     }
 }

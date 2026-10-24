@@ -210,7 +210,11 @@ public sealed partial class Seeder(
         {
             var opener = users.GetValueOrDefault("MAU") ?? users.GetValueOrDefault("Administrator");
             if (opener is null) return false;
-            day = new WorkPeriod { OpenedAt = now.AddHours(-2), OpenedByUserId = opener.Id };
+            day = new WorkPeriod
+            {
+                OpenedAt = now.AddHours(-2), OpenedByUserId = opener.Id,
+                BusinessDate = Application.Money.BusinessDates.Of(now.AddHours(-2), await Application.Money.BusinessDates.Zone(db, ct)),
+            };
             db.WorkPeriods.Add(day);
             await db.SaveChangesAsync(ct);
         }

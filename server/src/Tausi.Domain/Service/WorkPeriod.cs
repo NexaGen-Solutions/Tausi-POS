@@ -9,6 +9,9 @@ namespace Tausi.Domain.Service;
 public class WorkPeriod : VersionedEntity
 {
     public DateTimeOffset OpenedAt { get; set; }
+
+    /// <summary>The day's date: when it was opened, in the business's time zone. Its entries carry this date.</summary>
+    public DateOnly? BusinessDate { get; set; }
     public Guid OpenedByUserId { get; set; }
     public Guid? OpenedTerminalId { get; set; }
 

@@ -190,7 +190,7 @@ public sealed class StockCountCommands(
         var location = await db.StockLocations.Where(l => l.Id == count.LocationId).Select(l => l.Name).FirstAsync(ct);
         if (lines.Count > 0)
             await ledger.Post(new JournalEntryDraft(clock.GetUtcNow(), $"{(count.IsOpening ? "Opening stock" : "Stock count")} · {location}",
-                LedgerSource, count.Id.ToString(), lines, day?.Id), ct);
+                LedgerSource, count.Id.ToString(), lines, day?.Id, BusinessDate: await Money.BusinessDates.Today(db, clock, ct)), ct);
 
         count.VarianceValue = count.IsOpening ? null : overs - shorts;
         count.Status = StockCountStatus.Approved;

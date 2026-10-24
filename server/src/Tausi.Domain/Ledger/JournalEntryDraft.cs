@@ -2,10 +2,12 @@ using Tausi.Domain.Common;
 
 namespace Tausi.Domain.Ledger;
 
-public sealed record JournalLineDraft(string AccountCode, decimal Debit, decimal Credit, string Memo = "")
+public sealed record JournalLineDraft(string AccountCode, decimal Debit, decimal Credit, string Memo = "", Guid? ExpenseCategoryId = null)
 {
-    public static JournalLineDraft Dr(string accountCode, decimal amount, string memo = "") => new(accountCode, amount, 0m, memo);
-    public static JournalLineDraft Cr(string accountCode, decimal amount, string memo = "") => new(accountCode, 0m, amount, memo);
+    public static JournalLineDraft Dr(string accountCode, decimal amount, string memo = "", Guid? category = null) =>
+        new(accountCode, amount, 0m, memo, category);
+    public static JournalLineDraft Cr(string accountCode, decimal amount, string memo = "", Guid? category = null) =>
+        new(accountCode, 0m, amount, memo, category);
 }
 
 /// <summary>A journal entry to be posted. <see cref="EnsureBalanced"/> enforces double entry.</summary>
@@ -16,7 +18,9 @@ public sealed record JournalEntryDraft(
     string? SourceId,
     IReadOnlyList<JournalLineDraft> Lines,
     Guid? WorkPeriodId = null,
-    Guid? ShiftId = null)
+    Guid? ShiftId = null,
+    DateOnly? BusinessDate = null,
+    Guid? ReversesEntryId = null)
 {
     public decimal TotalDebit => Lines.Sum(l => l.Debit);
     public decimal TotalCredit => Lines.Sum(l => l.Credit);

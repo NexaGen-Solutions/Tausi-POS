@@ -20,7 +20,7 @@ public sealed record ShiftDifferenceDto(string Cashier, string Terminal, decimal
 public sealed record DaySummaryDto(
     int Tickets, decimal Gross, decimal Discounts, decimal Gifts, decimal Voids, decimal Net, decimal Vat,
     IReadOnlyList<VatRateDto> VatRates, IReadOnlyList<PaymentTotalDto> Payments, decimal PaymentsTotal, decimal Rounding,
-    IReadOnlyList<ShiftDifferenceDto> ShiftDifferences, decimal PayOuts);
+    IReadOnlyList<ShiftDifferenceDto> ShiftDifferences, decimal PayOuts, Money.DailySummaryDto? Profit = null);
 
 public sealed class DaySummaries(ITausiDb db)
 {
@@ -56,6 +56,7 @@ public sealed class DaySummaries(ITausiDb db)
             tickets.Count, lines.Sum(l => l.Gross), lines.Sum(l => l.Discount), gifts.Sum(), voids.Sum(),
             lines.Sum(l => l.Net), lines.Sum(l => l.Vat), rates, byType, payments.Sum(p => p.Amount), tickets.Sum(k => k.RoundingAmount),
             shifts.OrderBy(s => s.OpenedAt).Select(s => new ShiftDifferenceDto(s.Cashier ?? "?", s.Terminal ?? "?", s.Difference ?? 0)).ToList(),
-            payOuts.Sum());
+            payOuts.Sum(),
+            await Money.BusinessDates.OfPeriod(db, workPeriodId, ct) is { } date ? await Money.Summaries.For(db, date, includeLate: false, ct) : null);
     }
 }

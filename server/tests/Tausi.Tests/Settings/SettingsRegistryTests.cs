@@ -17,7 +17,7 @@ public class SettingsRegistryTests
         "pos.approvalExpiryMinutes", "pos.approvalsFromOwnCounter", "pos.approvalChime",
         "print.mode", "print.logoOnBill", "print.poweredByFooter", "print.showVoidsOnReceipt",
         "money.rounding", "payments.mpesaCodeRequired", "payments.recordBroughtBy", "tickets.closeVoidedWithoutReceipt",
-        "cash.defaultFloat", "cash.denominations", "cashup.blind", "stock.returnOnVoidIfNotServed",
+        "cash.defaultFloat", "cash.denominations", "cashup.blind", "stock.returnOnVoidIfNotServed", "books.backdateDays",
     ];
 
     public static readonly TheoryData<string> Keys = new(KeyList);

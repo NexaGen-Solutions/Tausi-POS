@@ -1,4 +1,4 @@
-using Tausi.Application.Common;
+using Tausi.Application.Approvals;
 using Tausi.Application.Events;
 using Tausi.Application.Security;
 using Tausi.Domain.People;
@@ -7,8 +7,8 @@ namespace Tausi.Application.Stock;
 
 public static class StockCodes
 {
-    public const string OwnDocument = "own_document";
-    public const string NotPending = "not_pending";
+    public const string OwnDocument = AdminApprovals.OwnDocument;
+    public const string NotPending = AdminApprovals.NotPending;
     public const string InvoiceUsed = "invoice_used";
     public const string AlreadySold = "already_sold";
     public const string Uncounted = "uncounted";
@@ -16,11 +16,10 @@ public static class StockCodes
 }
 
 /// <summary>
-/// Who may do what with stock on the admin site. There is no approval pad there, so a stock key
-/// set to "Needs approval" means the document is saved as Pending, and someone Allowed for that key
-/// (not its creator) approves it before anything moves.
+/// Who may see and do what with stock on the admin site. Pending documents and their approval go
+/// through the shared <see cref="AdminApprovals"/>.
 /// </summary>
-public sealed class StockAccess(IPermissionService permissions)
+public sealed class StockAccess(IPermissionService permissions, AdminApprovals approvals)
 {
     public static readonly string[] Keys =
         [PermissionKeys.StockReceive, PermissionKeys.StockWaste, PermissionKeys.StockCount, PermissionKeys.StockAdjust];
@@ -33,22 +32,10 @@ public sealed class StockAccess(IPermissionService permissions)
         throw new PermissionDeniedException(PermissionKeys.StockReceive);
     }
 
-    /// <summary>True: post now (Allowed). False: save as Pending (Needs approval). Not allowed throws.</summary>
-    public async Task<bool> PostsNow(SessionUser user, string key, CancellationToken ct) =>
-        await permissions.Check(user, key, ct) switch
-        {
-            PermissionValue.Allowed => true,
-            PermissionValue.NeedsApproval => false,
-            _ => throw new PermissionDeniedException(key),
-        };
+    public Task<bool> PostsNow(SessionUser user, string key, CancellationToken ct) => approvals.PostsNow(user, key, ct);
 
-    /// <summary>The approver must be Allowed for the key, and not the person who made the document.</summary>
-    public async Task RequireApprover(SessionUser user, string key, Guid creatorId, CancellationToken ct)
-    {
-        if (await permissions.Check(user, key, ct) != PermissionValue.Allowed) throw new PermissionDeniedException(key);
-        if (user.UserId == creatorId)
-            throw new ForbiddenException("You can't approve your own. Ask someone else who is allowed.", StockCodes.OwnDocument);
-    }
+    public Task RequireApprover(SessionUser user, string key, Guid creatorId, CancellationToken ct) =>
+        approvals.RequireApprover(user, key, creatorId, ct);
 
     public Task<PermissionValue> Check(SessionUser user, string key, CancellationToken ct) => permissions.Check(user, key, ct);
 }

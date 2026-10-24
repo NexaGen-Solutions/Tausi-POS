@@ -50,13 +50,8 @@ public sealed class SupplierCommands(ITausiDb db, ICurrentSession session, Stock
             .Select(s => new SupplierDto(s.Id, s.Name, s.Phone, s.KraPin, s.Notes, s.Active, owed.GetValueOrDefault(s.Id), s.RowVersion)).ToList();
     }
 
-    /// <summary>What each supplier is owed: credit deliveries posted and not reversed (payments come in Task 12).</summary>
-    public static async Task<Dictionary<Guid, decimal>> Owed(ITausiDb db, CancellationToken ct) =>
-        await db.Deliveries.AsNoTracking()
-            .Where(d => d.Payment == DeliveryPayment.OnCredit && d.Status == StockDocumentStatus.Posted
-                && (d.ReversalStatus == null || d.ReversalStatus != StockDocumentStatus.Posted))
-            .GroupBy(d => d.SupplierId).Select(g => new { g.Key, Total = g.Sum(d => d.Total) })
-            .ToDictionaryAsync(x => x.Key, x => x.Total, ct);
+    /// <summary>What each supplier is owed: credit deliveries and opening balances less payments (Task 12).</summary>
+    public static Task<Dictionary<Guid, decimal>> Owed(ITausiDb db, CancellationToken ct) => Money.SupplierBalances.Owed(db, ct);
 
     public async Task<SupplierDto> Save(Guid? id, SaveSupplierRequest r, CancellationToken ct)
     {
@@ -282,7 +277,7 @@ public sealed class DeliveryCommands(
         if (delivery.Total > 0)
             await ledger.Post(new JournalEntryDraft(clock.GetUtcNow(), await Memo(delivery, "Delivery", ct), LedgerSource, delivery.Id.ToString(),
                 [JournalLineDraft.Dr(LedgerAccountCodes.Stock, delivery.Total), JournalLineDraft.Cr(PaidFrom(delivery.Payment), delivery.Total)],
-                day?.Id), ct);
+                day?.Id, BusinessDate: delivery.Date), ct);
     }
 
     private async Task PostReversal(Delivery delivery, Guid userId, CancellationToken ct)
@@ -307,7 +302,7 @@ public sealed class DeliveryCommands(
             await ledger.Post(new JournalEntryDraft(clock.GetUtcNow(), await Memo(delivery, "Delivery reversed", ct), LedgerSource,
                 delivery.Id + ":reversal",
                 [JournalLineDraft.Dr(PaidFrom(delivery.Payment), delivery.Total), JournalLineDraft.Cr(LedgerAccountCodes.Stock, delivery.Total)],
-                day?.Id), ct);
+                day?.Id, BusinessDate: await Money.BusinessDates.Today(db, clock, ct)), ct);
     }
 
     private async Task EnsureReversible(Delivery delivery, CancellationToken ct)

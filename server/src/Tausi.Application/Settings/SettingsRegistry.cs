@@ -89,6 +89,7 @@ public static class SettingsRegistry
     public const string PrintPoweredByFooter = "print.poweredByFooter";
     public const string PrintShowVoidsOnReceipt = "print.showVoidsOnReceipt";
     public const string MoneyRounding = "money.rounding";
+    public const string BooksBackdateDays = "books.backdateDays";
     public const string PaymentsMpesaCodeRequired = "payments.mpesaCodeRequired";
     public const string PaymentsRecordBroughtBy = "payments.recordBroughtBy";
     public const string TicketsCloseVoidedWithoutReceipt = "tickets.closeVoidedWithoutReceipt";
@@ -155,6 +156,8 @@ public static class SettingsRegistry
 
         new(MoneyRounding, SettingType.Enum, nameof(RoundingRule.NearestOne), Sections.Money, "Round totals",
             "Totals due are rounded; the difference is kept as its own line.", Allowed: Enum.GetNames<RoundingRule>()),
+        new(BooksBackdateDays, SettingType.Int, 31, Sections.Money, "Back-dating allowed (days)",
+            "How far back expenses, payments and banking can be dated on the admin site.", Min: 0, Max: 366, ReloadsTerminals: false),
 
         new(CashDefaultFloat, SettingType.Decimal, 0m, Sections.CashUp, "Usual opening float",
             "Offered when a cashier starts a shift.", Min: 0m, Max: 10_000_000m),

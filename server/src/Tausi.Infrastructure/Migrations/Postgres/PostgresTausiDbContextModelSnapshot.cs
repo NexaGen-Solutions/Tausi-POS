@@ -421,6 +421,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly?>("BusinessDate")
+                        .HasColumnType("date");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -430,10 +433,19 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<DateTimeOffset>("Date")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Memo")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ReversedByEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReversesEntryId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("ShiftId")
                         .HasColumnType("uuid");
@@ -451,6 +463,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BusinessDate");
 
                     b.HasIndex("Date");
 
@@ -475,6 +489,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<decimal>("Debit")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("ExpenseCategoryId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("JournalEntryId")
                         .HasColumnType("uuid");
@@ -842,6 +859,125 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.ToTable("PriceLists");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Money.MoneyDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AttachmentFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeliveryIds")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal>("Fee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("From")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("OpeningLines")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Payee")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset?>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("RejectNote")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("ReversalApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReversalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("ReversalRequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReversalStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset?>("ReversedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("To")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessDate");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Kind", "Status");
+
+                    b.ToTable("MoneyDocuments");
+                });
+
             modelBuilder.Entity("Tausi.Domain.People.ApprovalGrant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1147,6 +1283,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsPrivate")
+                        .HasColumnType("boolean");
 
                     b.Property<long>("Size")
                         .HasColumnType("bigint");
@@ -1903,6 +2042,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("BusinessDate")
+                        .HasColumnType("date");
 
                     b.Property<DateTimeOffset?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2809,6 +2951,15 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.HasOne("Tausi.Domain.Menu.ModifierGroup", null)
                         .WithMany("Options")
                         .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Money.MoneyDocument", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

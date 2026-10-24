@@ -317,7 +317,7 @@ public static class SalePosting
 {
     public const string SourceType = "Sale";
 
-    public static JournalEntryDraft? Draft(Ticket ticket, IReadOnlyList<Payment> payments, Guid workPeriodId, DateTimeOffset now)
+    public static JournalEntryDraft? Draft(Ticket ticket, IReadOnlyList<Payment> payments, Guid workPeriodId, DateTimeOffset now, Guid? shiftId = null)
     {
         var memo = $"Receipt {ticket.ReceiptNumber} · Ticket #{ticket.Number}";
         var lines = new List<JournalLineDraft>();
@@ -342,7 +342,7 @@ public static class SalePosting
 
         CostOfSales(ticket, lines);
         if (lines.Count == 0) return null; // Nothing to post (everything was gifted).
-        return new JournalEntryDraft(now, memo, SourceType, ticket.Id.ToString(), lines, workPeriodId);
+        return new JournalEntryDraft(now, memo, SourceType, ticket.Id.ToString(), lines, workPeriodId, shiftId ?? ticket.SettledShiftId);
     }
 
     /// <summary>Task 11: debit Cost of sales and credit Stock from the recipes. Nothing yet.</summary>

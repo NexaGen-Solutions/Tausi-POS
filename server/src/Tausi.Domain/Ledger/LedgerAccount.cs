@@ -38,6 +38,13 @@ public static class LedgerAccountCodes
     public const string Safe = "SAFE";
     public const string CashOverShort = "CASH_OVER_SHORT";
     public const string OpeningBalances = "OPENING_BALANCES";
+    public const string OwnersCapital = "OWNERS_CAPITAL";
+    public const string OwnersDrawings = "OWNERS_DRAWINGS";
+    public const string BankCharges = "BANK_CHARGES";
+    public const string OtherIncome = "OTHER_INCOME";
+
+    /// <summary>Where money is: the drawers, the safe, the bank, M-Pesa and card takings on their way.</summary>
+    public static readonly IReadOnlySet<string> Money = new HashSet<string> { Cash, Safe, Bank, MPesa, CardClearing };
 
     public static readonly IReadOnlyList<(string Code, string Name, AccountType Type)> Defaults =
     [
@@ -56,5 +63,9 @@ public static class LedgerAccountCodes
         (Safe, "Safe", AccountType.Asset),
         (CashOverShort, "Cash over/short", AccountType.Expense),
         (OpeningBalances, "Opening balances", AccountType.Equity),
+        (OwnersCapital, "Owner's capital", AccountType.Equity),
+        (OwnersDrawings, "Owner's drawings", AccountType.Equity),
+        (BankCharges, "Bank charges", AccountType.Expense),
+        (OtherIncome, "Other income", AccountType.Income),
     ];
 }
