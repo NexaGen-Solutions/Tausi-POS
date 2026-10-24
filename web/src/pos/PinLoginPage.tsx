@@ -34,7 +34,7 @@ export function PinLoginPage() {
   const [notice, setNotice] = useState(() => {
     const ended = takeLogoutNotice();
     return ended?.reason === 'idle'
-      ? t('pos.loggedOutIdle', { minutes: ended.idleLogoutMinutes })
+      ? t('pos.loggedOutIdle', { minutes: ended.idleLogoutMinutes ?? 0 })
       : null;
   });
 

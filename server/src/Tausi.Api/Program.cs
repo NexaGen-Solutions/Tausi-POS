@@ -59,6 +59,7 @@ app.MapSettingsEndpoints();
 app.MapPrinterEndpoints();
 app.MapDayEndpoints();
 app.MapStaffEndpoints();
+app.MapPermissionEndpoints();
 app.MapMenuEndpoints();
 app.MapTicketEndpoints();
 app.MapHub<PosHub>(PosHub.Path);

@@ -15,11 +15,11 @@ public static class AuthEndpoints
     public sealed record SessionDto(Guid Id, string Name, string Role, Guid? TerminalId, string? TerminalName);
 
     public sealed record PinLoginResponse(
-        string Token, DateTimeOffset ExpiresAt, int IdleLogoutMinutes, SessionDto User, bool MustChangePin);
+        string Token, DateTimeOffset ExpiresAt, int? IdleLogoutMinutes, SessionDto User, bool MustChangePin);
 
     public sealed record MeResponse(SessionDto User, IReadOnlyDictionary<string, PermissionValue> Permissions);
 
-    public sealed record SessionStatus(int IdleLogoutMinutes);
+    public sealed record SessionStatus(int? IdleLogoutMinutes);
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
@@ -49,7 +49,7 @@ public static class AuthEndpoints
 
         // Keep-alive for the terminal: any authenticated request refreshes the idle timer.
         auth.MapGet("/session", async (TausiDbContext db, CancellationToken ct) =>
-            new SessionStatus((await PosSettings.Load(db, ct)).IdleLogoutMinutes)).RequireAuthorization();
+            new SessionStatus((await PosSettings.Load(db, ct)).IdleLogoutMinutesIfOn)).RequireAuthorization();
 
         auth.MapPost("/approve", (IssueApprovalRequest request, IssueApproval approve, CancellationToken ct) =>
             approve.Execute(request, ct));
@@ -60,7 +60,9 @@ public static class AuthEndpoints
             var cells = await db.RolePermissions.AsNoTracking()
                 .Where(p => p.RoleId == user.RoleId)
                 .ToDictionaryAsync(p => p.PermissionKey, p => p.Value, ct);
-            var grid = PermissionKeys.All.ToDictionary(k => k, k => cells.GetValueOrDefault(k, PermissionValue.NotAllowed));
+            // As the server checks it: NeedsApproval on a key that can't be approved is Not allowed.
+            var grid = PermissionKeys.All.ToDictionary(k => k, k => cells.GetValueOrDefault(k, PermissionValue.NotAllowed) is var v
+                && v == PermissionValue.NeedsApproval && !PermissionCatalog.IsApprovable(k) ? PermissionValue.NotAllowed : v);
             return new MeResponse(ToDto(user), grid);
         }).RequireAuthorization();
 

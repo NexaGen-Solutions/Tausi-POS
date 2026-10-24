@@ -46,6 +46,7 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton<IPosEvents>(Events);
         services.AddSingleton<IPinHasher>(Hasher);
         services.AddSingleton<Tausi.Application.Printing.ILogoProvider, NoLogo>();
+        services.AddSingleton<Tausi.Application.Printing.ILogoImages, NoLogoImages>();
         services.AddScoped<Tausi.Application.Ledger.ILedgerPostingService, Tausi.Infrastructure.Ledger.LedgerPostingService>();
         _services = services.BuildServiceProvider();
     }
@@ -117,6 +118,15 @@ public sealed class TicketsFixture : IAsyncDisposable
         return await Get<StartTicket>().Execute(request, CancellationToken.None);
     }
 
+    /// <summary>Sets one setting straight in the database (as a saved value), e.g. to switch a rule off.</summary>
+    public async Task SetSetting(string key, System.Text.Json.Nodes.JsonNode? value)
+    {
+        var row = await Db.BusinessSettings.SingleAsync();
+        Tausi.Application.Settings.SettingsRegistry.Write(row, key, value);
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
     public async Task SetPermission(string role, string key, PermissionValue value)
     {
         var roleId = Roles[role].Id;
@@ -140,6 +150,13 @@ public sealed class TicketsFixture : IAsyncDisposable
         await Db.SaveChangesAsync();
         Db.ChangeTracker.Clear();
         return token;
+    }
+
+    private sealed class NoLogoImages : Tausi.Application.Printing.ILogoImages
+    {
+        public Tausi.Application.Printing.LogoImage? Read(byte[] bytes) => null;
+        public Task Refresh(CancellationToken ct = default) => Task.CompletedTask;
+        public byte[] ToPng(Tausi.Application.Printing.MonoBitmap bitmap) => [];
     }
 
     private sealed class NoLogo : Tausi.Application.Printing.ILogoProvider

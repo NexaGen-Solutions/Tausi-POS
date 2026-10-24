@@ -98,7 +98,7 @@ public sealed class Seeder(ITausiDb db, IPinHasher hasher, ILogger<Seeder> log, 
                 Rounding = RoundingRule.NearestOne,
                 PrintMode = PrintMode.OneButton,
                 ReceiptFooter = "Thank you. Karibu tena!",
-                OtherJson = PosSettings.DefaultJson,
+                OtherJson = "{}",
                 TimeZone = DemoTimeZone,
             });
         }

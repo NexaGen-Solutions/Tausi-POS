@@ -83,8 +83,7 @@ public class MenuApiTests(MenuApp app)
     {
         var admin = await app.AdminClient();
         var supervisorRole = app.Db(db => db.Roles.Single(r => r.Name == "Supervisor").Id);
-        (await admin.PutAsJsonAsync($"/api/admin/roles/{supervisorRole}/permissions", new { permissionKey = "menu.edit", value = "Allowed" }))
-            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await admin.SetPermission(supervisorRole, "menu.edit", "Allowed");
         var mau = await app.Db(db => Task.FromResult(db.Users.Single(u => u.Name == "MAU")));
         (await admin.PutAsJsonAsync($"/api/admin/staff/{mau.Id}", new { name = "MAU", roleId = supervisorRole, adminPassword = "mau-password-1", rowVersion = mau.RowVersion }))
             .EnsureSuccessStatusCode();
@@ -114,7 +113,8 @@ public class MenuApiTests(MenuApp app)
         crafted.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         app.Db(db => db.MenuItemPrices.Single(p => p.MenuItemId == heineken.Id).Price).Should().Be(300m);
 
-        (await supervisor.PutAsJsonAsync($"/api/admin/roles/{supervisorRole}/permissions", new { permissionKey = "menu.edit_prices", value = "Allowed" }))
+        (await supervisor.PutAsJsonAsync("/api/admin/permissions",
+                new { version = "", changes = new[] { new { roleId = supervisorRole, permissionKey = "menu.edit_prices", value = "Allowed" } } }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden, "only permissions.manage may change the grid");
     }
 

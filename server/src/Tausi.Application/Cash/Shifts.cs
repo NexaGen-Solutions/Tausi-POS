@@ -87,6 +87,7 @@ public sealed record ExpenseCategoryDto(Guid Id, string Name);
 /// <summary>
 /// A shift as the cash-up screen shows it. With a blind count, the cashier gets
 /// <see cref="Expected"/> and <see cref="Difference"/> as null until the count is submitted.
+/// <see cref="MpesaNoCodeCount"/> M-Pesa payments were taken without a code (when the code is optional).
 /// </summary>
 public sealed record ShiftDto(
     Guid Id, string Status, Guid CashierId, string Cashier, Guid TerminalId, string Terminal,
@@ -96,7 +97,7 @@ public sealed record ShiftDto(
     bool Blind, bool CountSubmitted, IReadOnlyDictionary<string, int> CountNotes, decimal CountCoins, decimal? Counted, decimal? Difference,
     string? Note, string? SignedOffBy, int Receipts, long? FirstReceipt, long? LastReceipt,
     IReadOnlyList<int> Denominations, IReadOnlyList<WaiterCashDto> Waiters, IReadOnlyList<DrawerMovementDto> Movements,
-    IReadOnlyList<ExpenseCategoryDto> Categories);
+    IReadOnlyList<ExpenseCategoryDto> Categories, int MpesaNoCodeCount = 0, decimal MpesaNoCodeTotal = 0);
 
 /// <summary>"Start shift" defaults for a cashier with none open.</summary>
 public sealed record ShiftStartDto(decimal DefaultFloat, IReadOnlyList<int> Denominations);
@@ -107,7 +108,7 @@ public sealed record CurrentShiftDto(ShiftDto? Shift, ShiftStartDto Start);
 /// <summary>The figures of a shift, worked out from its payments and drawer movements.</summary>
 public sealed record ShiftFigures(
     decimal CashSettled, decimal PayOuts, decimal Drops, int MpesaCount, decimal MpesaTotal, int CardCount, decimal CardTotal,
-    IReadOnlyList<(string Category, decimal Amount)> PayOutsByCategory)
+    IReadOnlyList<(string Category, decimal Amount)> PayOutsByCategory, int MpesaNoCodeCount = 0, decimal MpesaNoCodeTotal = 0)
 {
     public decimal Expected(decimal openingFloat) => openingFloat + CashSettled - PayOuts - Drops;
 }
@@ -127,7 +128,7 @@ public sealed class ShiftReader(ITausiDb db)
     {
         var payments = await db.Payments.AsNoTracking()
             .Where(p => p.ShiftId == shiftId && p.Status != PaymentStatus.Removed)
-            .Select(p => new { p.Type, p.Amount }).ToListAsync(ct);
+            .Select(p => new { p.Type, p.Amount, NoCode = p.Type == PaymentType.Mpesa && p.MpesaCode == null }).ToListAsync(ct);
         var moves = await db.DrawerMovements.AsNoTracking().Where(m => m.ShiftId == shiftId)
             .Select(m => new { m.Kind, m.Amount, m.CategoryName }).ToListAsync(ct);
         return new ShiftFigures(
@@ -137,7 +138,8 @@ public sealed class ShiftReader(ITausiDb db)
             payments.Count(p => p.Type == PaymentType.Mpesa), payments.Where(p => p.Type == PaymentType.Mpesa).Sum(p => p.Amount),
             payments.Count(p => p.Type == PaymentType.Card), payments.Where(p => p.Type == PaymentType.Card).Sum(p => p.Amount),
             moves.Where(m => m.Kind == DrawerMovementKind.PayOut).GroupBy(m => m.CategoryName ?? "Other")
-                .Select(g => (g.Key, g.Sum(m => m.Amount))).ToList());
+                .Select(g => (g.Key, g.Sum(m => m.Amount))).ToList(),
+            payments.Count(p => p.NoCode), payments.Where(p => p.NoCode).Sum(p => p.Amount));
     }
 
     /// <summary>The cash-up screen's view of a shift. <paramref name="viewer"/> decides what a blind count hides.</summary>
@@ -171,7 +173,7 @@ public sealed class ShiftReader(ITausiDb db)
             settings.Denominations, await Waiters(shift, ct),
             moves.OrderBy(m => m.At).Select(m => new DrawerMovementDto(m.Id, m.Kind.ToString(), m.Amount, m.CategoryName, m.Note,
                 names.GetValueOrDefault(m.ByUserId, "?"), m.At)).ToList(),
-            categories);
+            categories, figures.MpesaNoCodeCount, figures.MpesaNoCodeTotal);
     }
 
     /// <summary>Cash each waiter brought in this shift, and the bills still open on their name.</summary>

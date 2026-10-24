@@ -17,7 +17,28 @@ export interface DeviceInfo {
   logoFileId: string | null;
   workPeriod: WorkPeriod | null;
   printing?: DevicePrinting | null;
+  rules?: PosRules | null;
 }
+
+/** Settings that change what the terminal screens offer (the server enforces them too). */
+export interface PosRules {
+  approvalsFromOwnCounter: boolean;
+  recordBroughtBy: boolean;
+  mpesaCodeRequired: boolean;
+  closeVoidedWithoutReceipt: boolean;
+  returnOnVoidIfNotServed: boolean;
+  approvalChime: boolean;
+}
+
+/** The rules a terminal follows until /api/device has answered (the defaults). */
+export const defaultPosRules: PosRules = {
+  approvalsFromOwnCounter: true,
+  recordBroughtBy: true,
+  mpesaCodeRequired: true,
+  closeVoidedWithoutReceipt: true,
+  returnOnVoidIfNotServed: true,
+  approvalChime: true,
+};
 
 /** Where this terminal prints, and which print buttons the order screen shows. */
 export interface DevicePrinting {

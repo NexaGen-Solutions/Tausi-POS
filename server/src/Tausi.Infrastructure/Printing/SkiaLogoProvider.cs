@@ -21,6 +21,9 @@ public sealed class SkiaLogoProvider(ITausiDb db, IFileStorage files, ILogger<Sk
         return Cache.GetOrAdd((id, maxWidthDots), key => Load(key.Item1, key.Item2));
     }
 
+    /// <summary>Forgets every cached raster, so the next print makes them again.</summary>
+    public static void Forget() => Cache.Clear();
+
     private MonoBitmap? Load(Guid fileId, int maxWidth)
     {
         using var stream = files.Open(fileId);

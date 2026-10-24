@@ -11,7 +11,7 @@ public sealed record LoginResult(
     SessionUser User,
     bool MustChangePin,
     DateTimeOffset ExpiresAt,
-    int IdleLogoutMinutes);
+    int? IdleLogoutMinutes);
 
 /// <summary>A user logs in on a terminal with their PIN. The terminal comes from the device token.</summary>
 public sealed class PinLogin(
@@ -32,6 +32,6 @@ public sealed class PinLogin(
             new SessionUser(user.Id, user.Name, user.RoleId, user.Role!.Name, terminal.TerminalId, terminal.Name, started.Id),
             user.MustChangePin,
             started.ExpiresAt,
-            settings.IdleLogoutMinutes);
+            settings.IdleLogoutMinutesIfOn);
     }
 }

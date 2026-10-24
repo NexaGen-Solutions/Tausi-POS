@@ -31,7 +31,7 @@ describe('admin layout', () => {
       return json(200, { server: 'POSSERVER2' });
     });
 
-    renderRoutes(routes, '/admin/settings');
+    renderRoutes(routes, '/admin/reports');
 
     expect(await screen.findByText("Mau's Village")).toBeInTheDocument();
     expect(screen.getByText('Tausi POS admin')).toBeInTheDocument();
@@ -57,11 +57,11 @@ describe('admin layout', () => {
       'Settings',
       'ERPNext sync',
     ]);
-    expect(within(nav).getByRole('link', { name: 'Settings' })).toHaveAttribute(
+    expect(within(nav).getByRole('link', { name: 'Reports' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Reports' })).toBeInTheDocument();
     expect(screen.getByText('Coming in a later task.')).toBeInTheDocument();
     expect(await screen.findByText('Signed in: Administrator')).toBeInTheDocument();
   });

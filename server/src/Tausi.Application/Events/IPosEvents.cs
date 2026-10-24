@@ -12,6 +12,7 @@ public static class PosEventNames
     public const string PrinterStatus = "printer.status";
     public const string MenuChanged = "menu.changed";
     public const string SettingsChanged = "settings.changed";
+    public const string PermissionsChanged = "permissions.changed";
     public const string DayOpened = "day.opened";
     public const string DayClosed = "day.closed";
     public const string UserDeactivated = "user.deactivated";

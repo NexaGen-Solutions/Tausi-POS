@@ -18,6 +18,7 @@ public static class PrintCodes
 {
     public const string NothingNew = "nothing_new";
     public const string NoPrinter = "no_printer";
+    public const string SendAndBillMode = "send_and_bill_mode";
 }
 
 /// <summary>
@@ -27,7 +28,8 @@ public static class PrintCodes
 /// printer that is off doesn't undo anything: the order screen shows "not printed · Retry").
 /// <list type="bullet">
 /// <item><see cref="Print"/> (one button): the bill with every line first, then the dispense slip with only the New lines.</item>
-/// <item><see cref="Send"/> and <see cref="PrintBill"/>: the two halves, for <c>SendAndBill</c> mode.</item>
+/// <item><see cref="Send"/> and <see cref="PrintBill"/>: the two halves, for <c>SendAndBill</c> mode
+/// (<c>print.mode</c>), where the one-button <see cref="Print"/> is refused.</item>
 /// <item><see cref="Reprint"/>: the bill again, marked REPRINT; needs <c>ticket.reprint</c>.</item>
 /// </list>
 /// </summary>
@@ -35,7 +37,12 @@ public sealed class PrintTicket(
     ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
     TicketPrints prints, IAuditLog audit, TicketEvents events, TimeProvider clock)
 {
-    public Task<TicketDetailDto> Print(Guid id, CancellationToken ct) => Run(id, bill: true, dispense: true, ct);
+    public async Task<TicketDetailDto> Print(Guid id, CancellationToken ct)
+    {
+        if ((await SettingsRegistry.Load(db, ct)).Enum<PrintMode>(SettingsRegistry.PrintModeKey) == PrintMode.SendAndBill)
+            throw new ConflictException("This business uses separate Send and Print bill buttons.", PrintCodes.SendAndBillMode);
+        return await Run(id, bill: true, dispense: true, ct);
+    }
 
     public Task<TicketDetailDto> Send(Guid id, CancellationToken ct) => Run(id, bill: false, dispense: true, ct);
 
@@ -191,7 +198,8 @@ public sealed class TicketPrints(
         var terminal = await TerminalWithPrinters(terminalId, ct);
         if (terminal.ReceiptPrinter is not { Active: true } printer) return null;
         var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct) ?? new BusinessSettings();
-        var settings = PrintSettings.From(business.OtherJson);
+        var values = SettingsRegistry.Read(business);
+        var settings = PrintSettings.From(values);
         var logo = settings.LogoOnBill ? await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct) : null;
         var payments = ticket.Payments.Where(p => p.Status == PaymentStatus.Final).OrderBy(p => p.TakenAt).ToList();
         var names = new Dictionary<Guid, string>();
@@ -208,10 +216,11 @@ public sealed class TicketPrints(
             ticket.ReceiptNumber ?? 0, ticket.Number, copy, Where(ticket), await Name(ticket.OpenedByUserId),
             ticket.SettledByUserId is { } cashier ? await Name(cashier) : "?", terminal.Name,
             BusinessClock.ToLocal(ticket.SettledAt ?? clock.GetUtcNow(), BusinessTimeZone.Find(business.TimeZone)),
-            ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList(),
+            ReceiptLines(ticket, settings.ShowVoidsOnReceipt),
             DiscountLabel(ticket), ticket.RoundingAmount,
             receiptPayments,
-            OpenDrawer: !copy && printer.OpenDrawerOnReceipt && payments.Any(p => p.Type == PaymentType.Cash));
+            OpenDrawer: !copy && printer.OpenDrawerOnReceipt && payments.Any(p => p.Type == PaymentType.Cash),
+            ShowBroughtBy: PaymentSettings.From(values).RecordBroughtBy);
         var document = Slips.Receipt(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
         return queue.Enqueue(printer, PrintJobKind.Receipt, document, ticket.Id);
     }
@@ -231,7 +240,7 @@ public sealed class TicketPrints(
     public async Task<PrintJob> Bill(Ticket ticket, Terminal terminal, Printer printer, bool reprint, bool corrected, DateTimeOffset now, CancellationToken ct)
     {
         var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct) ?? new BusinessSettings();
-        var settings = PrintSettings.From(business.OtherJson);
+        var settings = PrintSettings.From(SettingsRegistry.Read(business));
         var logo = settings.LogoOnBill ? await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct) : null;
         var waiter = await UserName(ticket.OpenedByUserId, ct);
         var slip = new BillSlip(
@@ -263,6 +272,12 @@ public sealed class TicketPrints(
         DiscountKind.Percent => $"Discount {ticket.DiscountValue:0.##}%" + (ticket.DiscountReason is { } r ? $" ({r})" : ""),
         _ => "Discount" + (ticket.DiscountReason is { } r ? $" ({r})" : ""),
     };
+
+    /// <summary>The receipt's lines in the order they were added; voided ones too (marked VOID) when the setting says so.</summary>
+    public static IReadOnlyList<SlipLine> ReceiptLines(Ticket ticket, bool showVoids) =>
+        ticket.Lines.Where(l => l.Counts || (showVoids && l.IsVoided)).OrderBy(l => l.AddedAt)
+            .Select(l => l.IsVoided ? ToSlipLine(l) with { IsVoid = true, Amount = 0, Vat = 0, Discount = 0 } : ToSlipLine(l))
+            .ToList();
 
     public static SlipLine ToSlipLine(OrderLine l) =>
         new(l.Quantity, l.Name, l.Options, l.Gross, l.UnitPrice, l.VatRate, l.Vat, string.IsNullOrEmpty(l.ShortName) ? l.Name : l.ShortName,

@@ -46,8 +46,9 @@ public static class CashSlips
         b.Columns2("COUNTED", Slips.Money(s.Counted ?? 0, style.Currency), TextStyle.Bold)
             .Columns2(difference < 0 ? "SHORT" : difference > 0 ? "OVER" : "Difference", Signed(difference), TextStyle.Bold)
             .Separator()
-            .Columns2($"M-Pesa ({s.MpesaCount})", Amount(s.MpesaTotal))
-            .Columns2($"Card ({s.CardCount})", Amount(s.CardTotal));
+            .Columns2($"M-Pesa ({s.MpesaCount})", Amount(s.MpesaTotal));
+        if (s.MpesaNoCodeCount > 0) b.Columns2($"M-Pesa no code ({s.MpesaNoCodeCount})", Amount(s.MpesaNoCodeTotal));
+        b.Columns2($"Card ({s.CardCount})", Amount(s.CardTotal));
         if (s.Waiters.Count > 0)
         {
             b.Separator().Text("Cash brought by", TextStyle.Bold);

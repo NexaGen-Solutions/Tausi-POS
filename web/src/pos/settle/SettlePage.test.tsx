@@ -268,6 +268,45 @@ describe('settle screen', () => {
     expect(screen.getByRole('button', { name: 'Complete and print receipt' })).toBeDisabled();
   });
 
+  it('with brought-by off and the M-Pesa code optional: no Brought by field, and M-Pesa without a code shows No code', async () => {
+    const user = userEvent.setup();
+    extra = {
+      'GET /api/device': () =>
+        json(200, {
+          ...deviceInfo({ openedAt: '2026-10-20T08:14:00' }),
+          rules: {
+            approvalsFromOwnCounter: true,
+            recordBroughtBy: false,
+            mpesaCodeRequired: false,
+            closeVoidedWithoutReceipt: true,
+            returnOnVoidIfNotServed: true,
+            approvalChime: true,
+          },
+        }),
+    };
+    await open();
+    await waitFor(() => expect(screen.queryByLabelText(/brought/i)).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'M-Pesa' }));
+    expect(screen.queryByLabelText(/brought/i)).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('M-Pesa code (optional)'), 'SJK');
+    expect(screen.getByRole('button', { name: 'Add M-Pesa payment' })).toBeDisabled();
+    await user.clear(screen.getByLabelText('M-Pesa code (optional)'));
+    await user.click(screen.getByRole('button', { name: 'Add M-Pesa payment' }));
+
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'POST' && c.path.endsWith('/payments'))).toHaveLength(
+        1,
+      ),
+    );
+    expect(calls.find((c) => c.path.endsWith('/payments'))!.body).toMatchObject({
+      type: 'Mpesa',
+      mpesaCode: null,
+      broughtByUserId: null,
+    });
+    expect(await screen.findByText('M-Pesa No code')).toBeInTheDocument();
+  });
+
   it('a duplicate M-Pesa code shows the server message', async () => {
     const user = userEvent.setup();
     extra = {

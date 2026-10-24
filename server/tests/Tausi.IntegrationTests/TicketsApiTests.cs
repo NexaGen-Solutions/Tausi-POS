@@ -128,8 +128,7 @@ public class TicketsApiTests(TicketsApp app) : IAsyncLifetime
         var admin = await app.AdminClient();
         var staff = await (await admin.GetAsync("/api/admin/staff")).Json();
         var waiterRole = staff.GetProperty("assignableRoles").EnumerateArray().Single(r => r.GetProperty("name").GetString() == "Waiter").GetProperty("id").GetGuid();
-        (await admin.PutAsJsonAsync($"/api/admin/roles/{waiterRole}/permissions", new { permissionKey = "ticket.merge", value = "NeedsApproval" }))
-            .EnsureSuccessStatusCode();
+        await admin.SetPermission(waiterRole, "ticket.merge", "NeedsApproval");
         try
         {
             var merge = new { ticketIds = new[] { bId }, intoTicketId = a.GetProperty("id").GetGuid() };
@@ -149,7 +148,7 @@ public class TicketsApiTests(TicketsApp app) : IAsyncLifetime
         }
         finally
         {
-            await admin.PutAsJsonAsync($"/api/admin/roles/{waiterRole}/permissions", new { permissionKey = "ticket.merge", value = "Allowed" });
+            await admin.SetPermission(waiterRole, "ticket.merge", "Allowed");
         }
     }
 

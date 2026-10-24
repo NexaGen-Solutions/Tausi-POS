@@ -1,0 +1,173 @@
+/* Wireframe 16: the grid of pills; "who approves what" opens as a side panel. */
+.permissions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+.permissions--panel {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.permissions__main {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.permissions__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.permissions__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.permissions__legend,
+.permissions__buttons,
+.permissions__savebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.permissions__savebar {
+  justify-content: flex-end;
+}
+.permissions__warning {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.permissions-table th,
+.permissions-table td {
+  vertical-align: middle;
+}
+.permissions-section th {
+  padding-top: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.permissions-role {
+  display: block;
+  font-weight: 600;
+}
+.permissions-role__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.permissions-table th.permissions-action {
+  width: 34%;
+  min-width: 220px;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+}
+.permissions-table td {
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+}
+.permissions-role__actions .nx-btn {
+  min-height: var(--touch-min);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.permissions-action__label {
+  display: block;
+}
+.permissions-action__help {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.permissions-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+span.permissions-pill {
+  min-height: 0;
+  padding: 2px var(--space-3);
+  cursor: default;
+}
+.permissions-pill--Allowed {
+  background: var(--color-selected-tint);
+  color: var(--color-selected);
+}
+.permissions-pill--NeedsApproval {
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.permissions-pill--NotAllowed {
+  background: var(--color-ground);
+  color: var(--color-text-muted);
+}
+.permissions-pill--changed {
+  border-color: var(--color-text);
+}
+.permissions-pill:disabled {
+  cursor: not-allowed;
+}
+.permissions-approvers {
+  position: sticky;
+  top: var(--space-5);
+  max-height: calc(100vh - 2 * var(--space-5));
+  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.permissions-approvers__title {
+  margin: 0 0 var(--space-3);
+  font-size: 18px;
+}
+.permissions-approvers ul {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.permissions-approvers--warning .permissions-action__help {
+  color: var(--color-warning-text);
+}
+.permissions-dialog {
+  display: grid;
+  gap: var(--space-3);
+}
+.permissions-dialog__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+@media (max-width: 1100px) {
+  .permissions--panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .permissions-approvers {
+    position: static;
+    max-height: none;
+  }
+}

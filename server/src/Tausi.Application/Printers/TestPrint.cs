@@ -31,7 +31,7 @@ public sealed class TestPrint(
         var business = await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
 
         var logo = await logos.GetLogo(ReceiptBuilder.LogoWidthFor(printer.PaperWidthMm), ct);
-        var settings = PrintSettings.From(business?.OtherJson);
+        var settings = PrintSettings.From(SettingsRegistry.Read(business));
         var document = Slips.Test(
             new TestSlip(business?.Name ?? "", printer.Name, printer.ConnectionText(printer.OwningTerminal?.Name),
                 printer.PaperWidthMm, business?.VatRate ?? 16m, await businessClock.Now(ct)),

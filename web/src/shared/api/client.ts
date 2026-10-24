@@ -13,6 +13,8 @@ export interface Problem {
   permission?: string;
   attemptsLeft?: number | null;
   retryAfterSeconds?: number;
+  /** Errors per field (a setting key, or "roleId:key" for a permission cell). */
+  fieldErrors?: Record<string, string>;
 }
 
 export class ApiError extends Error {

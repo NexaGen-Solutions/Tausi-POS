@@ -1954,6 +1954,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid?>("LogoFileId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("LogoWebFileId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

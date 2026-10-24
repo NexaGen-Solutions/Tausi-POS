@@ -2,7 +2,8 @@
 export interface PinSession {
   token: string;
   expiresAt: string;
-  idleLogoutMinutes: number;
+  /** Null when the business has idle logout switched off. */
+  idleLogoutMinutes: number | null;
   mustChangePin: boolean;
   user: SessionUser;
 }
@@ -19,7 +20,7 @@ export type SessionEndReason = 'logout' | 'idle' | 'expired';
 
 export interface LogoutNotice {
   reason: SessionEndReason;
-  idleLogoutMinutes: number;
+  idleLogoutMinutes: number | null;
 }
 
 const storageKey = 'tausi.session';
@@ -95,7 +96,13 @@ export function lastSessionTouch(): number {
   return lastServerTouch;
 }
 
-/** The moment this session goes idle on the server, in ms since the epoch. */
+/** The moment this session goes idle on the server, in ms since the epoch; null when it never does. */
 export function idleDeadline(): number | null {
-  return current ? lastServerTouch + current.idleLogoutMinutes * 60_000 : null;
+  return current?.idleLogoutMinutes ? lastServerTouch + current.idleLogoutMinutes * 60_000 : null;
+}
+
+/** The business changed its idle logout (settings.changed): count down with the new time, or not at all. */
+export function setIdleLogoutMinutes(minutes: number | null): void {
+  if (!current || current.idleLogoutMinutes === minutes) return;
+  setPinSession({ ...current, idleLogoutMinutes: minutes });
 }

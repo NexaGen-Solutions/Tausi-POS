@@ -26,6 +26,8 @@ public static class SettleCodes
     public const string NotPaid = "not_paid";
     public const string Overpaid = "over_remaining";
     public const string PaymentFinal = "payment_final";
+    public const string CloseVoidedOff = "close_voided_off";
+    public const string NotFullyVoided = "not_fully_voided";
 }
 
 /// <param name="Amount">M-Pesa and card: the amount (defaults to what's remaining). Cash: ignored, see Tendered.</param>
@@ -67,7 +69,9 @@ public sealed class PaymentCommands(
         var day = await WorkPeriods.Current(db, ct) ?? throw new DomainException("The day isn't open.");
         var shift = await SettleShift.Require(shifts, edit.User.UserId, edit.TerminalId, ct);
 
-        var broughtBy = r.BroughtByUserId ?? ticket.OpenedByUserId;
+        var rules = await PaymentSettings.Load(db, ct);
+        // Not recorded: the waiter who opened the ticket, whatever the request says.
+        var broughtBy = rules.RecordBroughtBy ? r.BroughtByUserId ?? ticket.OpenedByUserId : ticket.OpenedByUserId;
         if (!await db.Users.AnyAsync(u => u.Id == broughtBy, ct)) throw new DomainException("Choose who brought it.");
 
         var payment = new Payment
@@ -88,9 +92,12 @@ public sealed class PaymentCommands(
             }
             case PaymentType.Mpesa:
             {
-                var code = Payment.CleanMpesaCode(r.MpesaCode)
-                    ?? throw new DomainException("Type the 10-character M-Pesa code from the SMS.", SettleCodes.MpesaCodeInvalid);
-                await EnsureCodeUnused(code, ct);
+                // Optional when the setting is off, but a code that is typed must still be right and unused.
+                var code = string.IsNullOrWhiteSpace(r.MpesaCode) && !rules.MpesaCodeRequired
+                    ? null
+                    : Payment.CleanMpesaCode(r.MpesaCode)
+                      ?? throw new DomainException("Type the 10-character M-Pesa code from the SMS.", SettleCodes.MpesaCodeInvalid);
+                if (code is not null) await EnsureCodeUnused(code, ct);
                 payment.MpesaCode = code;
                 payment.Amount = Within(r.Amount ?? remaining, remaining, "M-Pesa");
                 break;
@@ -256,6 +263,48 @@ public sealed class SettleTicket(
         await ApprovalExpiry.Publish(posEvents, expired, ct);
         return new SettleResult(ticket.Id, ticket.ReceiptNumber.Value, ticket.AmountDue, change, false);
     }
+}
+
+/// <summary>
+/// "Close ticket": a ticket whose every line was voided or cancelled, with nothing to pay and no
+/// payments, closes with no receipt, no receipt number and nothing posted, when
+/// <c>tickets.closeVoidedWithoutReceipt</c> is on (otherwise it is settled with a 0 receipt). Needs
+/// <c>ticket.settle</c> and the ticket open on this terminal; no shift is needed, as no money moves.
+/// </summary>
+public sealed class CloseVoidedTicket(
+    ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
+    IAuditLog audit, IPosEvents posEvents, TicketEvents events, TimeProvider clock)
+{
+    public async Task Execute(Guid ticketId, CancellationToken ct)
+    {
+        await using var edit = await editing.Open(ticketId, ct);
+        var grant = await permissions.Require(edit.User, PermissionKeys.TicketSettle, approval.ApprovalToken, ct);
+        if (!(await PaymentSettings.Load(db, ct)).CloseVoidedWithoutReceipt)
+            throw new ConflictException("Closing without a receipt is switched off. Settle it with a 0 receipt.", SettleCodes.CloseVoidedOff);
+        var ticket = edit.Ticket;
+        if (!IsFullyVoided(ticket))
+            throw new ConflictException($"#{ticket.Number} still has items to pay for. Settle it instead.", SettleCodes.NotFullyVoided);
+        if (ticket.Payments.Any(p => p.Counts))
+            throw new ConflictException($"#{ticket.Number} has payments. Remove them first.", SettleCodes.NotFullyVoided);
+        await SettleChecks.EnsureNoPendingRequests(db, ticket.Id, ct);
+
+        var now = clock.GetUtcNow();
+        ticket.Status = TicketStatus.Cancelled;
+        ticket.ClearLock();
+        ticket.Touch(now);
+        var expired = await ApprovalExpiry.ForTickets(db, [ticket.Id], ApprovalExpiry.TicketClosed, now, ct);
+        audit.Write(new AuditRecord(AuditActions.TicketClosedVoided, nameof(Ticket), ticket.Id.ToString(),
+            new { ticket = ticket.Number, status = TicketStatus.Open.ToString() },
+            new { status = TicketStatus.Cancelled.ToString(), lines = ticket.Lines.Count }, grant.ApprovedByUserId));
+        await db.SaveChangesAsync(ct);
+        await edit.Transaction.CommitAsync(ct);
+        await events.Changed(ticket, ticket.TableId, ct);
+        await ApprovalExpiry.Publish(posEvents, expired, ct);
+    }
+
+    /// <summary>Every line voided or cancelled (at least one) and nothing to pay.</summary>
+    public static bool IsFullyVoided(Ticket ticket) =>
+        ticket.Lines.Count > 0 && ticket.Lines.All(l => !l.Counts) && ticket.Total == 0;
 }
 
 /// <summary>

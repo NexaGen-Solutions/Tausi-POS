@@ -1,46 +1,37 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using Microsoft.EntityFrameworkCore;
 using Tausi.Application.Abstractions;
-using Tausi.Domain.Common;
+using Tausi.Domain.Settings;
+using static Tausi.Application.Settings.SettingsRegistry;
 
 namespace Tausi.Application.Settings;
 
 /// <summary>
-/// Printing settings in BusinessSettings.OtherJson under "print":
-/// <c>{ "print": { "logoOnBill": true, "poweredByFooter": false } }</c>.
-/// <c>poweredByFooter</c> adds "Powered by Tausi POS" at the foot of bills and receipts. It is off by
-/// default: customer slips carry the business's own name, not ours.
+/// Printing settings (the "print.*" keys of <see cref="SettingsRegistry"/>).
+/// <c>PoweredByFooter</c> adds "Powered by Tausi POS" at the foot of bills and receipts. It is off by
+/// default: customer slips carry the business's own name, not ours. <c>ShowVoidsOnReceipt</c> lists
+/// voided items on the receipt at 0, marked VOID.
 /// </summary>
-public sealed record PrintSettings(bool LogoOnBill, bool PoweredByFooter = false)
+public sealed record PrintSettings(bool LogoOnBill, bool PoweredByFooter = false, bool ShowVoidsOnReceipt = false)
 {
-    public static readonly PrintSettings Default = new(true);
+    public static readonly PrintSettings Default = From(SettingsRegistry.Read(null));
 
-    public static PrintSettings From(string? otherJson)
-    {
-        if (string.IsNullOrWhiteSpace(otherJson)) return Default;
-        try
-        {
-            var print = JsonNode.Parse(otherJson)?["print"];
-            return new PrintSettings(
-                print?["logoOnBill"]?.GetValue<bool>() ?? Default.LogoOnBill,
-                print?["poweredByFooter"]?.GetValue<bool>() ?? Default.PoweredByFooter);
-        }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
-        {
-            return Default;
-        }
-    }
+    public static PrintSettings From(SettingValues v) =>
+        new(v.Bool(PrintLogoOnBill), v.Bool(PrintPoweredByFooter), v.Bool(PrintShowVoidsOnReceipt));
 
-    public static void Validate(JsonElement root)
-    {
-        if (!root.TryGetProperty("print", out var print)) return;
-        if (print.ValueKind != JsonValueKind.Object) throw new DomainException("\"print\" settings must be a JSON object.");
-        foreach (var name in new[] { "logoOnBill", "poweredByFooter" })
-            if (print.TryGetProperty(name, out var value) && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-                throw new DomainException($"print.{name} must be true or false.");
-    }
+    public static PrintSettings From(string? otherJson) => From(SettingsRegistry.Read(new BusinessSettings { OtherJson = otherJson ?? "" }));
 
-    public static async Task<PrintSettings> Load(ITausiDb db, CancellationToken ct) =>
-        From(await db.BusinessSettings.AsNoTracking().OrderBy(s => s.Id).Select(s => s.OtherJson).FirstOrDefaultAsync(ct));
+    public static async Task<PrintSettings> Load(ITausiDb db, CancellationToken ct) => From(await SettingsRegistry.Load(db, ct));
+}
+
+/// <summary>
+/// The rules for taking payment: <c>MpesaCodeRequired</c> (off: the code is optional, but a code
+/// that is given is still checked and must be unused) and <c>RecordBroughtBy</c> (off: the waiter
+/// who opened the ticket is recorded and the receipt has no "brought by" line). With
+/// <c>CloseVoidedWithoutReceipt</c> a ticket whose every line is voided or cancelled closes without a receipt.
+/// </summary>
+public sealed record PaymentSettings(bool MpesaCodeRequired, bool RecordBroughtBy, bool CloseVoidedWithoutReceipt)
+{
+    public static PaymentSettings From(SettingValues v) =>
+        new(v.Bool(PaymentsMpesaCodeRequired), v.Bool(PaymentsRecordBroughtBy), v.Bool(TicketsCloseVoidedWithoutReceipt));
+
+    public static async Task<PaymentSettings> Load(ITausiDb db, CancellationToken ct) => From(await SettingsRegistry.Load(db, ct));
 }

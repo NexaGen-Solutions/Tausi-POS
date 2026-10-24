@@ -125,26 +125,7 @@ public class DevicesApiTests(DevicesApp app)
     public async Task The_powered_by_setting_shows_on_the_test_print_sample_bill()
     {
         var admin = await app.AdminClient();
-        async Task SetPoweredBy(bool on)
-        {
-            var s = await (await admin.GetAsync("/api/settings/business")).Json();
-            var other = System.Text.Json.Nodes.JsonNode.Parse(s.GetProperty("otherJson").GetString() ?? "{}")!.AsObject();
-            other["print"] ??= new System.Text.Json.Nodes.JsonObject();
-            other["print"]!["poweredByFooter"] = on;
-            (await admin.PutAsJsonAsync("/api/settings/business", new
-            {
-                name = s.GetProperty("name").GetString(),
-                address = s.GetProperty("address").GetString(),
-                phone = s.GetProperty("phone").GetString(),
-                vatRate = s.GetProperty("vatRate").GetDecimal(),
-                currency = s.GetProperty("currency").GetString(),
-                rounding = s.GetProperty("rounding").GetString(),
-                receiptFooter = s.GetProperty("receiptFooter").GetString(),
-                printMode = s.GetProperty("printMode").GetString(),
-                otherJson = other.ToJsonString(),
-                rowVersion = s.GetProperty("rowVersion").GetInt64(),
-            })).EnsureSuccessStatusCode();
-        }
+        Task SetPoweredBy(bool on) => admin.SetSetting("print.poweredByFooter", on);
 
         var printer = (await (await admin.PostAsJsonAsync("/api/admin/printers", new
         {

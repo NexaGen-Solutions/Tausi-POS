@@ -13,18 +13,27 @@ public static class SettingsEndpoints
         app.MapGet("/api/brand", (GetBrand brand, CancellationToken ct) => brand.Execute(ct))
             .WithTags("Settings").RequireCors(CorsSetup.TerminalApp);
 
-        var settings = app.MapGroup("/api/settings").WithTags("Settings").RequireAuthorization();
+        var settings = app.MapGroup("/api/admin/settings").WithTags("Settings").RequireAuthorization();
 
-        settings.MapGet("/business", (GetBusinessSettings get, CancellationToken ct) => get.Execute(ct));
+        settings.MapGet("/", (GetSettings get, CancellationToken ct) => get.Execute(ct));
+        settings.MapPut("/", (UpdateSettingsRequest request, UpdateSettings update, CancellationToken ct) => update.Execute(request, ct));
+        settings.MapGet("/history", (SettingsHistory history, CancellationToken ct) => history.Execute(ct));
 
-        settings.MapPut("/business", (UpdateBusinessSettingsRequest request, UpdateBusinessSettings update, CancellationToken ct) =>
-            update.Execute(request, ct));
-
-        settings.MapPost("/business/logo", async (IFormFile file, UploadBusinessLogo upload, CancellationToken ct) =>
+        settings.MapPost("/logo", async (IFormFile file, LogoCommands logo, CancellationToken ct) =>
         {
             await using var stream = file.OpenReadStream();
-            return await upload.Execute(new LogoUpload(file.FileName, file.ContentType, file.Length, stream), ct);
+            return await logo.Upload(new LogoUpload(file.FileName, file.ContentType, file.Length, stream), ct);
         }).DisableAntiforgery();
+        settings.MapDelete("/logo", (LogoCommands logo, CancellationToken ct) => logo.Remove(ct));
+        settings.MapGet("/logo/print.png", async (int? paper, LogoPrintPreview preview, CancellationToken ct) =>
+            await preview.Execute(paper ?? 80, ct) is { } png ? Results.File(png, "image/png") : Results.NotFound());
+
+        // The sample bill and receipt with the saved settings, or with unsaved ones: as JSON in the
+        // body (POST), or in the query string (?width=42&values={"business.name":"..."}).
+        settings.MapPost("/receipt-preview", (ReceiptPreviewRequest request, ReceiptPreview preview, CancellationToken ct) =>
+            preview.Execute(request, ct));
+        settings.MapGet("/receipt-preview", (int? width, string? values, ReceiptPreview preview, CancellationToken ct) =>
+            preview.Execute(new ReceiptPreviewRequest(width ?? 42, ParseValues(values)), ct));
 
         app.MapGet("/files/{id:guid}", async (Guid id, TausiDbContext db, IFileStorage files, CancellationToken ct) =>
         {
@@ -34,5 +43,18 @@ public static class SettingsEndpoints
                 ? Results.NotFound()
                 : Results.File(stream, meta!.ContentType, enableRangeProcessing: false);
         }).WithTags("Settings");
+    }
+
+    private static Dictionary<string, System.Text.Json.JsonElement>? ParseValues(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(json);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            throw new Domain.Common.DomainException("The preview values must be a JSON object of setting keys.");
+        }
     }
 }
