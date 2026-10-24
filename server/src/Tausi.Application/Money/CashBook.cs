@@ -260,7 +260,7 @@ public static class Summaries
     /// <summary>Menu items sold that day with no recipe: their cost of sales is missing.</summary>
     public static async Task<IReadOnlyList<string>> NoRecipe(ITausiDb db, DateOnly date, CancellationToken ct)
     {
-        var periods = db.WorkPeriods.Where(p => p.BusinessDate == date).Select(p => p.Id);
+        var periods = await BusinessDates.PeriodsOn(db, date, ct);
         var withRecipe = db.RecipeLines.Select(r => r.MenuItemId);
         return await db.OrderLines.AsNoTracking()
             .Where(l => l.Status == OrderLineStatus.Printed && l.MenuItemId != null && !withRecipe.Contains(l.MenuItemId.Value))

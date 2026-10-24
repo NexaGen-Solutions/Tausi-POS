@@ -48,6 +48,7 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton<IPinHasher>(Hasher);
         services.AddSingleton<Tausi.Application.Printing.ILogoProvider, NoLogo>();
         services.AddSingleton<Tausi.Application.Printing.ILogoImages, NoLogoImages>();
+        services.AddSingleton<Tausi.Application.Files.IFileStorage, MemoryFileStorage>();
         services.AddScoped<Tausi.Application.Ledger.ILedgerPostingService, Tausi.Infrastructure.Ledger.LedgerPostingService>();
         _services = services.BuildServiceProvider();
     }

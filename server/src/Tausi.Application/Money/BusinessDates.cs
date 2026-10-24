@@ -32,8 +32,18 @@ public static class BusinessDates
     /// <summary>The day's work periods are all closed (so an entry for it now is a late entry).</summary>
     public static async Task<bool> IsClosed(ITausiDb db, DateOnly date, CancellationToken ct)
     {
-        var periods = await db.WorkPeriods.AsNoTracking().Where(p => p.BusinessDate == date).Select(p => p.IsOpen).ToListAsync(ct);
-        return periods.Count > 0 && periods.All(open => !open);
+        var zone = await Zone(db, ct);
+        var periods = (await db.WorkPeriods.AsNoTracking().Select(p => new { p.BusinessDate, p.OpenedAt, p.IsOpen }).ToListAsync(ct))
+            .Where(p => (p.BusinessDate ?? Of(p.OpenedAt, zone)) == date).ToList();
+        return periods.Count > 0 && periods.All(p => !p.IsOpen);
+    }
+
+    /// <summary>The work periods of a business date (older ones without a stored date worked out).</summary>
+    public static async Task<List<Guid>> PeriodsOn(ITausiDb db, DateOnly date, CancellationToken ct)
+    {
+        var zone = await Zone(db, ct);
+        return (await db.WorkPeriods.AsNoTracking().Select(p => new { p.Id, p.BusinessDate, p.OpenedAt }).ToListAsync(ct))
+            .Where(p => (p.BusinessDate ?? Of(p.OpenedAt, zone)) == date).Select(p => p.Id).ToList();
     }
 
     /// <summary>The date chosen on an admin form: today when none; refused in the future or too far back.</summary>

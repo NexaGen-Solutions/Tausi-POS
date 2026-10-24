@@ -38,3 +38,18 @@ public sealed class FastPinHasher : IPinHasher
     public bool Verify(string secret, string hash) => hash == Hash(secret);
     public string Lookup(string pin) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("pepper:" + pin)));
 }
+
+/// <summary>Files kept in memory for the duration of a test.</summary>
+public sealed class MemoryFileStorage : Tausi.Application.Files.IFileStorage
+{
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, byte[]> _files = new();
+
+    public async Task Save(Guid fileId, Stream content, CancellationToken ct = default)
+    {
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, ct);
+        _files[fileId] = buffer.ToArray();
+    }
+
+    public Stream? Open(Guid fileId) => _files.TryGetValue(fileId, out var bytes) ? new MemoryStream(bytes) : null;
+}
