@@ -289,6 +289,39 @@ Sign in to the admin site as `admin` (or the Administrator).
 - **+ Add role** copies another role's permissions; give the role to someone under **Staff and
   PINs**. **Rename** and **Delete** are in each role's column; a role someone has can't be deleted.
 
+### Stock
+
+`seed --demo` adds a Store and a Bar, stock items with their packs (beers in crates of 25,
+spirits in ml with bottles and cartons), a recipe for every drink, Viceroy and Gilbeys tots
+(25 ml), the supplier KBL, and an approved opening count of both locations. Every terminal sells
+from the Bar (**Terminals and printers → Edit → Sells from**).
+
+- **Stock and recipes** (`/admin/stock`): on hand per location or in total, in packs ("3 crates
+  7 bottles"), the average cost and value. Orange rows are below their reorder level; negative
+  ones say to check deliveries or the last count. Tap an item for its movements. The panel on the
+  right edits a menu item's recipe and shows the cost per sale, price and margin. Pool Table has
+  no recipe, so it is in the "no recipe" warning.
+- **Selling:** as edna on Counter A, print 2 Tusker and 1 Viceroy Tot: the Bar loses 2 bottles
+  and 25 ml, and a Cost of sales entry is posted for the print round. Void a Tusker as not
+  poured: it goes back. Void a tot as poured: its cost moves to Stock loss.
+- **Deliveries** (`/admin/deliveries`): **Receive a delivery** from KBL, 4 crates of Tusker at
+  2,500 on credit into the Store: the Store gains 100 bottles and KBL is owed 10,000. The same
+  invoice number again is refused. A delivery's details have **Reverse delivery**.
+- **Record waste** and **Transfer** are on the stock page; both are listed on **Stock activity**.
+- **Stock counts** (`/admin/stock-counts`): **Start a count**, print the count sheet (PDF, no
+  expected figures), type what is there by pack and loose units, **Submit for approval**. The
+  differences show only then. Someone else allowed `stock.adjust` (the Administrator in the demo)
+  approves it; the counter can't.
+- **Needs approval:** with a supervisor's `stock.adjust` (or `stock.receive`, `stock.waste`) set
+  to Needs approval, what they record waits under **Awaiting approval** at the top of the stock
+  page until someone allowed approves it. To try it as MAU on the admin site, give MAU an admin
+  password under **Staff and PINs**.
+
+To check the ledger on PostgreSQL: `SELECT e."Memo", a."Code", l."Debit", l."Credit" FROM
+"JournalLines" l JOIN "JournalEntries" e ON e."Id" = l."JournalEntryId" JOIN "LedgerAccounts" a
+ON a."Id" = l."AccountId" WHERE e."SourceType" IN ('StockSale', 'StockVoid', 'Delivery', 'Waste',
+'StockCount') ORDER BY e."CreatedAt";`
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

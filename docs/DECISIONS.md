@@ -248,6 +248,22 @@ Each entry: date, decision, reason.
 | 2026-10-24 | The old endpoints are gone: `/api/settings/business` (GET, PUT, logo) and `PUT /api/admin/roles/{id}/permissions`. | The new ones check more (versions, lock-out); keeping the old ones would bypass that. |
 | 2026-10-24 | The Stock section has no setting outside Rules yet, so it isn't shown. | No empty panels. |
 
+## Stock (task 11)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-24 | The prompt's "Manager" column is the Admin role. New installs give supervisors `stock.count` Allowed (it was Needs approval); `stock.adjust` stays Needs approval. Existing cells are kept. | The design grid; our four roles. |
+| 2026-10-24 | A sale's movements keep the line's quantity; a void returns its share of them at their cost. Lines split off for a void, gift or price change remember the line they came from (`SplitFromLineId`), so their sale is found. | Voids return exactly what the sale took, at its cost, even after a recipe or cost changes. |
+| 2026-10-24 | The approver's "Was it already poured?" is stored: on the approvals screen they can change it before approving, and on the void pop-up the question says the supervisor checks it before typing their PIN. | Carry-over 2. |
+| 2026-10-24 | The demo menu gains Viceroy Tot and Gilbeys Tot (25 ml). | The acceptance sells a Viceroy Tot; the demo menu had none. |
+| 2026-10-24 | Deliveries and transfers use `stock.receive`, waste `stock.waste`, reversals and count approval `stock.adjust`. Editing suppliers needs `stock.receive` not Not allowed; items and recipes need `menu.edit`. Seeing the stock pages needs any stock key not Not allowed. | The prompt's keys, with suppliers next to deliveries. |
+| 2026-10-24 | A rejected delivery frees its invoice number (the unique index skips rejected ones). | Re-entering a corrected delivery shouldn't be blocked. |
+| 2026-10-24 | One count per location can be open (Draft or Submitted) at a time. Only a location's first count can be the opening stock; it never shows expected figures. The person who submits a count is who counted it. With `stock.count` set to Needs approval, people can still submit: approving the count is the review. | Two counts of one place would correct each other. |
+| 2026-10-24 | The count sheet PDF is written by a small built-in writer (Helvetica, lines and boxes), not a PDF package. | No new dependency or licence to check for a one-page sheet. |
+| 2026-10-24 | The recipe margin is on the price without VAT: (price − VAT − cost) ÷ (price − VAT). | VAT isn't the business's money. |
+| 2026-10-24 | A delivery reversal recalculates the average cost by taking the delivery back out at its own cost. Transfers move stock at the average cost and post no journal entry. | The average is business-wide. |
+| 2026-10-24 | A terminal's Sells from left empty in a save keeps the current location; new terminals sell from the Bar. Stock slips (transfer slip, count sheet) are print jobs of kind Stock. | No terminal is left selling from nowhere by an older client. |
+
 ## Follow-ups
 
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
@@ -267,7 +283,6 @@ Each entry: date, decision, reason.
 - **Logout from the order screen:** if a logout is added there, it should run the same leave check.
 - **Draft ticket note:** allow a note before the first item if waiters ask for it.
 - **On-screen times:** the terminal and admin screens show times in the browser's time zone; format them in the business's zone if a terminal's clock is ever set differently.
-- **Stock (Task 11):** use `VoidLog.WasPoured` (poured voids still use stock) and `GiftLog` (gifts count as sold).
 - **Ledger and ERPNext (Task 8+):** post discounts from each line's `Discount` share; gifts at 0 with their `UnitPrice` kept for reports.
 - **Approvals on the admin site:** decide requests from the admin site too, if supervisors work there.
 - **Approval sound volume:** the chime can be switched off (`pos.approvalChime`); its volume is not a setting yet.
@@ -285,5 +300,6 @@ Each entry: date, decision, reason.
 - **Expense categories admin** (Task 12): the five seeded categories can't be edited yet.
 - **design.md's permission table:** update "Expenses" for cashiers to Needs approval, to match the defaults.
 - **Approval pad after a refused PIN:** a refusal (such as the cashier's own PIN at shift sign-off) closes the pad with a toast, so the cashier taps Close shift again for the supervisor. Consider keeping the pad open with the message for 403s, for every approval.
-- **Network-dependent test (do first in the next task):** `CheckConnectionTests.No_answer_says_check_the_printer_is_on` expects no answer from 192.0.2.1; some networks refuse it at once, and the test fails there. At the start of the next task, change it to use a local listener that never answers (accepts nothing, so the connect times out), so it passes on any network.
-- **"Not served" when approving a void** (Task 11): with `stock.returnOnVoidIfNotServed` on, the supervisor should tick "not served" on the approval.
+- **Option-level recipes:** a modifier option (e.g. a double) can't change the recipe yet.
+- **Stock reports** (on hand, variance, purchases) and **supplier payments** come in Tasks 13 and 12.
+- **Stock locations admin:** locations are Store and Bar from the seed; adding or renaming one has no screen yet.
