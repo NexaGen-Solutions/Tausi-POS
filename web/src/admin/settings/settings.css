@@ -9,6 +9,10 @@
 .settings--preview {
   grid-template-columns: minmax(0, 1fr) 380px;
 }
+/* With the preview open the form is one column, so the switches keep their room. */
+.settings--preview .settings__columns {
+  grid-template-columns: minmax(0, 1fr);
+}
 .settings__main {
   display: grid;
   gap: var(--space-4);
