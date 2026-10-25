@@ -1,0 +1,26 @@
+              Test
+         DAILY SUMMARY
+     Tue 20 Oct 2026 (open)
+     Run 20 Oct 2026 21:09
+Cost of sales is missing for 1
+item with no recipe
+Cost of sales comes from recipes
+and stock cost, so profit is
+real, not an estimate.
+--------------------------------
+Sales (incl. VAT)        1,951.5
+VAT                       269.16
+Rounding                     0.5
+Net sales               1,682.84
+Cost of sales              1,070
+Gross profit (36.4%)      612.84
+Expenses                       0
+Stock loss and cash
+differences                  360
+Poured voids                 120
+Count variance               240
+Bank charges                   0
+Other income                   0
+Net for the day           252.84
+--------------------------------
+             [cut]

@@ -409,6 +409,9 @@ function Summary({ summary: s }: { summary: DailySummary }) {
       </h2>
       <SummaryLine label={t('admin.cashbook.summary.sales')} amount={s.salesInclVat} />
       <SummaryLine label={t('admin.cashbook.summary.vat')} amount={s.vat} />
+      {s.rounding !== 0 && (
+        <SummaryLine label={t('admin.cashbook.summary.rounding')} amount={s.rounding} />
+      )}
       <SummaryLine label={t('admin.cashbook.summary.netSales')} amount={s.netSales} />
       <SummaryLine label={t('admin.cashbook.summary.costOfSales')} amount={s.costOfSales} />
       <div className="money-line money-line--total">

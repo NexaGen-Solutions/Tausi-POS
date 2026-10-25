@@ -353,6 +353,34 @@ back-fill of older entries), so nothing needs to be run by hand. Sign in to the 
 - The **day report** printed when the day closes has the profit lines too, and **Close day** on
   the terminal shows the net.
 
+### Reports
+
+Sign in to the admin site as `admin` and open **Reports** (`/admin/reports`). The first seven
+reports are tabs; **More reports** has Purchases, Daily summary, VAT summary, Tickets and
+receipts, Users, roles and terminals, and the Audit log (that one needs `permissions.manage`).
+Every report needs `reports.all`.
+
+- **Period:** the open work period by default (else the last closed one), any earlier one, or
+  **Business dates…** with quick picks (Today … Last month) or your own dates. A day that runs
+  past midnight stays on the date it opened. Open tickets count for the open day ("Includes 2 open
+  tickets"); untick **Include open tickets** to see settled sales only.
+- **Sales by user** looks like wireframe 19. Switch **Credit sales to** between who added the item
+  and who opened the ticket: the people change, the total doesn't. Long groups show 50 rows and
+  "… n more items".
+- Every sales total (Sales by user, Sales by item, Daily summary, VAT summary, Tickets and
+  receipts) is the same figure for the same period, and equals Sales + VAT in the ledger. Rounding
+  on receipts is shown as its own note.
+- **Print** gives an A4 PDF (landscape for wide reports), a CSV file, and for Sales by user,
+  Payments and cash-ups and Daily summary the receipt printer. **Export to Excel** gives an
+  .xlsx with the filters at the top, bold group and subtotal rows and real numbers.
+- Any **ticket number** opens the ticket detail (`/admin/tickets/<id>`): every line in every
+  state, every print with **View slip** (the exact text printed), payments, requests, stock, the
+  ledger with links to Accounts, and the timeline of it all. **Print** saves it as a PDF.
+- On the terminal, **Close day** has **Print sales by user** for people with `reports.all`.
+
+Printed slip text is kept for `print.keepSlipTextDays` (Settings → Printing, default 365) and
+cleared once a day after that; the print itself stays listed.
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

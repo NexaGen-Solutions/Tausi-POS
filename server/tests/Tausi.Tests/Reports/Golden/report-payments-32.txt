@@ -1,0 +1,61 @@
+              Test
+     PAYMENTS AND CASH-UPS
+     Tue 20 Oct 2026 (open)
+     Run 20 Oct 2026 21:09
+--------------------------------
+CASHIER SHIFTS
+CAROL · Counter A 20 Oct 21:04
+Open
+Float                      1,000
+Cash                         950
+M-Pesa                       652
+Card                         350
+Pay-outs                       0
+Drops                          0
+Expected                   1,950
+--------------------------------
+Total
+Float                      1,000
+Cash                         950
+M-Pesa                       652
+Card                         350
+Pay-outs                       0
+Drops                          0
+Difference                     0
+--------------------------------
+PER WAITER
+edna
+Cash                         100
+M-Pesa                       652
+Card                         350
+Brought in                 1,102
+Open bills                     1
+Open total                   250
+Ruth
+Cash                         850
+M-Pesa                         0
+Card                           0
+Brought in                   850
+Open bills                     0
+Open total                     0
+--------------------------------
+Total
+Cash                         950
+M-Pesa                       652
+Card                         350
+Brought in                 1,952
+Open bills                     1
+Open total                   250
+--------------------------------
+OPEN BILLS
+#1005 10 edna 20 Oct 21:04   250
+--------------------------------
+M-PESA CODES
+With a code                  652
+SJK3ABC777 #1001 CAROL edna
+20 Oct 21:06                 652
+................................
+--------------------------------
+Total                        652
+--------------------------------
+             [cut]

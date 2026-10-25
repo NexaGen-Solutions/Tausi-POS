@@ -7,8 +7,18 @@ namespace Tausi.Api.Platform;
 /// </summary>
 public sealed record IdempotencyRedact(params string[] Fields);
 
+/// <summary>
+/// Endpoint metadata: a POST that only reads (running or exporting a report), so the idempotency
+/// store passes it through. Its answer can be a file, which the store couldn't keep as text.
+/// </summary>
+public sealed record ReadOnlyPost;
+
 public static class IdempotencyRedactExtensions
 {
+    public static TBuilder ReadsOnly<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder =>
+        builder.WithMetadata(new ReadOnlyPost());
+
     public static TBuilder RedactOnReplay<TBuilder>(this TBuilder builder, params string[] fields)
         where TBuilder : IEndpointConventionBuilder =>
         builder.WithMetadata(new IdempotencyRedact(fields));

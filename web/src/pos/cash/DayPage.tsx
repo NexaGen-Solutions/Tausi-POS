@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ApiError, api } from '../../shared/api/client';
-import type { Brand } from '../../shared/api/types';
+import type { Brand, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { formatAmount, formatMoney, formatSigned } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
@@ -64,6 +64,12 @@ export function DayPage() {
     queryFn: () => api<DayStatus>('/api/pos/day'),
     staleTime: 0,
   });
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<Me>('/api/auth/me'),
+    enabled: !!session,
+  });
+  const canReport = me.data?.permissions['reports.all'] === 'Allowed';
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const status = day.data;
@@ -84,6 +90,18 @@ export function DayPage() {
       void day.refetch();
     } finally {
       setBusy(false);
+    }
+  };
+
+  /** The supervisors' Sales by user slip for the day being closed, on this terminal's receipt printer. */
+  const printSalesByUser = async () => {
+    try {
+      await api('/api/pos/reports/sales-by-user/print', { method: 'POST' });
+      toast(t('pos.day.salesByUserPrinting'));
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : t('common.somethingWrong'), {
+        tone: 'warning',
+      });
     }
   };
 
@@ -225,6 +243,11 @@ export function DayPage() {
                   </div>
                 )}
               </>
+            )}
+            {canReport && (
+              <Button size="lg" block onClick={() => void printSalesByUser()}>
+                {t('pos.day.printSalesByUser')}
+              </Button>
             )}
             <Button
               variant="primary"

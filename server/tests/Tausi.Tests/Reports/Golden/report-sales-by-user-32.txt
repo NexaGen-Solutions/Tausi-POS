@@ -1,0 +1,38 @@
+              Test
+         SALES BY USER
+     Tue 20 Oct 2026 (open)
+Sales credited to who added the
+              item
+     Open tickets left out
+     Run 20 Oct 2026 21:09
+Rounding on receipts: KSh 0.5
+(not in the item amounts)
+--------------------------------
+edna (Waiter)            1,351.5
+1 x #1001 21:00 Guiness
+(Cold)                       270
+1 x #1001 21:00 Pool Table  31.5
+2 x #1001 21:00 Tusker Lager
+(Cold)                       450
+1 x #1001 21:00 Tusker Lager
+(Cold) · gift, KSh 250         0
+1 x #1002 21:03 Tusker Lager
+(Cold)                       250
+1 x #1003 21:03 Sodas 300ml  100
+1 x #1003 21:03 Tusker Lager
+(Cold)                       250
+Tickets 3 · Gifts 1 (KSh 250) ·
+Voids 2 (KSh 550) · Discounts
+KSh 83.5
+................................
+Ruth (Waiter)                600
+2 x #1002 21:01 Heineken
+(Cold)                       600
+Tickets 1 · Gifts 0 (KSh 0) ·
+Voids 0 (KSh 0) · Discounts KSh
+0
+................................
+--------------------------------
+10 x Total               1,951.5
+--------------------------------
+             [cut]

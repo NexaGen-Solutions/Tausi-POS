@@ -47,6 +47,20 @@ public class PrintJob : Entity
     public DateTimeOffset? SentAt { get; set; }
     public Guid? TicketId { get; set; }
 
+    /// <summary>Who printed it (from the session); null for jobs queued without one.</summary>
+    public Guid? CreatedByUserId { get; set; }
+
+    /// <summary>What it was, for the ticket detail: "Bill 2", "Corrected bill 3", "Receipt 1042", "VOID".</summary>
+    public string? Label { get; set; }
+
+    /// <summary>A bill marked REPRINT or a receipt marked COPY.</summary>
+    public bool IsReprint { get; set; }
+
+    /// <summary>
+    /// When the slip's text and bytes were cleared after <c>print.keepSlipTextDays</c>; the job itself is kept.
+    /// </summary>
+    public DateTimeOffset? SlipClearedAt { get; set; }
+
     /// <summary>Why an admin discarded it.</summary>
     public string? DiscardReason { get; set; }
 

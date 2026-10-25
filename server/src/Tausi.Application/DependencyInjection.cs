@@ -23,6 +23,16 @@ public static class DependencyInjection
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<PrintQueue>();
+        services.AddScoped<Reports.ReportService>();
+        services.AddScoped<Reports.TicketDetailReport>();
+        foreach (var report in new Type[]
+                 {
+                     typeof(Reports.SalesByUserReport), typeof(Reports.SalesByItemReport), typeof(Reports.PaymentsReport), typeof(Reports.VoidsReport),
+                     typeof(Reports.PriceChangesReport), typeof(Reports.StockOnHandReport), typeof(Reports.StockVarianceReport),
+                     typeof(Reports.PurchasesReport), typeof(Reports.DailySummaryReport), typeof(Reports.VatReport), typeof(Reports.TicketsReport),
+                     typeof(Reports.UsersReport), typeof(Reports.AuditReport),
+                 })
+            services.AddScoped(typeof(Reports.IReport), report);
         services.AddScoped<PinAuthenticator>();
         services.AddScoped<SessionKeeper>();
         services.AddScoped<PinRules>();

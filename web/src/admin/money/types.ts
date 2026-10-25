@@ -25,6 +25,8 @@ export interface DailySummary {
   otherIncome: number;
   net: number;
   noRecipeItems: string[];
+  /** Receipts rounded up (+) or down (−); part of net sales, apart from the items' sales. */
+  rounding: number;
 }
 
 export interface CashBookTiles {

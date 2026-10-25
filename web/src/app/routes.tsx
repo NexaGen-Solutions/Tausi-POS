@@ -14,6 +14,8 @@ import { CountsPage } from '../admin/stock/CountsPage';
 import { CountPage } from '../admin/stock/CountPage';
 import { CashBookPage } from '../admin/money/CashBookPage';
 import { AccountsPage } from '../admin/money/AccountsPage';
+import { ReportsPage } from '../admin/reports/ReportsPage';
+import { TicketPage } from '../admin/reports/TicketPage';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
@@ -125,6 +127,8 @@ export const routes: RouteObject[] = [
       { path: 'cash-book', element: <CashBookPage /> },
       { path: 'cashbook', element: <Navigate to="/admin/cash-book" replace /> },
       { path: 'accounts', element: <AccountsPage /> },
+      { path: 'reports', element: <ReportsPage /> },
+      { path: 'tickets/:id', element: <TicketPage /> },
       ...adminNav
         .filter(
           (item) =>
@@ -139,6 +143,7 @@ export const routes: RouteObject[] = [
               'deliveries',
               'stock-counts',
               'cash-book',
+              'reports',
             ].includes(item.path),
         )
         .map((item) => ({

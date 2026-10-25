@@ -7,19 +7,32 @@ using Tausi.Domain.Platform;
 
 namespace Tausi.Infrastructure.Platform;
 
-/// <summary>Hourly clean-up: idempotency keys older than 24 hours, old pairings and approval tokens.</summary>
+/// <summary>
+/// Hourly clean-up: idempotency keys older than 24 hours, old pairings and approval tokens. Once a
+/// day (from start-up, then every 24 hours) it also clears the text of slips printed longer ago
+/// than <c>print.keepSlipTextDays</c>.
+/// </summary>
 public sealed class HousekeepingService(IServiceScopeFactory scopes, TimeProvider clock, ILogger<HousekeepingService> log)
     : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromHours(1), clock);
+        var slipsCleared = DateTimeOffset.MinValue;
         do
         {
             try
             {
                 await using var scope = scopes.CreateAsyncScope();
-                await CleanUp(scope.ServiceProvider.GetRequiredService<ITausiDb>(), clock.GetUtcNow(), stoppingToken);
+                var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
+                var now = clock.GetUtcNow();
+                await CleanUp(db, now, stoppingToken);
+                if (now - slipsCleared >= TimeSpan.FromHours(24))
+                {
+                    var cleared = await ClearOldSlipText(db, now, stoppingToken);
+                    if (cleared > 0) log.LogInformation("Cleared the text of {Count} old slips", cleared);
+                    slipsCleared = now;
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -48,5 +61,19 @@ public sealed class HousekeepingService(IServiceScopeFactory scopes, TimeProvide
         await db.TerminalPairings.Where(p => p.ExpiresAt < dayAgo).ExecuteDeleteAsync(ct);
         await db.ApprovalGrants.Where(g => g.ExpiresAt < dayAgo).ExecuteDeleteAsync(ct);
         await db.PinFailures.Where(f => f.At < dayAgo).ExecuteDeleteAsync(ct);
+    }
+
+    /// <summary>
+    /// Clears what old slips printed (their text and bytes) after <c>print.keepSlipTextDays</c>; the
+    /// jobs stay, so the ticket detail still lists every print. Jobs still queued are left alone.
+    /// </summary>
+    public static async Task<int> ClearOldSlipText(ITausiDb db, DateTimeOffset now, CancellationToken ct)
+    {
+        var days = (await Application.Settings.SettingsRegistry.Load(db, ct)).Int(Application.Settings.SettingsRegistry.PrintKeepSlipTextDays);
+        var before = now.AddDays(-days);
+        return await db.PrintJobs
+            .Where(j => j.CreatedAt < before && j.SlipClearedAt == null && j.Status != Domain.Printing.PrintJobStatus.Queued)
+            .ExecuteUpdateAsync(u => u.SetProperty(j => j.TextPreview, "").SetProperty(j => j.Content, Array.Empty<byte>())
+                .SetProperty(j => j.SlipClearedAt, now), ct);
     }
 }

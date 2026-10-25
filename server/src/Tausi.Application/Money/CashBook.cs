@@ -18,12 +18,13 @@ public sealed record NamedAmount(string Name, decimal Amount);
 /// <summary>
 /// A business day's profit, from the journal lines of that date only (never estimated apart):
 /// net = gross profit − expenses − stock loss and cash differences − bank charges + other income.
-/// Rounding is part of net sales (it is what customers paid, without VAT).
+/// Sales (incl. VAT) are the items sold, as in every report; rounding is its own figure and part of
+/// net sales (it is what customers paid, without VAT): net sales = sales − VAT + rounding.
 /// </summary>
 public sealed record DailySummaryDto(
     DateOnly Date, decimal SalesInclVat, decimal Vat, decimal NetSales, decimal CostOfSales, decimal GrossProfit, decimal? GrossMarginPercent,
     decimal Expenses, IReadOnlyList<NamedAmount> ExpensesByCategory, decimal StockLossAndCash, IReadOnlyList<NamedAmount> StockLossParts,
-    decimal BankCharges, decimal OtherIncome, decimal Net, IReadOnlyList<string> NoRecipeItems);
+    decimal BankCharges, decimal OtherIncome, decimal Net, IReadOnlyList<string> NoRecipeItems, decimal Rounding = 0);
 
 /// <summary>The tiles, as at the end of the day: money in the safe and drawers, M-Pesa, the bank and what suppliers are owed.</summary>
 public sealed record CashBookTiles(decimal CashOnHand, decimal InOpenDrawers, decimal MpesaReceived, decimal MpesaBalance, decimal Bank, decimal OwedToSuppliers);
@@ -229,7 +230,8 @@ public static class Summaries
         decimal Cr(string code) => -Dr(code);
 
         var vat = Cr(LedgerAccountCodes.VatPayable);
-        var net = Cr(LedgerAccountCodes.Sales) + Cr(LedgerAccountCodes.Rounding);
+        var rounding = Cr(LedgerAccountCodes.Rounding);
+        var net = Cr(LedgerAccountCodes.Sales) + rounding;
         var cost = Dr(LedgerAccountCodes.CostOfSales);
         var gross = net - cost;
         var categories = await db.ExpenseCategories.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Name, ct);
@@ -253,8 +255,8 @@ public static class Summaries
         var charges = Dr(LedgerAccountCodes.BankCharges);
         var other = Cr(LedgerAccountCodes.OtherIncome);
 
-        return new DailySummaryDto(date, net + vat, vat, net, cost, gross, net == 0 ? null : decimal.Round(gross / net * 100m, 1),
-            expenses, byCategory, loss, lossParts, charges, other, gross - expenses - loss - charges + other, await NoRecipe(db, date, ct));
+        return new DailySummaryDto(date, net - rounding + vat, vat, net, cost, gross, net == 0 ? null : decimal.Round(gross / net * 100m, 1),
+            expenses, byCategory, loss, lossParts, charges, other, gross - expenses - loss - charges + other, await NoRecipe(db, date, ct), rounding);
     }
 
     /// <summary>Menu items sold that day with no recipe: their cost of sales is missing.</summary>

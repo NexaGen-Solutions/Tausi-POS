@@ -281,6 +281,28 @@ Each entry: date, decision, reason.
 | 2026-10-24 | The Accounts page has no sidebar entry; it is linked from the cash book. | The wireframe's sidebar has no Accounts item. |
 | 2026-10-24 | The "goes below 0" warning on Move money is worked out on the form from the day's tiles and also returned by the server after saving. | Warn before saving; the server's figure is the final word. |
 
+## Reports (task 13)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-25 | Sales have one definition, `Reports.SalesQuery`: lines on settled tickets (open ones when asked), voided and cancelled lines out, each line's gross after its discount share, gifts at 0 with their value apart, rounding its own figure. The Z report (`DaySummaries`), My sales and every report use it. The Z report's gifts are now the gifted lines' value (they were the gift logs). | Task 13 Part A: one function for "sales" everywhere. |
+| 2026-10-25 | The cash book's daily summary (Task 12) stays on the journal lines, as Task 12 requires; agreement tests prove it equals `SalesQuery`. Its "Sales (incl. VAT)" is now the items' sales (Sales + VAT), with **Rounding** on its own line; net sales still include rounding, so net and profit don't change. | One sales total in every report without reading the ledger and the lines two ways. |
+| 2026-10-25 | The VAT summary counts settled tickets only. | The ledger posts VAT when a ticket is settled, so it equals VAT payable for the same dates. |
+| 2026-10-25 | Tickets and receipts takes **Include open tickets** too, like the sales reports. | So its total can be compared with them on the same terms. |
+| 2026-10-25 | A report runs only for **Allowed**; Needs approval counts as not allowed on the admin site. | The admin site has no approval pad (as for money and stock documents). |
+| 2026-10-25 | Print jobs now record who printed them, a label ("Bill 2 · reprint", "Corrected bill 3", "VOID · Guiness") and whether they are a reprint. The slip text and bytes are cleared once a day (from start-up, every 24 hours) after `print.keepSlipTextDays`; the job stays. | The ticket detail shows every print and its exact text; "nightly" without a clock time to configure. |
+| 2026-10-25 | Running and exporting a report are POSTs that only read: they send no Idempotency-Key and the store passes them through. The store now keeps only JSON or empty answers for replay; a file answer is never stored. | A file would be stored as broken text, and a big one for 24 hours. |
+| 2026-10-25 | The first seven reports are tabs, the rest are under **More reports**. | The prompt's choice; the row never needs more than two lines. |
+| 2026-10-25 | Stock on hand as at today uses each item's stored average cost; for an earlier date it replays the average from the movements (openings set it, deliveries and their reversals move it). Quantities always come from the movements. | The same average the stock page shows today; the past worked out the same way it was kept. |
+| 2026-10-25 | What suppliers are owed (Purchases) is read from the Supplier payables journal lines, by their source delivery or payment, plus the suppliers' opening balances. | "Owed at the end" always equals the ledger. |
+| 2026-10-25 | Stock variance lists approved counts that are not the opening stock. | An opening count has no expected figures. |
+| 2026-10-25 | "Approvals given" counts a void, gift, discount or price change approved by someone other than who did it. | Doing it on your own permission isn't approving it. |
+| 2026-10-25 | The audit log shows at most 5,000 entries per run, with a note to narrow the filters. | A busy year's audit trail on one page would be unusable. |
+| 2026-10-25 | Menu item names stay at most 60 characters (Task 3), so no real item has 120. The 120-character case is tested on the PDF writer directly; on the receipt printer and screen, long names (with options) wrap the same way. | The prompt's test item can't be entered on the menu. |
+| 2026-10-25 | On the receipt printer, a row with one figure prints "words … figure"; a row with several prints its words, then each figure on its own labelled line. | So no figure is mistaken for another (Payments and cash-ups). |
+| 2026-10-25 | The speed test seeds a month straight into the database (30 closed days, about 60,000 lines on 4,000 tickets with 6,000 payments, a stock movement per line, a sale entry per ticket) and times each report after one warm-up run. | Query compilation happens once on a running server; the warm-up keeps the test about the queries. |
+| 2026-10-25 | Excel export uses ClosedXML (MIT). It brings SixLabors.Fonts 1.0.0 (Apache-2.0); later versions of that package have a different licence, so it stays on 1.x. | The prompt's choice; licence noted in THIRD-PARTY-NOTICES. |
+
 ## Follow-ups
 
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
@@ -321,3 +343,8 @@ Each entry: date, decision, reason.
 - **Cash book date ranges:** the cash book and summary are per business day; ranges and comparisons come with Task 13's reports.
 - **Late entries on a printed Z:** a late entry changes the cash book but not the Z already printed; consider a "corrections since the close" line on the next day's report.
 - **Accounts ledger width:** at 1280 the ledger's Balance column scrolls inside its box; consider a full-width ledger view if owners find it awkward.
+- **Reprints before Task 13:** older print jobs have no "reprint" flag or who printed them, so the Tickets report counts their reprints from this task on; the audit log has the older ones.
+- **Very long groups on screen:** a group expanded to thousands of rows renders them all; consider a virtual list if a month's Sales by user feels slow in the browser.
+- **design.md's Reports table:** add Sales by item, VAT summary, Tickets and receipts and the Audit log.
+- **eTIMS:** the VAT summary is ready for an eTIMS export when that task comes.
+- **Scheduled reports:** e-mail or print a report at the close of each day.

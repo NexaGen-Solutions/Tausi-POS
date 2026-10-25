@@ -90,6 +90,7 @@ public static class SettingsRegistry
     public const string PrintShowVoidsOnReceipt = "print.showVoidsOnReceipt";
     public const string MoneyRounding = "money.rounding";
     public const string BooksBackdateDays = "books.backdateDays";
+    public const string PrintKeepSlipTextDays = "print.keepSlipTextDays";
     public const string PaymentsMpesaCodeRequired = "payments.mpesaCodeRequired";
     public const string PaymentsRecordBroughtBy = "payments.recordBroughtBy";
     public const string TicketsCloseVoidedWithoutReceipt = "tickets.closeVoidedWithoutReceipt";
@@ -153,6 +154,9 @@ public static class SettingsRegistry
             "Prints the logo at the top when one is uploaded."),
         new(PrintPoweredByFooter, SettingType.Bool, false, Sections.Printing, "\"Powered by Tausi POS\" footer",
             "Adds the line at the foot of bills and receipts."),
+        new(PrintKeepSlipTextDays, SettingType.Int, 365, Sections.Printing, "Keep printed slip text (days)",
+            "The ticket detail shows exactly what each slip printed; older slip text is cleared each night.", Min: 7, Max: 3650,
+            ReloadsTerminals: false),
 
         new(MoneyRounding, SettingType.Enum, nameof(RoundingRule.NearestOne), Sections.Money, "Round totals",
             "Totals due are rounded; the difference is kept as its own line.", Allowed: Enum.GetNames<RoundingRule>()),

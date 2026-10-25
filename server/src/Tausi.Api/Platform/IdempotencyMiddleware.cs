@@ -25,7 +25,8 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFac
     public async Task InvokeAsync(HttpContext http, IProblemDetailsService problems)
     {
         string? key = http.Request.Headers[TausiClaims.IdempotencyKeyHeader];
-        if (string.IsNullOrEmpty(key) || !Writes.Contains(http.Request.Method) || !http.Request.Path.StartsWithSegments("/api"))
+        if (string.IsNullOrEmpty(key) || !Writes.Contains(http.Request.Method) || !http.Request.Path.StartsWithSegments("/api")
+            || http.GetEndpoint()?.Metadata.GetMetadata<ReadOnlyPost>() is not null)
         {
             await next(http);
             return;
@@ -99,7 +100,9 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFac
         {
             await next(http);
 
-            if (http.Response.StatusCode is >= 200 and < 300)
+            // Only answers the store can replay as text are kept: JSON or nothing (a 204). A file is passed on as it is.
+            var type = http.Response.ContentType;
+            if (http.Response.StatusCode is >= 200 and < 300 && (type is null || type.Contains("json", StringComparison.OrdinalIgnoreCase)))
             {
                 record.Completed = true;
                 record.ResponseStatus = http.Response.StatusCode;
