@@ -25,7 +25,7 @@ public sealed class AdminRecovery(ITausiDb db, ISetupTokenFile tokenFile, IPinHa
 
     public async Task<string> Issue(CancellationToken ct)
     {
-        var state = await db.SetupStates.FirstOrDefaultAsync(ct);
+        var state = await db.SetupStates.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         if (state?.IsComplete != true) throw new ConflictException("Setup isn't finished: open /setup with the setup token instead.", SetupCodes.Required);
         var token = SetupFlow.NewToken();
         state.TokenHash = SecureTokens.Hash(token);
@@ -39,7 +39,7 @@ public sealed class AdminRecovery(ITausiDb db, ISetupTokenFile tokenFile, IPinHa
 
     public async Task<string> Recover(RecoverAdminRequest r, CancellationToken ct)
     {
-        var state = await db.SetupStates.FirstOrDefaultAsync(ct);
+        var state = await db.SetupStates.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
         var now = clock.GetUtcNow();
         if (state?.IsComplete != true || state.TokenHash is null || state.TokenCreatedAt is null || now - state.TokenCreatedAt > Lasts)
             throw new DomainException("There is no reset waiting. Run `TausiServer reset-admin` on the server first.", "recovery_none");

@@ -94,3 +94,125 @@ jobs:
           path: TausiPOS-Setup.exe
           if-no-files-found: error
           retention-days: 14
+
+  audit:
+    # Known vulnerabilities in what ships: fails on high or critical ones.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: .NET packages
+        working-directory: server
+        run: |
+          dotnet restore
+          dotnet list package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -qE '\b(High|Critical)\b' vulnerable.txt; then echo "High or critical vulnerabilities above."; exit 1; fi
+      - name: npm (web app)
+        working-directory: web
+        run: npm audit --omit=dev --audit-level=high
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Rust crates (terminal app)
+        working-directory: terminal/src-tauri
+        run: cargo audit
+
+  linux-package:
+    # The Linux tarball on a real Ubuntu 24.04 with systemd: install --with-postgres, then upgrade.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the web app
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Publish the server (linux-x64, self-contained)
+        run: dotnet publish server/src/Tausi.Api -c Release -r linux-x64 --self-contained true -p:Version=0.15.0 -o out/server-linux
+      - name: Make the tarball
+        run: packaging/linux/make-tarball.sh 0.15.0 out/server-linux out
+      - name: Install it
+        run: |
+          mkdir -p out/try && tar -C out/try -xzf out/tausi-server-0.15.0-linux-x64.tar.gz
+          cd out/try/tausi-server-0.15.0-linux-x64 && sudo ./install.sh --with-postgres | tee ../../install.txt
+          grep -E 'http://[0-9.]+:5080' ../../install.txt
+          grep -A1 'setup token' ../../install.txt | tail -1 | grep -E '[A-Z0-9]{4}-[A-Z0-9]{4}'
+          systemctl is-active tausi
+          curl -fsS http://127.0.0.1:5080/health | tee ../../health.json && grep -q '"database":"ok"' ../../health.json
+      - name: Upgrade it (backs up first)
+        run: |
+          cd out/try/tausi-server-0.15.0-linux-x64 && sudo ./install.sh
+          sudo ls /var/lib/tausi/backups | grep -- '-upgrade.tausibak'
+          systemctl is-active tausi
+      - name: Logs
+        if: failure()
+        run: sudo journalctl -u tausi --no-pager | tail -100; sudo ls -la /var/log/tausi; sudo tail -50 /var/log/tausi/*.log
+
+  installer-windows:
+    # The server installer on Windows: silent install on SQL Server Express, upgrade, a failed upgrade's
+    # rollback, uninstall; and the terminal installer's silent install.
+    runs-on: windows-latest
+    needs: terminal-windows
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: SQL Server Express (the "existing SQL Server", as at Mau's)
+        shell: pwsh
+        run: choco install sql-server-express -y --no-progress
+      - name: WiX Toolset v5
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.Firewall.wixext/5.0.2
+      - name: Build the web app
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Publish the server (win-x64, self-contained) three times
+        shell: pwsh
+        run: |
+          foreach ($v in '0.15.1', '0.15.2') {
+            dotnet publish server/src/Tausi.Api -c Release -r win-x64 --self-contained true -p:Version=$v -o out/server-$v
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+      - name: Build the installers (a first version, an upgrade, and a broken upgrade)
+        shell: pwsh
+        run: |
+          installer/windows/build.ps1 -Version 0.15.1 -Server out/server-0.15.1 -Out out/a
+          installer/windows/build.ps1 -Version 0.15.2 -Server out/server-0.15.2 -Out out/b
+          installer/windows/build.ps1 -Version 0.15.3 -Server out/server-0.15.2 -Out out/c -FailMigration
+      - uses: actions/download-artifact@v7
+        with:
+          name: tausi-terminal-windows
+          path: out/terminal
+      - name: Test the installers
+        shell: pwsh
+        run: installer/windows/test-install.ps1 -First out/a/TausiPOS-Server-Setup-0.15.1.exe -Upgrade out/b/TausiPOS-Server-Setup-0.15.2.exe -Broken out/c/TausiPOS-Server-Setup-0.15.3.exe -Terminal out/terminal/TausiPOS-Setup.exe
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: install-logs
+          path: out/install-logs
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tausi-server-windows
+          path: out/b/TausiPOS-Server-Setup-0.15.2.exe
+          retention-days: 14

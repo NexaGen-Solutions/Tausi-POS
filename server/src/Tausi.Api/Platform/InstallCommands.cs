@@ -63,9 +63,10 @@ public static class InstallCommands
                 return false;
             }
         }
-        catch (Exception e) when (e is DomainException or InvalidOperationException or IOException or SqlException or NpgsqlException or UnauthorizedAccessException)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
-            Console.Error.WriteLine(e.Message);
+            // A technician reads this: the reason, not a stack trace (the log has the details).
+            Console.Error.WriteLine(e.GetBaseException() == e ? e.Message : $"{e.Message} ({e.GetBaseException().Message})");
             Environment.ExitCode = 1;
         }
         return true;
@@ -119,13 +120,27 @@ public static class InstallCommands
 
         if (OperatingSystem.IsWindows())
         {
-            // The service's own account may write its data, logs and backups, and read its settings; nothing else.
-            Grant(Path.Combine(home, "data"), ServiceAccount, "M");
-            Grant(Path.Combine(home, "logs"), ServiceAccount, "M");
-            Grant(Path.Combine(home, "backups"), ServiceAccount, "M");
-            Grant(Path.Combine(home, "config"), ServiceAccount, "RX");
-            // SQL Server writes and reads its .bak files in backups\work.
-            if (Option(args, "--sql-service-account") is { } sql) Grant(Path.Combine(home, "backups", "work"), sql, "M");
+            // Only SYSTEM, administrators and the service's own account get into the settings (its
+            // secrets), the data (keys, PIN pepper), the logs and the backups. The home folder itself
+            // keeps its usual rights, so the person installing can read the setup token written there.
+            Lock(Path.Combine(home, "config"), "RX");
+            Lock(Path.Combine(home, "data"), "M");
+            Lock(Path.Combine(home, "logs"), "M");
+            Lock(Path.Combine(home, "backups"), "M");
+            Run("icacls.exe", [home, "/grant", $"{ServiceAccount}:(M)", "/Q"]);
+            // SQL Server writes and reads its .bak files in backups\work. Its account may be another one;
+            // then the backup reads the file through SQL Server instead.
+            if (Option(args, "--sql-service-account") is { } sql)
+            {
+                try
+                {
+                    Grant(Path.Combine(home, "backups", "work"), sql, "M");
+                }
+                catch (InvalidOperationException e)
+                {
+                    Console.WriteLine($"Note: couldn't give {sql} the backups\\work folder ({e.Message}).");
+                }
+            }
         }
         Console.WriteLine($"Settings: {file.Path}");
         return 0;
@@ -169,6 +184,10 @@ public static class InstallCommands
         };
         return b.ConnectionString.Replace("__PASSWORD__", MachineSecrets.Protect(Option(args, "--pg-password") ?? ""), StringComparison.Ordinal);
     }
+
+    /// <summary>The folder's rights replaced by: SYSTEM and administrators full control, the service <paramref name="rights"/>.</summary>
+    private static void Lock(string folder, string rights) =>
+        Run("icacls.exe", [folder, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", $"{ServiceAccount}:(OI)(CI){rights}", "/T", "/Q"]);
 
     private static void Grant(string folder, string account, string rights) =>
         Run("icacls.exe", [folder, "/grant", $"{account}:(OI)(CI){rights}", "/T", "/Q"]);
@@ -222,7 +241,13 @@ public static class InstallCommands
                 Console.WriteLine($"{account} owns the database {database}.");
             }
         }
-        if (OperatingSystem.IsWindows()) RegisterUpdateTask();
+        if (OperatingSystem.IsWindows())
+        {
+            // Automatic (delayed start), and restarted after a crash or a stop with an error (MSI can't set these reliably).
+            Run("sc.exe", ["config", ServerHost.ServiceName, "start=", "delayed-auto"], check: false);
+            Run("sc.exe", ["failureflag", ServerHost.ServiceName, "1"], check: false);
+            RegisterUpdateTask();
+        }
         return 0;
     }
 
@@ -335,7 +360,8 @@ public static class InstallCommands
     {
         var reason = Option(args, "--reason") == "upgrade" ? BackupReason.Upgrade : BackupReason.Command;
         var record = await app.Services.GetRequiredService<IBackupEngine>().Run(reason, CancellationToken.None);
-        Console.WriteLine($"Backed up and checked: {record.Name} ({record.Size / 1024 / 1024.0:0.0} MB){(record.CopiedTo is null ? "" : $", copied to {record.CopiedTo}")}");
+        var size = record.Size >= 1024 * 1024 ? $"{record.Size / 1024 / 1024.0:0.0} MB" : $"{Math.Max(1, record.Size / 1024)} KB";
+        Console.WriteLine($"Backed up and checked: {record.Name} ({size}){(record.CopiedTo is null ? "" : $", copied to {record.CopiedTo}")}");
         if (record.CopyError is not null) Console.WriteLine(record.CopyError);
         return 0;
     }
@@ -393,7 +419,9 @@ public static class InstallCommands
             });
             await db.SaveChangesAsync();
         }
-        Console.WriteLine("Restored. Start the service again (net start TausiPOSServer).");
+        Console.WriteLine(OperatingSystem.IsWindows()
+            ? "Restored. Start the service again: net start TausiPOSServer"
+            : "Restored. Start the service again: sudo systemctl start tausi");
         return 0;
     }
 

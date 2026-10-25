@@ -48,6 +48,7 @@ public static class ServerHost
                     ["Tausi:LogDirectory"] = Path.Combine(home, "logs"),
                     ["Tausi:BackupDirectory"] = Path.Combine(home, "backups"),
                     ["Tausi:ConfigDirectory"] = Path.Combine(home, "config"),
+                    ["Tausi:SetupTokenFile"] = Path.Combine(home, "setup-token.txt"),
                     ["Tausi:Printing:OutputDirectory"] = Path.Combine(home, "print-output"),
                 },
             });

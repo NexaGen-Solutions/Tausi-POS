@@ -15,6 +15,12 @@ public sealed class TausiOptions
     /// <summary>The .tausibak backups. Not inside the data directory, which they back up.</summary>
     public string BackupDirectory { get; set; } = "backups";
 
+    /// <summary>
+    /// Where the setup token is written. Default: setup-token.txt in the data folder; an installed server
+    /// puts it in its home folder, which the person installing can read (the data folder they can't).
+    /// </summary>
+    public string? SetupTokenFile { get; set; }
+
     /// <summary>The installed config folder (Windows: C:\ProgramData\Tausi POS\config), copied into each backup.</summary>
     public string? ConfigDirectory { get; set; }
 

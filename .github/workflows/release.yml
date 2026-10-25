@@ -1,0 +1,248 @@
+name: Tausi POS release
+
+# A tag vMAJOR.MINOR.PATCH builds everything for that version and makes a DRAFT GitHub release, which the
+# owner checks and publishes. A push to a release/** branch is a dry run: the same build, as workflow
+# artifacts only (version 0.0.<run number>).
+#
+# Secrets (each optional; without one the matching artifacts are marked unsigned):
+#   WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD   Authenticode (.pfx as base64) for the .exe and .msi files
+#   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD   the terminal updater's signing key
+#   TAUSI_UPDATE_SIGNING_KEY                             signs server updates (tausi-licence sign-update)
+# Variable: UPDATE_BASE_URL   where updates.json and the installers are hosted for servers to download
+#                             (default https://updates.nexagensolutions.com/tausi)
+
+on:
+  push:
+    tags: ["v*"]
+    branches: ["release/**"]
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            v="${GITHUB_REF#refs/tags/v}"
+            [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tags are vMAJOR.MINOR.PATCH, not v$v"; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            v="0.0.$GITHUB_RUN_NUMBER"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Version $v"
+
+  terminal:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: terminal/src-tauri -> target
+      - name: Set the version everywhere
+        shell: pwsh
+        run: scripts/set-version.ps1 -Version $env:VERSION
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          npm ci --prefix web
+          npm ci --prefix terminal
+      - name: Build the terminal installers (online and offline WebView2)
+        shell: pwsh
+        working-directory: terminal
+        run: |
+          $updater = if ($env:TAURI_SIGNING_PRIVATE_KEY) { '{"bundle":{"createUpdaterArtifacts":true}}' } else { '{}' }
+          npm run tauri build -- --config $updater
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          New-Item -ItemType Directory -Force ../out | Out-Null
+          $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          Copy-Item $exe "../out/TausiPOS-Setup-$env:VERSION.exe"
+          if (Test-Path "$($exe.FullName).sig") { Copy-Item "$($exe.FullName).sig" "../out/TausiPOS-Setup-$env:VERSION.exe.sig" }
+          npm run tauri build -- --config '{"bundle":{"windows":{"webviewInstallMode":{"type":"offlineInstaller"}}}}'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          Copy-Item $exe "../out/TausiPOS-Setup-$env:VERSION-offline.exe"
+      - name: Sign (Authenticode)
+        if: env.CERT != ''
+        shell: pwsh
+        env:
+          CERT: ${{ secrets.WINDOWS_CERTIFICATE }}
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: scripts/sign.ps1 -Files (Get-ChildItem out/*.exe).FullName
+      - uses: actions/upload-artifact@v7
+        with:
+          name: terminal
+          path: out/*
+
+  server-windows:
+    needs: [version, terminal]
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/download-artifact@v7
+        with:
+          name: terminal
+          path: out/terminal
+      - name: Set the version everywhere
+        shell: pwsh
+        run: scripts/set-version.ps1 -Version $env:VERSION
+      - name: Build the web app
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Publish the server (win-x64, self-contained) with the matching terminal update
+        shell: pwsh
+        run: |
+          dotnet publish server/src/Tausi.Api -c Release -r win-x64 --self-contained true -p:Version=$env:VERSION -o out/server
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # Server first: the server offers the terminal version built with it.
+          $sig = "out/terminal/TausiPOS-Setup-$env:VERSION.exe.sig"
+          if (Test-Path $sig) {
+            New-Item -ItemType Directory -Force out/server/updates/terminal | Out-Null
+            Copy-Item "out/terminal/TausiPOS-Setup-$env:VERSION.exe" out/server/updates/terminal/
+            @{ version = $env:VERSION; notes = "Tausi POS $env:VERSION"; pubDate = (Get-Date).ToUniversalTime().ToString('o');
+               file = "TausiPOS-Setup-$env:VERSION.exe"; signature = (Get-Content $sig -Raw).Trim() } |
+              ConvertTo-Json | Set-Content out/server/updates/terminal/terminal.json -Encoding utf8
+          } else {
+            Write-Host "No updater signing key: the server won't offer terminal updates (the terminal installer is unsigned for updates)."
+          }
+      - name: WiX Toolset v5
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.Firewall.wixext/5.0.2
+      - name: Build the server installer
+        shell: pwsh
+        env:
+          CERT: ${{ secrets.WINDOWS_CERTIFICATE }}
+          CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $sign = @{}
+          if ($env:CERT) {
+            [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:CERT))
+            $sign = @{ CertificateFile = "$env:RUNNER_TEMP\cert.pfx"; CertificatePassword = $env:CERT_PASSWORD }
+          }
+          installer/windows/build.ps1 -Version $env:VERSION -Server out/server -Out out/installer @sign
+      - uses: actions/upload-artifact@v7
+        with:
+          name: server-windows
+          path: out/installer/TausiPOS-Server-Setup-*.exe
+
+  server-linux:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Set the version
+        run: pwsh scripts/set-version.ps1 -Version "$VERSION"
+      - name: Build the web app
+        run: npm ci && npm run build
+        working-directory: web
+      - name: Publish and pack
+        run: |
+          dotnet publish server/src/Tausi.Api -c Release -r linux-x64 --self-contained true -p:Version="$VERSION" -o out/server-linux
+          packaging/linux/make-tarball.sh "$VERSION" out/server-linux out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: server-linux
+          path: out/tausi-server-*.tar.gz
+
+  licence-tool:
+    # NexaGen's internal tool: a workflow artifact only, never a release asset.
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - run: |
+          for rid in win-x64 linux-x64; do
+            dotnet publish tools/Tausi.LicenseTool -c Release -r $rid --self-contained true -p:PublishSingleFile=true \
+              -p:Version=${{ needs.version.outputs.version }} -o out/licence-tool/$rid
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: licence-tool-internal
+          path: out/licence-tool
+          retention-days: 30
+
+  release:
+    needs: [version, terminal, server-windows, server-linux, licence-tool]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      UPDATE_BASE_URL: ${{ vars.UPDATE_BASE_URL || 'https://updates.nexagensolutions.com/tausi' }}
+      TAUSI_UPDATE_SIGNING_KEY: ${{ secrets.TAUSI_UPDATE_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+      - name: Collect the files
+        run: |
+          mkdir -p dist
+          cp artifacts/terminal/*.exe artifacts/server-windows/*.exe artifacts/server-linux/*.tar.gz dist/
+          ls -la dist
+      - name: Update feed, update packages and checksums
+        run: scripts/release-files.sh "$VERSION" dist "$UPDATE_BASE_URL"
+      - name: Release notes and CHANGELOG
+        run: scripts/changelog.sh "$VERSION" > dist/release-notes.md && cp CHANGELOG.md dist/CHANGELOG.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ env.VERSION }}
+          path: dist
+      - name: Draft release (the owner publishes it)
+        if: needs.version.outputs.release == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          name: Tausi POS ${{ env.VERSION }}
+          body_path: dist/release-notes.md
+          files: dist/*
