@@ -416,6 +416,17 @@
   font-weight: 600;
 }
 
+/* Moving terminals to a new server. */
+.move {
+  display: grid;
+  gap: var(--space-3);
+}
+.move__buttons {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
 /* Kiosk mode: the hidden corner for leaving (five taps), and its dialog. */
 .kiosk-corner {
   position: fixed;

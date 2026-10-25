@@ -757,7 +757,15 @@
       "stale": "This was changed by someone else. Reload and try again.",
       "sellsFrom": "Sells from (stock location)",
       "noLocation": "No location (moves no stock)",
-      "overLicence": "Over your licence: {used} of {limit} terminals. Paired terminals keep working; new ones can't be paired."
+      "overLicence": "Over your licence: {used} of {limit} terminals. Paired terminals keep working; new ones can't be paired.",
+      "move": {
+        "button": "Move terminals to a new server",
+        "title": "Move terminals to a new server",
+        "help": "After installing the server on the new PC and restoring this business's backup there: every running terminal goes to the new address and stays paired.",
+        "address": "The new server's address",
+        "submit": "Move the terminals",
+        "done": "The running terminals are moving to {address}. A terminal that is off now keeps the old address: on it, choose Change server and type the new one (it pairs again)."
+      }
     },
     "tables": {
       "title": "Tables",

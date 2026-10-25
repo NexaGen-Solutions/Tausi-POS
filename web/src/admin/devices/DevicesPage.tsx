@@ -6,6 +6,7 @@ import { formatDayTime } from '../../shared/format/dates';
 import { t } from '../../shared/i18n/i18n';
 import { Banner, Button, Table, useToast, type Column } from '../../shared/ui';
 import { JobsPanel } from './JobsPanel';
+import { MoveDialog } from './MoveDialog';
 import { PairPanel } from './PairPanel';
 import { PrinterPanel } from './PrinterPanel';
 import { TerminalPanel } from './TerminalPanel';
@@ -24,6 +25,7 @@ interface PriceLists {
 
 /** Wireframe 17: terminals and printers, with a right-side panel opened when needed. */
 export function DevicesPage() {
+  const [moving, setMoving] = useState(false);
   const licence = useQuery({
     queryKey: ['licence'],
     queryFn: () => api<LicenceStatus>('/api/licence'),
@@ -226,6 +228,9 @@ export function DevicesPage() {
         <div className="devices__header">
           <h1 className="admin__title">{t('admin.devices.title')}</h1>
           <div className="devices__buttons">
+            <Button variant="link" onClick={() => setMoving(true)}>
+              {t('admin.devices.move.button')}
+            </Button>
             <Button onClick={() => setPanel({ kind: 'pair' })}>{t('admin.devices.pair')}</Button>
             <Button variant="primary" onClick={() => setPanel({ kind: 'printer' })}>
               {t('admin.devices.addPrinter')}
@@ -296,6 +301,7 @@ export function DevicesPage() {
           )}
         </aside>
       )}
+      {moving && <MoveDialog onClose={() => setMoving(false)} />}
     </main>
   );
 }

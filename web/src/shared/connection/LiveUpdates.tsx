@@ -1,4 +1,4 @@
-import { deviceToken } from '../device/device';
+import { deviceToken, isTauri, moveServer } from '../device/device';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n/i18n';
@@ -81,6 +81,11 @@ export function LiveUpdates() {
       // A backup is being restored: everything stops until it is done, then reloads.
       onPosEvent('server.restoring', () => setServerMode('restoring')),
       onPosEvent('server.restored', () => location.reload()),
+      // Moving to a new server PC: the terminal app goes there, still paired.
+      onPosEvent('terminals.move', (payload) => {
+        const serverUrl = (payload as { serverUrl?: string } | null)?.serverUrl;
+        if (serverUrl && isTauri()) void moveServer(serverUrl);
+      }),
       // A paired terminal goes to its PIN screen when the server's setup is finished.
       onPosEvent('setup.completed', () => {
         if (deviceToken() && !location.pathname.startsWith('/setup')) location.assign('/pos');

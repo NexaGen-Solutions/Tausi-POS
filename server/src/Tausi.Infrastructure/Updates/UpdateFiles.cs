@@ -72,3 +72,24 @@ public sealed class TerminalUpdateFiles(IOptions<TausiOptions> options, IHostEnv
         return File.Exists(path) ? path : null;
     }
 }
+
+/// <summary>Asks another Tausi POS server for its business name (GET /api/brand).</summary>
+public sealed class ServerProbe : Application.Terminals.IServerProbe
+{
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+    private sealed record Brand(string? Name);
+
+    public async Task<string?> BusinessName(string serverUrl, CancellationToken ct)
+    {
+        try
+        {
+            var brand = await Http.GetFromJsonAsync<Brand>($"{serverUrl}/api/brand", new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
+            return brand?.Name;
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+}

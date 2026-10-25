@@ -37,6 +37,8 @@ public static class TerminalEndpoints
         admin.MapGet("/", (ListTerminals list, CancellationToken ct) => list.Execute(ct));
         admin.MapPut("/{id:guid}", (Guid id, TerminalRequest request, UpdateTerminal update, CancellationToken ct) =>
             update.Execute(id, request, ct));
+        // Moving to a new server PC: every running terminal goes to the new address, keeping its pairing.
+        admin.MapPost("/move", async (MoveTerminalsRequest r, MoveTerminals move, CancellationToken ct) => new { serverUrl = await move.Execute(r, ct) });
         admin.MapPost("/pair", (PairTerminalRequest request, PairTerminal pair, CancellationToken ct) => pair.Execute(request, ct));
         admin.MapPost("/{id:guid}/revoke", async (Guid id, RevokeTerminal revoke, CancellationToken ct) =>
         {

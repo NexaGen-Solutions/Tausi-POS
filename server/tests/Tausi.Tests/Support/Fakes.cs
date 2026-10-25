@@ -101,3 +101,10 @@ public sealed class FakeUpdateInstaller : Tausi.Application.Updates.IUpdateInsta
     public List<(string File, string Version)> Launched { get; } = [];
     public void Launch(string installer, string version, string sha256, string signature) => Launched.Add((installer, version));
 }
+
+/// <summary>Other Tausi POS servers, by address: the business each one holds (none: it doesn't answer).</summary>
+public sealed class FakeServerProbe : Tausi.Application.Terminals.IServerProbe
+{
+    public Dictionary<string, string> Servers { get; } = [];
+    public Task<string?> BusinessName(string serverUrl, CancellationToken ct) => Task.FromResult(Servers.GetValueOrDefault(serverUrl));
+}

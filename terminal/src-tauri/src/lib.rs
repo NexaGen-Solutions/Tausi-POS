@@ -239,6 +239,26 @@ fn set_server_url(app: AppHandle, server_url: String) -> Result<(), String> {
     app.restart();
 }
 
+/// Moving to a new server PC: the paired server sends its terminals to the new address, where the
+/// restored database knows their device tokens. Keeps the pairing, and restarts so only the new server is allowed.
+#[tauri::command]
+fn move_server(app: AppHandle, server_url: String) -> Result<(), String> {
+    let origin = origin_of(&server_url).ok_or("not a server address")?;
+    let current = load_config(&app)?;
+    store_config(
+        &app,
+        &DeviceConfig {
+            server_url: Some(origin),
+            device_token: current.device_token,
+            ..Default::default()
+        },
+    )?;
+    if cfg!(debug_assertions) {
+        return Ok(());
+    }
+    app.restart();
+}
+
 /// Moves the window to the paired server's POS screens (restarts so the server is allowed in).
 #[tauri::command]
 fn open_server(app: AppHandle) -> Result<(), String> {
@@ -390,6 +410,7 @@ pub fn run() {
             check_printer,
             kiosk_set,
             kiosk_exit,
+            move_server,
             update_check,
             update_install
         ])

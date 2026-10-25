@@ -70,6 +70,7 @@ public static class DependencyInjection
         services.AddHostedService<Backups.BackupScheduler>();
         services.AddSingleton<Application.Updates.IUpdateSource, Updates.HttpUpdateSource>();
         services.AddSingleton<Application.Updates.ITerminalUpdateFiles, Updates.TerminalUpdateFiles>();
+        services.AddSingleton<Application.Terminals.IServerProbe, Updates.ServerProbe>();
         return services;
     }
 }

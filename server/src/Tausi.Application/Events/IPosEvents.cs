@@ -23,6 +23,7 @@ public static class PosEventNames
     public const string LicenceChanged = "licence.changed";
     public const string ServerRestoring = "server.restoring";
     public const string ServerRestored = "server.restored";
+    public const string TerminalsMove = "terminals.move";
 }
 
 public interface IPosEvents

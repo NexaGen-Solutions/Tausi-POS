@@ -27,6 +27,7 @@ export const posEvents = [
   'setup.completed',
   'server.restoring',
   'server.restored',
+  'terminals.move',
   'licence.changed',
   'day.opened',
   'user.deactivated',

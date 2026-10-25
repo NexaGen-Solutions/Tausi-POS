@@ -145,6 +145,7 @@ public static class DependencyInjection
         services.AddScoped<AdminLogin>();
         services.AddSingleton<LoginThrottle>();
         services.AddScoped<Terminals.KioskExit>();
+        services.AddScoped<Terminals.MoveTerminals>();
         services.AddScoped<IssueApproval>();
         services.AddScoped<StartPairing>();
         services.AddScoped<PairTerminal>();

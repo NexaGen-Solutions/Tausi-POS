@@ -90,6 +90,11 @@ export async function installTerminalUpdate(): Promise<void> {
   await invoke('update_install');
 }
 
+/** In the terminal app: goes to another server address, keeping the pairing (moving to a new server PC). */
+export async function moveServer(serverUrl: string): Promise<void> {
+  await invoke('move_server', { serverUrl });
+}
+
 /** In the terminal app: leaves (after an admin-site login), optionally switching kiosk mode off on this PC. */
 export async function exitKiosk(turnOff: boolean): Promise<void> {
   if (turnOff) await invoke('kiosk_set', { enabled: false });
