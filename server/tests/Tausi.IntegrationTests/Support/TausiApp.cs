@@ -43,6 +43,19 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        _connectionString = await CreateDatabase();
+
+        var scopes = Services.GetRequiredService<IServiceScopeFactory>();
+        await DatabaseStartup.Migrate(scopes, CancellationToken.None);
+        if (!SeedDemo) return;
+        await using var scope = scopes.CreateAsyncScope();
+        foreach (var user in await scope.ServiceProvider.GetRequiredService<Seeder>().SeedDemo(AdminPassword, CancellationToken.None))
+            Pins[user.Name] = user.Pin;
+    }
+
+    /// <summary>A new database on the test PostgreSQL; returns its connection string.</summary>
+    protected virtual async Task<string> CreateDatabase()
+    {
         string server;
         if (!string.IsNullOrEmpty(ExternalServer))
         {
@@ -54,29 +67,32 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
             await _container.StartAsync();
             server = _container.GetConnectionString();
         }
-        _connectionString = new NpgsqlConnectionStringBuilder(server)
+        return new NpgsqlConnectionStringBuilder(server)
         {
             Database = "tausi_it_" + Guid.NewGuid().ToString("N")[..12],
         }.ConnectionString;
-
-        var scopes = Services.GetRequiredService<IServiceScopeFactory>();
-        await DatabaseStartup.Migrate(scopes, CancellationToken.None);
-        if (!SeedDemo) return;
-        await using var scope = scopes.CreateAsyncScope();
-        foreach (var user in await scope.ServiceProvider.GetRequiredService<Seeder>().SeedDemo(AdminPassword, CancellationToken.None))
-            Pins[user.Name] = user.Pin;
     }
+
+    protected virtual string Provider => "Postgres";
+
+    protected string ConnectionString => _connectionString;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Tausi", _connectionString);
-        builder.UseSetting("Database:Provider", "Postgres");
+        builder.UseSetting("Database:Provider", Provider);
         builder.UseSetting("Database:MigrateOnStartup", "false");
         builder.UseSetting("Tausi:DataDirectory", _dataDir);
         builder.UseSetting("Tausi:Printing:Transport", PrintTransport);
         builder.UseSetting("Tausi:Printing:OutputDirectory", PrintOutput);
         builder.UseSetting("Web:Root", Path.Combine(_dataDir, "no-web"));
+        builder.UseSetting("Tausi:BackupDirectory", Path.Combine(_dataDir, "backups"));
+        builder.UseSetting("Tausi:Backups:Nightly", "false");
+        builder.UseSetting("Tausi:Backups:PgDump", PgTools.Dump);
+        builder.UseSetting("Tausi:Backups:PgRestore", PgTools.Restore);
+        builder.UseSetting("Tausi:Updates:TerminalFolder", Path.Combine(_dataDir, "terminal-updates"));
+        Settings(builder);
         builder.ConfigureTestServices(ConfigureTestServices);
     }
 
@@ -92,26 +108,38 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
     {
     }
 
+    /// <summary>More settings for one kind of app.</summary>
+    protected virtual void Settings(IWebHostBuilder builder)
+    {
+    }
+
     async Task IAsyncLifetime.DisposeAsync()
     {
         await base.DisposeAsync();
+        await DropDatabase();
+        if (Directory.Exists(_dataDir))
+        {
+            try { Directory.Delete(_dataDir, true); }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    protected virtual async Task DropDatabase()
+    {
         if (_container is not null)
         {
             await _container.DisposeAsync();
+            return;
         }
-        else
-        {
-            // A shared server: drop this run's database.
-            NpgsqlConnection.ClearAllPools();
-            var builder = new NpgsqlConnectionStringBuilder(_connectionString);
-            var database = builder.Database;
-            builder.Database = "postgres";
-            await using var conn = new NpgsqlConnection(builder.ConnectionString);
-            await conn.OpenAsync();
-            await using var cmd = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{database}\" WITH (FORCE)", conn);
-            await cmd.ExecuteNonQueryAsync();
-        }
-        if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
+        // A shared server: drop this run's database.
+        NpgsqlConnection.ClearAllPools();
+        var builder = new NpgsqlConnectionStringBuilder(_connectionString);
+        var database = builder.Database;
+        builder.Database = "postgres";
+        await using var conn = new NpgsqlConnection(builder.ConnectionString);
+        await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{database}\" WITH (FORCE)", conn);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     public T Db<T>(Func<TausiDbContext, T> read)
