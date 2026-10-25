@@ -58,6 +58,58 @@ The server listens on <http://localhost:5080>. It applies database migrations an
 cd web && npm run dev     # http://localhost:5173, proxies /api, /hubs and /files to :5080
 ```
 
+### A new install: the setup wizard
+
+`seed --demo` marks setup as done. It and its `admin` user and `TAUSI_ADMIN_PASSWORD` are for
+development and CI only. A real install starts empty, and its owner is made in the wizard. To
+try the wizard in development, empty the database, which deletes everything in it:
+
+```bash
+cd server
+dotnet run --project src/Tausi.Api -- reset --confirm   # Development only
+dotnet run --project src/Tausi.Api
+```
+
+On start, a server that isn't set up prints a box with an 8-character **setup token** (such as
+`K7QM-3HXP`). It also writes the token to `server/src/Tausi.Api/data/setup-token.txt`, and
+the file is deleted when setup finishes. Until then every `/api` call answers 423
+`setup_required`, and `/admin` and `/pos` go to `/setup`. The only things that still work are
+`/api/setup`, health, the brand and terminal pairing. Restarting keeps the same token while
+the file is unchanged.
+
+Open <http://localhost:5080/setup> (or `:5173/setup`), type the token, and go through the steps:
+
+1. **Your business:** name, type, address, VAT rate. A Bar also gets the Cold/Warm options and one-button printing.
+2. **First admin and PIN:** the owner (role Admin, admin-site password and PIN). Then other
+   staff can be added, and each gets a random PIN that is **shown once**, with a PIN sheet to print.
+3. **Terminals and printers** (can be skipped): the server's LAN address to type on each counter PC, then pairing as usual.
+4. **Import the menu** (can be skipped): **Download template**, or upload CSV or Excel, map the
+   columns and preview. **From SambaPOS** reads a SambaPOS 5 SQL Server database. It is
+   read-only and never reads PINs. Running it again adds nothing twice.
+5. **Opening stock count** (can be skipped): make stock items from bottled menu items, then
+   count. During setup, the owner may approve their own opening count.
+6. **Licence key:** paste a key, or **Start 30-day trial** (2 terminals).
+
+**Finish setup** needs steps 1, 2 and 6. It lists what was skipped, with links to do it later.
+Five wrong tokens lock setup for 5 minutes.
+
+### Licences
+
+**Settings → Licence** shows the licence and takes a new key. A banner counts down the trial.
+It also warns 14 days before the licence ends and during the 14-day grace period after. Once
+grace is over, a terminal still sells, prints and settles. Pairing terminals, editing the menu
+and stock, reports and settings are blocked until a key is entered. In Development, the server
+also accepts keys signed with the tests' key pair.
+
+Keys are issued by NexaGen with the internal licence tool, `tools/Tausi.LicenseTool` (see its
+README). Its private key is kept offline and is never in the repo:
+
+```bash
+cd tools/Tausi.LicenseTool
+dotnet run -- issue /path/to/private.key --business "Mau's Village" --terminals 4 \
+  --edition Standard --expires never --support-until 2027-10-31
+```
+
 ## 3. Try it
 
 ### Pair the browser as a terminal
