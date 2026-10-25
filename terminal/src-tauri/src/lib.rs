@@ -375,7 +375,7 @@ mod tests {
         let server = Some("http://posserver2:5080");
         let ok = |u: &str, dev: bool| navigation_allowed(&Url::parse(u).unwrap(), server, dev);
         assert!(ok("http://posserver2:5080/pos", false));
-        assert!(ok("http://tauri.localhost/setup", false));
+        assert!(ok("http://tauri.localhost/connect", false));
         assert!(ok("tauri://localhost/index.html", false));
         assert!(!ok("http://posserver2:5081/pos", false));
         assert!(!ok("https://example.com", false));

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useBlocker } from 'react-router';
+import { Link, useBlocker } from 'react-router';
 import { ApiError, api } from '../../shared/api/client';
 import { formatDayTime } from '../../shared/format/dates';
 import { t } from '../../shared/i18n/i18n';
@@ -111,6 +111,9 @@ export function SettingsPage() {
         <div className="settings__header">
           <h1 className="admin__title">{t('admin.settings.title')}</h1>
           <div className="settings__buttons">
+            <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/licence">
+              {t('admin.licence.title')}
+            </Link>
             <Button variant="link" onClick={() => setHistory(true)}>
               {t('admin.settings.history')}
             </Button>

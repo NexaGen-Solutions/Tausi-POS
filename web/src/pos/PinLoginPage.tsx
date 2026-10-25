@@ -64,11 +64,11 @@ export function PinLoginPage() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  if (!paired) return <Navigate to="/setup" replace />;
+  if (!paired) return <Navigate to="/connect" replace />;
   if (device.error instanceof ApiError && device.error.status === 401) {
     // The server no longer knows this device token (re-paired elsewhere): pair again.
     void saveDevice({ serverUrl: serverUrl(), deviceToken: null });
-    return <Navigate to="/setup" replace />;
+    return <Navigate to="/connect" replace />;
   }
 
   const offline = isOffline(connection);

@@ -289,6 +289,7 @@ describe('Menu and prices', () => {
       unchanged: 1,
       errors: 0,
       priceChanges: 2,
+      existing: 0,
     };
     serve(menu(), {
       'POST /api/admin/menu/import/preview': () => json(200, preview),
