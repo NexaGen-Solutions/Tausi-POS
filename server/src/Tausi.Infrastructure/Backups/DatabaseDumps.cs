@@ -283,7 +283,15 @@ internal static class Tool
                 }
                 finally
                 {
-                    process.StandardInput.Close();
+                    // The tool may stop reading early (pg_restore --list reads only the table of
+                    // contents, or it failed): closing then reports a broken pipe; its exit code tells.
+                    try
+                    {
+                        process.StandardInput.Close();
+                    }
+                    catch (IOException)
+                    {
+                    }
                 }
             }
             await output;

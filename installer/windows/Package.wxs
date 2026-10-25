@@ -111,11 +111,11 @@
     </Component>
 
     <!-- The settings for configure: one database choice each. -->
-    <SetProperty Id="DBARGS" Value="--provider SqlServer --sql-server &quot;[SQLINSTANCE]&quot; --database &quot;[SQLDATABASE]&quot; --sql-service-account &quot;[SQLSERVICEACCOUNT]&quot;"
+    <SetProperty Id="DBARGS" Action="SetDbArgsWindows" Value="--provider SqlServer --sql-server &quot;[SQLINSTANCE]&quot; --database &quot;[SQLDATABASE]&quot; --sql-service-account &quot;[SQLSERVICEACCOUNT]&quot;"
                  Sequence="execute" Before="CostFinalize" Condition="DBMODE &lt;&gt; &quot;postgres&quot; AND NOT SQLUSER" />
-    <SetProperty Id="DBARGS" Value="--provider SqlServer --sql-server &quot;[SQLINSTANCE]&quot; --database &quot;[SQLDATABASE]&quot; --sql-user &quot;[SQLUSER]&quot; --sql-password &quot;[SQLPASSWORD]&quot;"
+    <SetProperty Id="DBARGS" Action="SetDbArgsSqlLogin" Value="--provider SqlServer --sql-server &quot;[SQLINSTANCE]&quot; --database &quot;[SQLDATABASE]&quot; --sql-user &quot;[SQLUSER]&quot; --sql-password &quot;[SQLPASSWORD]&quot;"
                  Sequence="execute" Before="CostFinalize" Condition="DBMODE &lt;&gt; &quot;postgres&quot; AND SQLUSER" />
-    <SetProperty Id="DBARGS" Value="--provider Postgres --pg-host &quot;[PGHOST]&quot; --pg-port [PGPORT] --pg-user &quot;[PGUSER]&quot; --pg-password &quot;[PGPASSWORD]&quot; --database &quot;[PGDATABASE]&quot;"
+    <SetProperty Id="DBARGS" Action="SetDbArgsPostgres" Value="--provider Postgres --pg-host &quot;[PGHOST]&quot; --pg-port [PGPORT] --pg-user &quot;[PGUSER]&quot; --pg-password &quot;[PGPASSWORD]&quot; --database &quot;[PGDATABASE]&quot;"
                  Sequence="execute" Before="CostFinalize" Condition="DBMODE = &quot;postgres&quot;" />
 
     <!-- Every step runs TausiServer.exe as SYSTEM. -->
