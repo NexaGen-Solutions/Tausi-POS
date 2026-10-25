@@ -157,10 +157,12 @@ net start TausiPOSServer
 2. On the new PC: run the server installer. On the **Database** page tick **Restore from a backup**
    and choose the file (and its password if it is encrypted). Setup is skipped: the business, staff,
    menu and PINs come from the backup.
-3. Point the terminals at the new address: on each counter PC, tap the top-left corner five times… or,
-   simpler, on the terminal's connection screen choose **Change server**, sign in with an admin-site login
-   and type the new address. The terminal pairs again.
-4. Give the new PC the old one's fixed IP address instead, and the terminals find it with no change.
+3. Point the terminals at the new address, in one action: on the **old** server's admin site, open
+   **Terminals and printers → Move terminals to a new server** and type the new address. Every running
+   terminal goes there and stays paired (the restored backup knows them). Then switch the old server off.
+   A terminal that was off: choose **Change server** on its screen and type the new address (it pairs
+   again).
+4. Or give the new PC the old one's fixed IP address: the terminals find it with no change at all.
 
 ## 7. Updates
 
