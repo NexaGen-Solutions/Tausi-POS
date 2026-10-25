@@ -8,9 +8,18 @@ namespace Tausi.Setup
         [System.STAThread]
         private static int Main()
         {
-            var application = new TausiBootstrapper();
-            ManagedBootstrapperApplication.Run(application);
-            return application.ExitCode;
+            try
+            {
+                var application = new TausiBootstrapper();
+                ManagedBootstrapperApplication.Run(application);
+                return application.ExitCode;
+            }
+            catch (System.Exception e)
+            {
+                // Before it reaches the engine there is no log: leave the reason where support finds it.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "TausiSetup-error.txt"), e.ToString());
+                return 1;
+            }
         }
     }
 }

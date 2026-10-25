@@ -17,6 +17,7 @@
 
     <BootstrapperApplication SourceFile="!(bindpath.Setup)\TausiSetup.exe">
       <Payload SourceFile="!(bindpath.Setup)\WixToolset.BootstrapperApplicationApi.dll" />
+      <Payload SourceFile="!(bindpath.Setup)\mbanative.dll" />
       <Payload SourceFile="!(bindpath.Setup)\TausiSetup.exe.config" />
     </BootstrapperApplication>
 

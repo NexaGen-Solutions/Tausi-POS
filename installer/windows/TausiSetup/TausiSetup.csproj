@@ -12,6 +12,11 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyName>TausiSetup</AssemblyName>
     <RootNamespace>Tausi.Setup</RootNamespace>
+    <!-- x64 like the bundle's engine; brings WiX's mbanative.dll into the output. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
