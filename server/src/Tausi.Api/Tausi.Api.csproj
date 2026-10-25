@@ -16,6 +16,9 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <!-- TausiServer.exe on Windows (and TausiServer.dll on Linux): the name in the docs and the service. -->
+    <AssemblyName>TausiServer</AssemblyName>
+    <RootNamespace>Tausi.Api</RootNamespace>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

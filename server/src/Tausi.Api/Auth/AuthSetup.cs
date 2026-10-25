@@ -152,7 +152,7 @@ public static class AuthSetup
             {
                 ValidIssuer = SessionTokens.Issuer,
                 ValidAudience = SessionTokens.Issuer,
-                IssuerSigningKey = tokens.Key,
+                IssuerSigningKeyResolver = (_, _, _, _) => [tokens.Key],
                 NameClaimType = TausiClaims.Name,
                 // Use the server's clock (a fake one in tests), not DateTime.UtcNow.
                 LifetimeValidator = (notBefore, expires, _, _) =>

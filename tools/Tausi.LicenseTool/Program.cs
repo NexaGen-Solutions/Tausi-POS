@@ -8,6 +8,7 @@ namespace Tausi.LicenseTool;
 //   issue <private.key> --business "Name" --terminals 4 [--edition Standard] [--expires 2027-12-31|never]
 //         [--support-until 2027-12-31] [--id ID]  prints a licence key
 //   verify <public.key or base64> <key>          checks a key and prints what it says
+//   sign-update <update-private.key> <file> <version>  signs a server installer for the update feed (prints JSON)
 public static class LicenceTool
 {
     public static int Main(string[] args) => Run(args);
@@ -21,6 +22,7 @@ public static class LicenceTool
                 "generate-keypair" when args.Length == 2 => GenerateKeyPair(args[1]),
                 "issue" when args.Length >= 2 => Issue(args[1], Options(args.Skip(2).ToArray())),
                 "verify" when args.Length == 3 => Verify(args[1], args[2]),
+                "sign-update" when args.Length == 4 => SignUpdate(args[1], args[2], args[3]),
                 _ => Usage(),
             };
         }
@@ -39,8 +41,20 @@ public static class LicenceTool
               tausi-licence issue <private.key> --business "Mau's Village" --terminals 4 [--edition Standard]
                                   [--expires 2027-12-31|never] [--support-until 2027-12-31] [--id ID]
               tausi-licence verify <public.key|base64> <key>
+              tausi-licence sign-update <update-private.key> <installer> <version>
             """);
         return 2;
+    }
+
+    /// <summary>Prints {"version","sha256","signature"} for the update feed.</summary>
+    private static int SignUpdate(string privateKeyPath, string file, string version)
+    {
+        var key = Convert.FromBase64String(File.ReadAllText(privateKeyPath).Trim());
+        using var stream = File.OpenRead(file);
+        var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(stream));
+        var signature = UpdateSignatures.Sign(key, version, sha);
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { version, sha256 = sha, signature }));
+        return 0;
     }
 
     private static int GenerateKeyPair(string folder)

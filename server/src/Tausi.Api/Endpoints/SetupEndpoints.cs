@@ -25,6 +25,10 @@ public static class SetupEndpoints
 
         setup.MapGet("/status", (HttpContext http, SetupFlow flow, CancellationToken ct) => flow.Status(http.Request.Cookies[SetupMode.Cookie], ct));
 
+        // A lost admin password: the token `TausiServer reset-admin` printed on the server.
+        setup.MapPost("/recover", async (RecoverAdminRequest r, AdminRecovery recovery, CancellationToken ct) =>
+            new { userName = await recovery.Recover(r, ct) });
+
         setup.MapPost("/unlock", async (UnlockSetupRequest r, HttpContext http, SetupFlow flow, CancellationToken ct) =>
         {
             var session = await flow.Unlock(r.Token, ct);

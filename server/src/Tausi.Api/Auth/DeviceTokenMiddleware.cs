@@ -31,7 +31,9 @@ public sealed class DeviceTokenMiddleware(RequestDelegate next)
                 http.Features.Set(new DeviceTerminal(terminal.Id, terminal.Name));
 
                 var now = clock.GetUtcNow();
-                string? version = http.Request.Headers[TausiClaims.AppVersionHeader];
+                // The terminal app's version: X-Tausi-Version (sent with every call), or the older X-App-Version.
+                string? version = http.Request.Headers[Application.Updates.TerminalVersions.Header].FirstOrDefault()
+                    ?? http.Request.Headers[TausiClaims.AppVersionHeader].FirstOrDefault();
                 if (terminal.LastSeenAt is null || now - terminal.LastSeenAt > SeenEvery || (version is not null && version != terminal.AppVersion))
                 {
                     await db.Terminals.Where(t => t.Id == terminal.Id).ExecuteUpdateAsync(s => s

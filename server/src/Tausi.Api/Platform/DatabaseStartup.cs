@@ -61,11 +61,5 @@ public sealed class DatabaseStartup(IServiceScopeFactory scopes, IConfiguration 
         Console.WriteLine();
     }
 
-    public static async Task Migrate(IServiceScopeFactory scopes, CancellationToken ct)
-    {
-        await using var scope = scopes.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<TausiDbContext>().Database.MigrateAsync(ct);
-        await scope.ServiceProvider.GetRequiredService<Seeder>().SeedBase(ct);
-        await scope.ServiceProvider.GetRequiredService<Application.Money.LedgerBackfill>().Run(ct);
-    }
+    public static Task Migrate(IServiceScopeFactory scopes, CancellationToken ct) => DatabaseMigrator.Migrate(scopes, ct);
 }

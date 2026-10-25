@@ -16,9 +16,16 @@ public static class TerminalEndpoints
             claim.Execute(request, ct)).RequireCors(CorsSetup.TerminalApp);
 
         // The terminal app's setup screen asks for an admin-site login before the server address can change.
-        terminals.MapPost("/verify-admin", async (AdminLoginRequest request, AdminLogin login, CancellationToken ct) =>
+        terminals.MapPost("/verify-admin", async (AdminLoginRequest request, AdminLogin login, HttpContext http, CancellationToken ct) =>
         {
-            await login.Execute(request, ct);
+            await login.Execute(request, ct, http.Connection.RemoteIpAddress?.ToString());
+            return Results.NoContent();
+        }).RequireCors(CorsSetup.TerminalApp);
+
+        // Leaving kiosk mode on a paired terminal: an admin-site login, recorded against the terminal.
+        terminals.MapPost("/kiosk-exit", async (AdminLoginRequest request, KioskExit exit, HttpContext http, CancellationToken ct) =>
+        {
+            await exit.Execute(request, http.Connection.RemoteIpAddress?.ToString(), ct);
             return Results.NoContent();
         }).RequireCors(CorsSetup.TerminalApp);
 

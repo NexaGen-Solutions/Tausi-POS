@@ -17,6 +17,9 @@ terminal/src-tauri/gen/schemas/
 # Runtime data (dev)
 server/src/Tausi.Api/data/
 server/src/Tausi.Api/wwwroot/
+server/src/Tausi.Api/backups/
+server/src/Tausi.Api/logs/
+server/src/Tausi.Api/updates/
 # Left behind in dev checkouts from before the rename to Tausi
 server/src/Nexagen.Api/
 print-output/

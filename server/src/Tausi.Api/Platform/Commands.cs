@@ -45,7 +45,7 @@ public static class Commands
                 await Reset(app, args.Contains("--confirm"));
                 return true;
             default:
-                return false;
+                return await InstallCommands.TryRun(app, args);
         }
     }
 
