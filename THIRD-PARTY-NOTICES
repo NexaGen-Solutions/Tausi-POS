@@ -40,15 +40,25 @@ NOTES ON PARTICULAR LICENCES
   available at the addresses listed.
 - Unicode data in the icu_* and related crates: Unicode License v3.
 - windows and the other windows-* crates (Microsoft, MIT OR Apache-2.0): used by the
-  terminal app's print library to send slips to Windows printers.
+  terminal app's print library to send slips to Windows printers, and by the terminal app to
+  keep its device token with Windows DPAPI.
+- The .NET runtime (MIT, Copyright .NET Foundation and contributors) is part of the server
+  installers since Task 15 (a self-contained build): https://github.com/dotnet/runtime
+- WiX Toolset v5 (Microsoft Reciprocal License, MS-RL; Copyright .NET Foundation and
+  contributors): the Windows server installer contains the WiX Burn engine and
+  WixToolset.BootstrapperApplicationApi 5.0.2, used unmodified. The MS-RL's source-code terms
+  apply to those files only; their source is at https://github.com/wixtoolset/wix and the licence
+  text at https://opensource.org/license/ms-rl-html.
 
 
 NOT DISTRIBUTED WITH TAUSI POS
 
 These are installed separately on the customer's computers and come with their own
 licences:
-- the .NET runtime (MIT) that runs Tausi Server
-- PostgreSQL (PostgreSQL License) or Microsoft SQL Server Express (Microsoft terms)
+- PostgreSQL (PostgreSQL License), or Microsoft SQL Server 2022 Express (Microsoft terms,
+  accepted when it is installed; the server installer downloads it from Microsoft, or takes the
+  installer from a USB drive, and doesn't contain it)
+- .NET Framework 4.7.2 or later (part of Windows), which runs the server installer's screens
 - Microsoft Edge WebView2 Runtime (Microsoft terms), used by the terminal app on Windows
 
 
@@ -63,6 +73,7 @@ Server (.NET, NuGet)
   Microsoft.EntityFrameworkCore.SqlServer 10.0.13        MIT         https://docs.microsoft.com/ef/core/
   Microsoft.Extensions.Hosting.Systemd 10.0.13           MIT         https://dot.net/
   Microsoft.Extensions.Hosting.WindowsServices 10.0.13   MIT         https://dot.net/
+  System.Security.Cryptography.ProtectedData 10.0.13     MIT         https://dot.net/
   Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3           PostgreSQL  https://github.com/npgsql/efcore.pg
   SkiaSharp 4.153.1                                      MIT         https://go.microsoft.com/fwlink/?linkid=868515
   SkiaSharp.NativeAssets.Linux.NoDependencies 4.153.1    MIT         https://go.microsoft.com/fwlink/?linkid=868515
@@ -84,7 +95,15 @@ Terminal app (Rust crates)
   tauri-plugin-autostart 2.7.0  Apache-2.0 OR MIT  https://github.com/tauri-apps/plugins-workspace
   tauri-plugin-store 2.5.0      Apache-2.0 OR MIT  https://github.com/tauri-apps/plugins-workspace
   tauri-plugin-updater 2.14.0   Apache-2.0 OR MIT  https://github.com/tauri-apps/plugins-workspace
+  tauri-plugin-single-instance 2.5.4  Apache-2.0 OR MIT  https://github.com/tauri-apps/plugins-workspace
+  semver 1.0.28                 MIT OR Apache-2.0  https://github.com/dtolnay/semver
+  base64 0.22.1                 MIT OR Apache-2.0  https://github.com/marshallpierce/rust-base64
   url 2.5.8                     MIT OR Apache-2.0  https://github.com/servo/rust-url
+  windows 0.62.2 (Windows only) MIT OR Apache-2.0  https://github.com/microsoft/windows-rs
+
+Server installer (Windows)
+  WixToolset.BootstrapperApplicationApi 5.0.2  MS-RL  https://github.com/wixtoolset/wix
+  WiX Burn engine 5.0.2                        MS-RL  https://github.com/wixtoolset/wix
 
 Terminal print library (terminal/print, part of Tausi POS; the windows crate only in the
 Windows build)
@@ -138,7 +157,7 @@ Server (.NET, NuGet): 45 packages
   System.IdentityModel.Tokens.Jwt 8.19.2                  MIT                                                 https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet
   System.IO.Packaging 8.0.1                               MIT                                                 https://dot.net/
   System.Memory.Data 8.0.1                                MIT                                                 https://dot.net/
-  System.Security.Cryptography.ProtectedData 9.0.11       MIT                                                 https://dot.net/
+  System.Security.Cryptography.ProtectedData 10.0.13      MIT                                                 https://dot.net/
   System.ServiceProcess.ServiceController 10.0.13         MIT                                                 https://dot.net/
 
 Web app (npm, production dependencies): 32 packages

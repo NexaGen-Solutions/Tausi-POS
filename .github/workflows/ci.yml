@@ -157,7 +157,7 @@ jobs:
           systemctl is-active tausi
       - name: Logs
         if: failure()
-        run: sudo journalctl -u tausi --no-pager | tail -100; sudo ls -la /var/log/tausi; sudo tail -50 /var/log/tausi/*.log
+        run: sudo journalctl -u tausi --no-pager | tail -100; sudo ls -la /var/log/tausi; sudo sh -c 'tail -50 /var/log/tausi/*.log'
 
   installer-windows:
     # The server installer on Windows: silent install on SQL Server Express, upgrade, a failed upgrade's

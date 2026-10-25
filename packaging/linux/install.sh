@@ -150,6 +150,10 @@ if ! (cd "$PROGRAM" && as_tausi "$PROGRAM/TausiServer" wait-health --timeout 120
   die "The service didn't start. See: journalctl -u tausi and $LOGS."
 fi
 [[ $UPGRADE -eq 1 ]] && rm -rf "$PROGRAM.previous"
+# A new install writes its setup token just after it starts.
+if [[ $UPGRADE -eq 0 ]]; then
+  for _ in $(seq 1 30); do [[ -f "$HOME_DIR/setup-token.txt" ]] && break; sleep 1; done
+fi
 
 say "Done"
 echo "Tausi POS Server is running. Terminals connect to:"
