@@ -1,3 +1,5 @@
+import { setClientVersion } from '../connection/serverState';
+
 /**
  * Which terminal this is. In the Tausi Terminal app (Tauri) the server address and device
  * token live in the app's store; in a plain browser during development they live in localStorage.
@@ -5,6 +7,10 @@
 export interface DeviceConfig {
   serverUrl?: string | null;
   deviceToken?: string | null;
+  /** The address the installer was given (TausiPOS-Setup.exe /S SERVER=...), to pre-fill the first screen. */
+  suggestedServerUrl?: string | null;
+  /** Kiosk mode: full screen, no frame, can't be closed. On unless switched off on this PC. */
+  kiosk?: boolean;
 }
 
 const storageKey = 'tausi.device';
@@ -29,6 +35,12 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
 export async function loadDevice(): Promise<DeviceConfig> {
   if (isTauri()) {
     current = await invoke<DeviceConfig>('get_device_config');
+    try {
+      const { getVersion } = await import('@tauri-apps/api/app');
+      setClientVersion(await getVersion());
+    } catch {
+      // Keep the web build's version.
+    }
   } else {
     try {
       const old = localStorage.getItem(oldStorageKey);
@@ -58,6 +70,30 @@ export function deviceToken(): string | null {
 
 export function serverUrl(): string | null {
   return current.serverUrl ?? null;
+}
+
+export function suggestedServerUrl(): string | null {
+  return current.suggestedServerUrl ?? null;
+}
+
+export function kioskMode(): boolean {
+  return isTauri() && current.kiosk !== false;
+}
+
+/** In the terminal app: is there a newer terminal version on the server (never newer than the server)? Starts downloading it. */
+export async function checkForTerminalUpdate(serverVersion: string): Promise<string | null> {
+  return invoke<string | null>('update_check', { serverVersion });
+}
+
+/** In the terminal app: installs the downloaded update and restarts. */
+export async function installTerminalUpdate(): Promise<void> {
+  await invoke('update_install');
+}
+
+/** In the terminal app: leaves (after an admin-site login), optionally switching kiosk mode off on this PC. */
+export async function exitKiosk(turnOff: boolean): Promise<void> {
+  if (turnOff) await invoke('kiosk_set', { enabled: false });
+  await invoke('kiosk_exit');
 }
 
 /** In the terminal app: leave the bundled setup screen for the server's POS screens. */

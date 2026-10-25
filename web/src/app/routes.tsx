@@ -17,6 +17,9 @@ import { AccountsPage } from '../admin/money/AccountsPage';
 import { ReportsPage } from '../admin/reports/ReportsPage';
 import { TicketPage } from '../admin/reports/TicketPage';
 import { LicencePage } from '../admin/settings/LicencePage';
+import { BackupsPage } from '../admin/system/BackupsPage';
+import { SystemPage } from '../admin/system/SystemPage';
+import { RecoverPage } from '../setup/RecoverPage';
 import { LocationsPage } from '../admin/stock/LocationsPanel';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
@@ -40,6 +43,7 @@ export const routes: RouteObject[] = [
   // The terminal's own screen: the server address and pairing (it was /setup before the wizard).
   { path: '/connect', element: <SetupPage /> },
   { path: '/setup', element: <SetupWizard /> },
+  { path: '/setup/recover', element: <RecoverPage /> },
   {
     path: '/pos',
     element: <PosLayout />,
@@ -135,6 +139,8 @@ export const routes: RouteObject[] = [
       { path: 'reports', element: <ReportsPage /> },
       { path: 'tickets/:id', element: <TicketPage /> },
       { path: 'settings/licence', element: <LicencePage /> },
+      { path: 'settings/system', element: <SystemPage /> },
+      { path: 'settings/backups', element: <BackupsPage /> },
       { path: 'stock/locations', element: <LocationsPage /> },
       ...adminNav
         .filter(

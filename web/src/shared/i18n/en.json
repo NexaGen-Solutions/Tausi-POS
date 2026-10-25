@@ -396,6 +396,15 @@
       "void": "Void",
       "gift": "Gift",
       "note": "Supervisors see this for every waiter in the admin reports."
+    },
+    "kiosk": {
+      "corner": "Leave the POS",
+      "title": "Leave the POS",
+      "help": "For a technician: sign in with an admin-site user name and password.",
+      "userName": "User name",
+      "password": "Password",
+      "turnOff": "Also switch kiosk mode off on this PC",
+      "exit": "Leave"
     }
   },
   "approval": {
@@ -1458,6 +1467,80 @@
       "newKey": "New licence key",
       "enterKey": "Enter licence key",
       "saved": "The licence key is saved."
+    },
+    "system": {
+      "title": "System",
+      "health": "Health",
+      "version": "Version",
+      "server": "Server PC",
+      "database": "Database",
+      "db": {
+        "ok": "Connected",
+        "down": "Not reachable"
+      },
+      "disk": "Free disk space",
+      "lastBackup": "Last backup",
+      "licence": "Licence",
+      "minimumTerminal": "Oldest terminal app it works with",
+      "updates": "Updates",
+      "check": "Check for updates",
+      "available": "Tausi POS {latest} is available (this server has {current}).",
+      "upToDate": "This server is up to date ({current}).",
+      "dayOpen": "The day is open",
+      "typeUpdate": "Updating stops the POS for a few minutes. Close the day first, or type UPDATE to update now.",
+      "apply": "Install {latest}",
+      "usb": "Update from a USB drive",
+      "usbHelp": "For a server without internet: choose the .tausiupdate file NexaGen gave you.",
+      "package": "Update package",
+      "install": "Install the package",
+      "updateStarted": "The update has started. The server stops, takes a backup, updates and starts again; this page comes back in a few minutes."
+    },
+    "backups": {
+      "title": "Backups",
+      "problem": "The backups need attention.",
+      "settings": "Schedule and copies",
+      "time": "Nightly backup at",
+      "timeHint": "Business time; after closing.",
+      "copyFolder": "Second copy to",
+      "copyFolderHint": "A USB drive, network share or synced folder, e.g. E:\\Backups or \\\\NAS\\Tausi. Empty: no second copy.",
+      "encrypt": "Encrypt backups with a password",
+      "encryptWarning": "Keep the password somewhere safe. Without it an encrypted backup can't be restored, by anyone, including NexaGen.",
+      "password": "Backup password",
+      "newPassword": "New backup password (empty keeps the current one)",
+      "save": "Save",
+      "saved": "Saved.",
+      "list": "Backups on this server",
+      "now": "Back up now",
+      "working": "Backing up…",
+      "made": "Backed up and checked ({size}).",
+      "madeCopyFailed": "Backed up and checked here, but the second copy failed: {error}",
+      "date": "Date",
+      "kind": "Kind",
+      "size": "Size",
+      "verified": "Checked",
+      "copy": "Copied to",
+      "actions": "Actions",
+      "encrypted": "Encrypted",
+      "yes": "Yes",
+      "no": "No",
+      "copyFailed": "Copy failed",
+      "download": "Download",
+      "restore": "Restore",
+      "none": "No backups yet.",
+      "reason": {
+        "Nightly": "Nightly",
+        "Manual": "Back up now",
+        "Upgrade": "Before an update",
+        "BeforeRestore": "Before a restore",
+        "Command": "From the server"
+      },
+      "restoreTitle": "Restore a backup",
+      "business": "Business",
+      "open": "Open the backup",
+      "restoreWarning": "Everything entered after this backup is replaced. A backup of how things are now is taken first. Terminals show \"Server is restoring a backup\" until it is done.",
+      "typeBusiness": "Type {name} to restore another business's backup",
+      "restoring": "Restoring… this can take a few minutes.",
+      "restoreNow": "Restore"
     }
   },
   "permissions": {
@@ -1707,5 +1790,23 @@
       "doLater": "Do it now",
       "button": "Finish setup"
     }
+  },
+  "server": {
+    "restoring": "Server is restoring a backup",
+    "restoringHelp": "This screen comes back by itself when it is done.",
+    "updating": "Updating, please wait",
+    "updatingHelp": "This terminal is getting the version that matches the server. It restarts by itself."
+  },
+  "recover": {
+    "title": "Reset an admin password",
+    "help": "Run TausiServer reset-admin on the server PC. Type the token it shows (it works for one hour).",
+    "token": "Reset token",
+    "userName": "Admin-site user name",
+    "userNameHint": "Leave empty for the first admin.",
+    "password": "New password",
+    "passwordHint": "At least 10 characters.",
+    "submit": "Set the new password",
+    "done": "Password changed",
+    "doneText": "Sign in to the admin site as {name} with the new password."
   }
 }

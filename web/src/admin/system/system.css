@@ -1,0 +1,111 @@
+/* Settings → System and Settings → Backups. */
+.system {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 1040px;
+  padding: var(--space-5);
+}
+.system__panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.system__heading {
+  margin: 0;
+  font-size: 1.125rem;
+}
+.system__subheading {
+  margin: var(--space-2) 0 0;
+  font-size: 1rem;
+}
+.system__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+.system__facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.system__facts dt {
+  color: var(--color-text-muted);
+}
+.system__facts dd {
+  margin: 0;
+}
+.system__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+.system__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+.system__mono {
+  font-family: var(--font-mono);
+}
+.system__bad {
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
+.system__note {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.system__notes {
+  white-space: pre-wrap;
+}
+.system__warn {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.system__check p {
+  margin: 0;
+}
+.system__table-box {
+  overflow-x: auto;
+}
+.system__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.system__table th,
+.system__table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+.system__num {
+  text-align: right;
+}
+.system__table .system__num {
+  text-align: right;
+}
+.system__actions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+.system__tag {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+}
+.restore {
+  display: grid;
+  gap: var(--space-3);
+}

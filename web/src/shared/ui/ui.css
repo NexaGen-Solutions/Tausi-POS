@@ -392,3 +392,55 @@
   border-radius: var(--radius);
   background: var(--color-panel);
 }
+
+/* The server is restoring a backup, or this terminal app is updating: over everything. */
+.server-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--color-overlay);
+}
+.server-overlay__box {
+  max-width: 480px;
+  padding: var(--space-6);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  text-align: center;
+}
+.server-overlay__title {
+  margin: 0 0 var(--space-2);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Kiosk mode: the hidden corner for leaving (five taps), and its dialog. */
+.kiosk-corner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 900;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+}
+.kiosk-exit {
+  display: grid;
+  gap: var(--space-3);
+}
+.kiosk-exit__off {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--touch-min);
+}
+.kiosk-exit__buttons {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
