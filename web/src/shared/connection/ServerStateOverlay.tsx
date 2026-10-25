@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { t } from '../i18n/i18n';
-import { installTerminalUpdate, isTauri } from '../device/device';
-import { onServerMode, serverMode, setServerMode, type ServerMode } from './serverState';
+import { checkForTerminalUpdate, installTerminalUpdate, isTauri } from '../device/device';
+import {
+  onServerMode,
+  serverMode,
+  serverVersion,
+  setServerMode,
+  type ServerMode,
+} from './serverState';
 
 /**
  * Over everything while the server restores a backup ("Server is restoring a backup"; it checks every
@@ -28,8 +34,14 @@ export function ServerStateOverlay() {
     return () => window.clearInterval(timer);
   }, [mode]);
 
+  // Too old for the server: fetch the matching terminal version from it, and install it now (no one is logged in).
   useEffect(() => {
-    if (mode === 'updating' && isTauri()) void installTerminalUpdate().catch(() => {});
+    if (mode !== 'updating' || !isTauri()) return;
+    const server = serverVersion();
+    if (!server) return;
+    void checkForTerminalUpdate(server)
+      .then((ready) => (ready ? installTerminalUpdate() : undefined))
+      .catch(() => {});
   }, [mode]);
 
   if (mode === 'normal') return null;
