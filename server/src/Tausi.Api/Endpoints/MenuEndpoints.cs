@@ -1,3 +1,5 @@
+using Tausi.Application.Setup;
+using Tausi.Api.Platform;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +16,7 @@ public static class MenuEndpoints
     /// </summary>
     public static void MapMenuEndpoints(this WebApplication app)
     {
-        var menu = app.MapGroup("/api/admin/menu").WithTags("Menu").RequireAuthorization();
+        var menu = app.MapGroup("/api/admin/menu").WithTags("Menu").RequireAuthorization().RequiresLicence(LicensedFeature.MenuAdmin);
 
         menu.MapGet("/", (GetAdminMenu get, CancellationToken ct) => get.Execute(ct));
         menu.MapGet("/price-log", (Guid? itemId, int? take, GetPriceLog log, CancellationToken ct) =>
@@ -57,6 +59,15 @@ public static class MenuEndpoints
             await import.Preview(await Read(file, ct), Options(options), ct)).DisableAntiforgery();
         menu.MapPost("/import/apply", async (IFormFile file, [FromForm] string? options, MenuImport import, CancellationToken ct) =>
             await import.Apply(await Read(file, ct), Options(options), ct)).DisableAntiforgery();
+        menu.MapPost("/import/skipped", async (IFormFile file, [FromForm] string? options, MenuImport import, CancellationToken ct) =>
+            Results.File(await import.SkippedRows(await Read(file, ct), Options(options), ct), "text/csv; charset=utf-8", "skipped-rows.csv"))
+            .DisableAntiforgery().ReadsOnly();
+        menu.MapPost("/import/sambapos/test", async (SambaPosConnection r, SambaPosImport import, CancellationToken ct) =>
+            new { message = await import.Test(r, ct) });
+        menu.MapPost("/import/sambapos/preview", (SambaImportRequest r, SambaPosImport import, CancellationToken ct) => import.Preview(r, ct));
+        menu.MapPost("/import/sambapos/apply", (SambaImportRequest r, SambaPosImport import, CancellationToken ct) => import.Apply(r, ct))
+            .RedactOnReplay("people", "pinSheetPdf");
+        menu.MapGet("/import/template", () => Results.File(MenuImport.Template(), "text/csv; charset=utf-8", "tausi-menu-template.csv"));
 
         app.MapGet("/api/pos/menu", (GetPosMenu get, CancellationToken ct) => get.Execute(ct)).WithTags("Menu");
 
@@ -66,7 +77,7 @@ public static class MenuEndpoints
 
     private static async Task<byte[]> Read(IFormFile file, CancellationToken ct)
     {
-        if (file.Length is 0 or > MaxImportBytes) throw new Domain.Common.DomainException("Choose a CSV file smaller than 5 MB.");
+        if (file.Length is 0 or > MaxImportBytes) throw new Domain.Common.DomainException("Choose a CSV or Excel file smaller than 5 MB.");
         using var buffer = new MemoryStream();
         await file.CopyToAsync(buffer, ct);
         return buffer.ToArray();

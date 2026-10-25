@@ -1,3 +1,5 @@
+using Tausi.Application.Setup;
+using Tausi.Api.Platform;
 using Tausi.Application.Stock;
 
 namespace Tausi.Api.Endpoints;
@@ -6,9 +8,14 @@ public static class StockEndpoints
 {
     public static void MapStockEndpoints(this WebApplication app)
     {
-        var stock = app.MapGroup("/api/admin/stock").WithTags("Stock").RequireAuthorization();
+        var stock = app.MapGroup("/api/admin/stock").WithTags("Stock").RequireAuthorization().RequiresLicence(LicensedFeature.StockAdmin);
         stock.MapGet("/", (Guid? locationId, StockCatalog catalog, CancellationToken ct) => catalog.Overview(locationId, ct));
         stock.MapGet("/locations", (StockCatalog catalog, CancellationToken ct) => catalog.Locations(ct));
+        stock.MapGet("/locations/all", (StockLocations locations, CancellationToken ct) => locations.List(ct));
+        stock.MapPost("/locations", (SaveLocationRequest r, StockLocations locations, CancellationToken ct) => locations.Save(null, r, ct));
+        stock.MapPut("/locations/{id:guid}", (Guid id, SaveLocationRequest r, StockLocations locations, CancellationToken ct) => locations.Save(id, r, ct));
+        stock.MapGet("/from-menu", (StockFromMenu helper, CancellationToken ct) => helper.Suggestions(ct));
+        stock.MapPost("/from-menu", async (CreateFromMenuRequest r, StockFromMenu helper, CancellationToken ct) => new { created = await helper.Create(r, ct) });
         stock.MapGet("/items/{id:guid}/movements", (Guid id, DateOnly? from, DateOnly? to, StockCatalog catalog, CancellationToken ct) =>
             catalog.History(id, from, to, ct));
         stock.MapPost("/items", async (SaveStockItemRequest r, StockItemCommands items, CancellationToken ct) =>
@@ -28,12 +35,12 @@ public static class StockEndpoints
         stock.MapPost("/activity/{id:guid}/reject", (Guid id, RejectStockRequest r, WasteAndTransferCommands c, CancellationToken ct) => c.Reject(id, r, ct));
         stock.MapGet("/awaiting", (AwaitingApproval awaiting, CancellationToken ct) => awaiting.Execute(ct));
 
-        var suppliers = app.MapGroup("/api/admin/suppliers").WithTags("Stock").RequireAuthorization();
+        var suppliers = app.MapGroup("/api/admin/suppliers").WithTags("Stock").RequireAuthorization().RequiresLicence(LicensedFeature.StockAdmin);
         suppliers.MapGet("/", (SupplierCommands s, CancellationToken ct) => s.List(ct));
         suppliers.MapPost("/", (SaveSupplierRequest r, SupplierCommands s, CancellationToken ct) => s.Save(null, r, ct));
         suppliers.MapPut("/{id:guid}", (Guid id, SaveSupplierRequest r, SupplierCommands s, CancellationToken ct) => s.Save(id, r, ct));
 
-        var deliveries = app.MapGroup("/api/admin/deliveries").WithTags("Stock").RequireAuthorization();
+        var deliveries = app.MapGroup("/api/admin/deliveries").WithTags("Stock").RequireAuthorization().RequiresLicence(LicensedFeature.StockAdmin);
         deliveries.MapGet("/", (DeliveryCommands d, CancellationToken ct) => d.List(ct));
         deliveries.MapGet("/{id:guid}", (Guid id, DeliveryCommands d, CancellationToken ct) => d.Get(id, ct));
         deliveries.MapGet("/last-cost", (Guid supplierId, Guid stockItemId, string? unit, DeliveryCommands d, CancellationToken ct) =>
@@ -44,7 +51,7 @@ public static class StockEndpoints
         deliveries.MapPost("/{id:guid}/reverse", (Guid id, ReverseDeliveryRequest r, DeliveryCommands d, CancellationToken ct) => d.Reverse(id, r, ct));
         deliveries.MapPost("/{id:guid}/reverse/approve", (Guid id, DeliveryCommands d, CancellationToken ct) => d.ApproveReversal(id, ct));
 
-        var counts = app.MapGroup("/api/admin/stock-counts").WithTags("Stock").RequireAuthorization();
+        var counts = app.MapGroup("/api/admin/stock-counts").WithTags("Stock").RequireAuthorization().RequiresLicence(LicensedFeature.StockAdmin);
         counts.MapGet("/", (StockCountCommands c, CancellationToken ct) => c.List(ct));
         counts.MapGet("/{id:guid}", (Guid id, StockCountCommands c, CancellationToken ct) => c.Get(id, ct));
         counts.MapPost("/", (StartCountRequest r, StockCountCommands c, CancellationToken ct) => c.Start(r, ct));

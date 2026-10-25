@@ -48,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<ITicketDatabase>(sp => new TicketDatabase(sp.GetRequiredService<TausiDbContext>()));
         services.AddScoped<Application.Stock.IStockDatabase>(sp => new StockDatabase(sp.GetRequiredService<TausiDbContext>()));
         services.AddSingleton<IFileStorage, LocalFileStorage>();
+        services.AddSingleton<Application.Setup.ISetupTokenFile, Platform.SetupTokenFile>();
+        services.AddScoped<Application.Setup.ISambaPosSource, Import.SambaPosReader>();
         services.AddScoped<Seeder>();
 
         services.AddScoped<IPrinterTransport, Network9100Transport>();

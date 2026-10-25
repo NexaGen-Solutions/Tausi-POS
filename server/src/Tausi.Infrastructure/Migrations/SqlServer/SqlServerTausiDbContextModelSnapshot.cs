@@ -38,6 +38,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("Actor")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -601,6 +605,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(140)
                         .HasColumnType("nvarchar(140)");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -626,6 +634,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("decimal(5,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -670,6 +680,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<bool>("Active")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int>("MaxSelect")
                         .HasColumnType("int");
 
@@ -689,6 +703,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -838,6 +854,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<bool>("Active")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<bool>("IsDefault")
                         .HasColumnType("bit");
 
@@ -851,6 +871,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("IsDefault")
                         .IsUnique()
@@ -1116,6 +1138,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<bool>("Active")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int>("FailedAttempts")
                         .HasColumnType("int");
 
@@ -1164,6 +1190,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique();
@@ -1502,6 +1530,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -1515,6 +1547,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -2191,20 +2225,41 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Edition")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsTrial")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("IssuedAt")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("Key")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTimeOffset?>("LastCheckedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LicenceId")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("SupportUntil")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<int>("TerminalLimit")
                         .HasColumnType("int");
@@ -2212,6 +2267,70 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.HasKey("Id");
 
                     b.ToTable("Licences");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Setup.SetupProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Step")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Step")
+                        .IsUnique();
+
+                    b.ToTable("SetupProgress");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Setup.SetupState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BusinessType")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("SessionHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset?>("TokenCreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SetupStates");
                 });
 
             modelBuilder.Entity("Tausi.Domain.Stock.Delivery", b =>

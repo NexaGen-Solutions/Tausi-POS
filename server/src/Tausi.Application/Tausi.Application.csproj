@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Tausi.Domain\Tausi.Domain.csproj" />
+    <ProjectReference Include="..\Tausi.Licensing\Tausi.Licensing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

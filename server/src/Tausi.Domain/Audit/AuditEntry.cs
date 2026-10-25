@@ -13,4 +13,6 @@ public class AuditEntry : Entity
     public string? OldValueJson { get; set; }
     public string? NewValueJson { get; set; }
     public Guid? ApprovedByUserId { get; set; }
+    /// <summary>Who did it when no user did: "setup" for the first-run wizard.</summary>
+    public string? Actor { get; set; }
 }

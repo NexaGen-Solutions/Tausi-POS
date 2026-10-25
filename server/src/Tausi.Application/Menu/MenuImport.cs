@@ -47,9 +47,10 @@ public sealed record ImportPreview(
     int Updated,
     int Unchanged,
     int Errors,
-    int PriceChanges);
+    int PriceChanges,
+    int Existing = 0);
 
-public sealed record ImportResult(int New, int Updated, int Deactivated, int PriceChanges, int Skipped);
+public sealed record ImportResult(int New, int Updated, int Deactivated, int PriceChanges, int Skipped, int Existing = 0);
 
 public static class ImportStatus
 {
@@ -57,6 +58,8 @@ public static class ImportStatus
     public const string Updated = "Updated";
     public const string Unchanged = "Unchanged";
     public const string Error = "Error";
+    /// <summary>Already on the menu, and "Update existing items" is off: skipped.</summary>
+    public const string Existing = "Existing";
 }
 
 /// <summary>
@@ -137,7 +140,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
 
         foreach (var item in plan.ToDeactivate) item.Active = false;
 
-        var result = new ImportResult(preview.New, preview.Updated, plan.ToDeactivate.Count, preview.PriceChanges, preview.Errors);
+        var result = new ImportResult(preview.New, preview.Updated, plan.ToDeactivate.Count, preview.PriceChanges, preview.Errors, preview.Existing);
         audit.Write(new AuditRecord(AuditActions.MenuImported, null, null, null, new
         {
             summary = $"Import: {result.New} new, {result.Updated} updated, {result.PriceChanges} prices changed"
@@ -150,6 +153,35 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
         await tx.CommitAsync(ct);
         await access.Changed(ct);
         return result;
+    }
+
+    /// <summary>The template's columns, in order (the setup wizard's "Download template").</summary>
+    public static readonly IReadOnlyList<string> TemplateColumns =
+        ["category", "name", "short_name", "price", "price_list_2_price", "vat_rate", "vat_exempt", "modifier_group", "erpnext_item_code", "active"];
+
+    /// <summary>A CSV template with one example row.</summary>
+    public static byte[] Template() =>
+        [.. System.Text.Encoding.UTF8.GetPreamble(), .. System.Text.Encoding.UTF8.GetBytes(MenuCsv.Write(
+        [
+            TemplateColumns,
+            ["Beers", "Tusker Lager 500ml", "Tusker", "250", "230", "16", "no", "Temperature", "TUSKER-500", "yes"],
+            ["Soft drinks", "Sodas 300ml", "Soda", "100", "", "16", "no", "", "", "yes"],
+        ]))];
+
+    /// <summary>
+    /// The rows that were (or would be) skipped for an error, as a CSV with the file's own columns
+    /// and a "reason" column, so the owner can fix them and import again.
+    /// </summary>
+    public async Task<byte[]> SkippedRows(byte[] file, ImportOptions options, CancellationToken ct)
+    {
+        await access.RequireEdit(ct);
+        var plan = await Plan(file, options, ct);
+        var rows = MenuFile.Rows(file);
+        var output = new List<IReadOnlyList<string>>();
+        output.Add([.. rows[0], "reason"]);
+        foreach (var error in plan.Preview.Rows.Where(r => r.Status == ImportStatus.Error))
+            output.Add([.. rows[error.Line - 1], error.Error ?? ""]);
+        return [.. System.Text.Encoding.UTF8.GetPreamble(), .. System.Text.Encoding.UTF8.GetBytes(MenuCsv.Write(output))];
     }
 
     // ---- Planning (shared by preview and apply) ----
@@ -179,7 +211,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
 
     private async Task<PlanResult> Plan(byte[] file, ImportOptions options, CancellationToken ct)
     {
-        var rows = MenuCsv.Parse(MenuCsv.Decode(file));
+        var rows = MenuFile.Rows(file);
         if (rows.Count == 0) throw new DomainException("The file is empty.", MenuCodes.ImportErrors);
 
         var lists = await db.PriceLists.AsNoTracking().OrderByDescending(l => l.IsDefault).ThenBy(l => l.Name).ToListAsync(ct);
@@ -213,6 +245,10 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
         var work = new List<WorkRow>();
         var newCategories = new List<string>();
         var seen = new HashSet<string>();
+        var firstCategory = new Dictionary<string, string>();
+        // VAT rates the business knows: 0, the business rate, Kenya's 8% and 16%, and those already on the menu.
+        var knownVat = new HashSet<decimal> { 0m, 8m, 16m, (await Settings.SettingsRegistry.Load(db, ct)).Decimal(Settings.SettingsRegistry.BusinessVatRate) };
+        foreach (var rate in items.Values.Where(i => i.VatRate is not null).Select(i => i.VatRate!.Value)) knownVat.Add(rate);
         if (problem is null)
         {
             for (var r = 1; r < rows.Count; r++)
@@ -230,9 +266,14 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
                 var line = r + 1;
                 string? error = null;
 
-                if (name.Length is < MenuItem.MinNameLength or > MenuItem.MaxNameLength) error = $"The name must be {MenuItem.MinNameLength} to {MenuItem.MaxNameLength} characters.";
+                if (name.Length == 0) error = "The name is missing.";
+                else if (name.Length is < MenuItem.MinNameLength or > MenuItem.MaxNameLength) error = $"The name must be {MenuItem.MinNameLength} to {MenuItem.MaxNameLength} characters.";
                 else if (categoryName.Length is < 2 or > 60) error = "The category is missing.";
-                else if (!seen.Add(name.ToUpperInvariant())) error = "This name is in the file twice.";
+                else if (!seen.Add(name.ToUpperInvariant()))
+                    error = string.Equals(firstCategory[name.ToUpperInvariant()], categoryName, StringComparison.OrdinalIgnoreCase)
+                        ? "This name is in this category twice."
+                        : $"This name is already in the file under {firstCategory[name.ToUpperInvariant()]}.";
+                if (name.Length > 0) firstCategory.TryAdd(name.ToUpperInvariant(), categoryName);
 
                 items.TryGetValue(name.ToUpperInvariant(), out var existing);
                 var categoryKey = categoryName.ToUpperInvariant();
@@ -240,13 +281,16 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
 
                 if (error is null && Has(ImportFields.ShortName) && Cell(ImportFields.ShortName) is { Length: > 0 } sn)
                 {
-                    if (sn.Length > MenuItem.MaxShortNameLength) error = $"The short name can be at most {MenuItem.MaxShortNameLength} characters.";
+                    if (sn.Length > MenuItem.MaxShortNameLength)
+                        error = $"The short name is over {MenuItem.MaxShortNameLength} characters. Suggested: \"{MenuItem.DefaultShortName(sn)}\".";
                     else w.ShortName = sn;
                 }
                 if (error is null && Has(ImportFields.VatRate))
                 {
                     w.HasVat = true;
                     if (!MenuCsv.TryMoney(Cell(ImportFields.VatRate), out var vat) || vat is < 0m or >= 100m) error = "The VAT rate is not a number from 0 to 99.";
+                    else if (vat is { } v && !knownVat.Contains(v))
+                        error = $"Unknown VAT rate {MenuCsv.Money(v)}%. Use one of {string.Join(", ", knownVat.Order().Select(MenuCsv.Money))}.";
                     else w.Vat = vat;
                 }
                 if (error is null && Has(ImportFields.VatExempt) && Cell(ImportFields.VatExempt) is { Length: > 0 } exemptText)
@@ -300,7 +344,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
                 }
                 if (!options.UpdateExisting)
                 {
-                    previewRows.Add(new ImportRow(line, ImportStatus.Unchanged, existing.Name, categoryName, [], null));
+                    previewRows.Add(new ImportRow(line, ImportStatus.Existing, existing.Name, categoryName, [], null));
                     continue;
                 }
 
@@ -343,7 +387,8 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
             previewRows.Count(r => r.Status == ImportStatus.Updated),
             previewRows.Count(r => r.Status == ImportStatus.Unchanged),
             previewRows.Count(r => r.Status == ImportStatus.Error),
-            previewRows.Where(r => r.Status is ImportStatus.New or ImportStatus.Updated).Sum(r => r.Changes.Count(c => c.IsPrice)));
+            previewRows.Where(r => r.Status is ImportStatus.New or ImportStatus.Updated).Sum(r => r.Changes.Count(c => c.IsPrice)),
+            previewRows.Count(r => r.Status == ImportStatus.Existing));
 
         var lastSort = (await db.MenuItems.AsNoTracking().GroupBy(i => i.CategoryId).Select(g => new { g.Key, Max = g.Max(i => i.SortOrder) }).ToListAsync(ct))
             .Where(x => categoryNames.ContainsKey(x.Key))
@@ -369,9 +414,10 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
             "vat" or "vatrate" or "tax" or "taxrate" => ImportFields.VatRate,
             "vatexempt" or "exempt" or "taxexempt" => ImportFields.VatExempt,
             "active" or "status" => ImportFields.Active,
-            "optiongroups" or "options" or "modifiers" => ImportFields.OptionGroups,
+            "optiongroups" or "options" or "modifiers" or "modifiergroup" or "modifiergroups" => ImportFields.OptionGroups,
             "erpnextitemcode" or "erpitemcode" or "itemcode" => ImportFields.ErpItemCode,
             "price" or "price1" => ImportFields.PricePrefix + defaultList.Id,
+            "pricelist2price" or "price2" when lists.FirstOrDefault(l => !l.IsDefault) is { } second => ImportFields.PricePrefix + second.Id,
             _ => ImportFields.Ignore,
         };
     }

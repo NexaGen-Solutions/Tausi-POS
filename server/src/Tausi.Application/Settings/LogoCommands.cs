@@ -30,6 +30,12 @@ public sealed class LogoCommands(
     public async Task<SettingsDto> Upload(LogoUpload upload, CancellationToken ct)
     {
         var grant = await permissions.Require(session.RequireUser(), PermissionKeys.SettingsManage, approval.ApprovalToken, ct);
+        return await Store(upload, grant.ApprovedByUserId, null, ct);
+    }
+
+    /// <summary>Checks and saves the logo. The setup wizard calls this before anyone exists, as "setup".</summary>
+    public async Task<SettingsDto> Store(LogoUpload upload, Guid? approvedBy, string? actor, CancellationToken ct)
+    {
         if (!AllowedTypes.Contains(upload.ContentType)) throw new DomainException("The logo must be a PNG or JPG image.", "logo_type");
         if (upload.Length is <= 0 or > MaxBytes) throw new DomainException("The logo must be smaller than 2 MB.", "logo_size");
 
@@ -57,7 +63,7 @@ public sealed class LogoCommands(
         var old = row.LogoFileId;
         row.LogoFileId = original.Id;
         row.LogoWebFileId = web.Id;
-        return await Saved(row, old, original.Id, grant.ApprovedByUserId, ct);
+        return await Saved(row, old, original.Id, approvedBy, ct, actor);
     }
 
     public async Task<SettingsDto> Remove(CancellationToken ct)
@@ -75,10 +81,10 @@ public sealed class LogoCommands(
         await db.BusinessSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct)
         ?? throw new NotFoundException("The business has not been set up yet.");
 
-    private async Task<SettingsDto> Saved(BusinessSettings row, Guid? old, Guid? logo, Guid? approvedBy, CancellationToken ct)
+    private async Task<SettingsDto> Saved(BusinessSettings row, Guid? old, Guid? logo, Guid? approvedBy, CancellationToken ct, string? actor = null)
     {
         audit.Write(new AuditRecord(AuditActions.LogoChanged, AuditEntities.Setting, SettingsRegistry.BusinessLogo,
-            new { logoFileId = old }, new { logoFileId = logo }, approvedBy));
+            new { logoFileId = old }, new { logoFileId = logo }, approvedBy, Actor: actor));
         await db.SaveChangesAsync(ct);
         await images.Refresh(ct);
         await events.Publish(PosEventNames.SettingsChanged, new { keys = new[] { SettingsRegistry.BusinessLogo } }, ct);

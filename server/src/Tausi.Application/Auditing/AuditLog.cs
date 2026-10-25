@@ -20,6 +20,7 @@ public sealed class AuditLog(ITausiDb db, ICurrentSession session, TimeProvider 
             OldValueJson = record.OldValue is null ? null : Json.Serialize(record.OldValue),
             NewValueJson = record.NewValue is null ? null : Json.Serialize(record.NewValue),
             ApprovedByUserId = record.ApprovedByUserId,
+            Actor = record.Actor,
         });
     }
 }

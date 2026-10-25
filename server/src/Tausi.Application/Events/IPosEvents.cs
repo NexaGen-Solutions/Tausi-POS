@@ -19,6 +19,8 @@ public static class PosEventNames
     public const string UserPinReset = "user.pin_reset";
     public const string TerminalStatus = "terminal.status";
     public const string TerminalRevoked = "terminal.revoked";
+    public const string SetupCompleted = "setup.completed";
+    public const string LicenceChanged = "licence.changed";
 }
 
 public interface IPosEvents

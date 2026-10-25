@@ -126,7 +126,7 @@ public class MenuImportTests : IAsyncLifetime
     public async Task Updating_existing_items_can_be_turned_off()
     {
         var preview = await Preview(Utf8("category,name,price\r\nBeers,Tusker Lager,255\r\n"), new ImportOptions(null, UpdateExisting: false));
-        (preview.Updated, preview.Unchanged).Should().Be((0, 1));
+        (preview.Updated, preview.Unchanged, preview.Existing).Should().Be((0, 0, 1), "an item already on the menu is a duplicate, skipped");
     }
 
     [Fact]

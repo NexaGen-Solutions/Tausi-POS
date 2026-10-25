@@ -65,7 +65,7 @@ public sealed class PairingGuard(TimeProvider clock)
 /// </summary>
 public sealed class PairTerminal(
     ITausiDb db, TerminalAdmin admin, PairingGuard guard, SessionKeeper sessions,
-    IAuditLog audit, IPosEvents events, ICurrentSession session, TimeProvider clock)
+    IAuditLog audit, IPosEvents events, ICurrentSession session, Setup.LicenceService licences, TimeProvider clock)
 {
     public async Task<PairingCompleted> Execute(PairTerminalRequest request, CancellationToken ct)
     {
@@ -107,12 +107,14 @@ public sealed class PairTerminal(
             throw new ConflictException(
                 $"{terminal.Name} is paired with another device. Pairing again logs that device out.", PairingCodes.AlreadyPaired);
 
-        var licence = await db.Licences.AsNoTracking().Where(l => l.TerminalLimit > 0).OrderByDescending(l => l.TerminalLimit).FirstOrDefaultAsync(ct);
-        if (licence is not null && !replacing)
+        // The licence's (or trial's) terminal limit applies to new pairings only: paired terminals keep working.
+        await licences.Require(Setup.LicensedFeature.Pairing, ct);
+        var limit = Setup.LicenceService.TerminalLimit(await licences.Current(ct));
+        if (limit > 0 && !replacing)
         {
             var inUse = await db.Terminals.CountAsync(t => t.DeviceTokenHash != null && t.RevokedAt == null && t.Id != terminal.Id, ct);
-            if (inUse >= licence.TerminalLimit)
-                throw new DomainException($"Your licence allows {licence.TerminalLimit} terminals.", PairingCodes.LicenceLimit);
+            if (inUse >= limit)
+                throw new DomainException($"Your licence allows {limit} terminals.", PairingCodes.LicenceLimit);
         }
 
         if (replacing) await RevokeTerminal.Revoke(db, sessions, terminal, now, ct);

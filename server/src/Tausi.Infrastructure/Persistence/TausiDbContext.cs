@@ -75,6 +75,8 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
     public DbSet<Domain.Stock.StockCount> StockCounts => Set<Domain.Stock.StockCount>();
     public DbSet<Domain.Stock.StockCountLine> StockCountLines => Set<Domain.Stock.StockCountLine>();
     public DbSet<Domain.Money.MoneyDocument> MoneyDocuments => Set<Domain.Money.MoneyDocument>();
+    public DbSet<Domain.Setup.SetupState> SetupStates => Set<Domain.Setup.SetupState>();
+    public DbSet<Domain.Setup.SetupProgress> SetupProgress => Set<Domain.Setup.SetupProgress>();
 
     /// <summary>The database sequence for ticket numbers (see <see cref="TicketNumberSequence"/>).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -138,7 +140,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.OtherJson).Unbounded();
         });
 
-        m.Entity<Licence>(e => e.Property(x => x.Key).HasMaxLength(500));
+        m.Entity<Licence>(e => e.Property(x => x.Key).HasMaxLength(1000));
 
         m.Entity<Role>(e =>
         {
@@ -524,6 +526,31 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
         });
 
         ConfigureStock(m);
+
+        m.Entity<Domain.Setup.SetupState>(e =>
+        {
+            e.Property(x => x.TokenHash).HasMaxLength(100);
+            e.Property(x => x.SessionHash).HasMaxLength(100);
+            e.Property(x => x.BusinessType).HasMaxLength(30);
+            e.Ignore(x => x.IsComplete);
+        });
+        m.Entity<Domain.Setup.SetupProgress>(e =>
+        {
+            e.Property(x => x.Step).HasMaxLength(30);
+            e.Property(x => x.Summary).HasMaxLength(500);
+            e.HasIndex(x => x.Step).IsUnique();
+        });
+        foreach (var external in new[] { typeof(MenuItem), typeof(DiningTable), typeof(User), typeof(ModifierGroup), typeof(PriceList) })
+        {
+            m.Entity(external).Property(nameof(MenuItem.ExternalRef)).HasMaxLength(100);
+            m.Entity(external).HasIndex(nameof(MenuItem.ExternalRef));
+        }
+        m.Entity<Domain.Audit.AuditEntry>().Property(x => x.Actor).HasMaxLength(40);
+        m.Entity<Licence>(e =>
+        {
+            e.Property(x => x.LicenceId).HasMaxLength(60);
+            e.Property(x => x.Edition).HasMaxLength(40);
+        });
 
         // Every editable entity carries an optimistic concurrency token.
         foreach (var type in m.Model.GetEntityTypes().Where(t => typeof(VersionedEntity).IsAssignableFrom(t.ClrType)))

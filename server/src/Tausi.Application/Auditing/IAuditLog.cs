@@ -77,6 +77,11 @@ public static class AuditActions
     public const string MoneyRejected = "money.rejected";
     public const string MoneyReversed = "money.reversed";
     public const string ExpenseCategoryChanged = "money.category_changed";
+    public const string SetupCompleted = "setup.completed";
+    public const string SetupStaffImported = "setup.staff_imported";
+    public const string LicenceEntered = "licence.entered";
+    public const string LicenceTrialStarted = "licence.trial_started";
+    public const string StockLocationChanged = "stock.location_changed";
 }
 
 /// <summary>Entity types of audit entries that more than one place writes or reads.</summary>
@@ -100,7 +105,8 @@ public sealed record AuditRecord(
     object? NewValue = null,
     Guid? ApprovedByUserId = null,
     Guid? UserId = null,
-    Guid? TerminalId = null);
+    Guid? TerminalId = null,
+    string? Actor = null);
 
 public interface IAuditLog
 {

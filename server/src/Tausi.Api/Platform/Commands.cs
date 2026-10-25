@@ -12,7 +12,8 @@ namespace Tausi.Api.Platform;
 /// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals, printers and,
 /// when they are empty, the demo menu, tables and a few open tickets; <c>seed --demo-menu</c> adds
 /// only the demo menu; <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their
-/// next login; <c>close-day</c> (Development only) closes the open day without a cash-up, for testing.
+/// next login; <c>close-day</c> (Development only) closes the open day without a cash-up, for testing;
+/// <c>reset --confirm</c> (Development only) empties the database so the next start is a new install.
 /// </summary>
 public static class Commands
 {
@@ -40,9 +41,39 @@ public static class Commands
             case "close-day":
                 await CloseDay(app);
                 return true;
+            case "reset":
+                await Reset(app, args.Contains("--confirm"));
+                return true;
             default:
                 return false;
         }
+    }
+
+    /// <summary>
+    /// Development only: deletes the database and makes it again, empty, so the next start is a new
+    /// install (setup mode, a new setup token). Not part of the product.
+    /// </summary>
+    private static async Task Reset(WebApplication app, bool confirmed)
+    {
+        if (!app.Environment.IsDevelopment())
+        {
+            Console.WriteLine("reset is for development only.");
+            Environment.ExitCode = 1;
+            return;
+        }
+        if (!confirmed)
+        {
+            Console.WriteLine("This deletes every ticket, user and setting in the database. Run `reset --confirm` to do it.");
+            Environment.ExitCode = 1;
+            return;
+        }
+        var scopes = app.Services.GetRequiredService<IServiceScopeFactory>();
+        await using (var scope = scopes.CreateAsyncScope())
+            await scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.TausiDbContext>().Database.EnsureDeletedAsync();
+        await DatabaseStartup.Migrate(scopes, CancellationToken.None);
+        app.Services.GetRequiredService<Application.Setup.SetupGate>().Forget();
+        await DatabaseStartup.ShowSetupToken(scopes, app.Logger, CancellationToken.None);
+        Console.WriteLine("The database is empty again. Start the server and open /setup.");
     }
 
     private static async Task Seed(WebApplication app, bool demo)

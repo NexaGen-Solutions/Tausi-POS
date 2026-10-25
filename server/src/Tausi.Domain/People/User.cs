@@ -4,6 +4,9 @@ namespace Tausi.Domain.People;
 
 public class User : VersionedEntity
 {
+    /// <summary>Where it was imported from, e.g. "sambapos:menuitem:12:portion:3", so a re-import matches it.</summary>
+    public string? ExternalRef { get; set; }
+
     public string Name { get; set; } = "";
 
     /// <summary>

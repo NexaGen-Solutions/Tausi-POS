@@ -1,3 +1,4 @@
+using Tausi.Application.Setup;
 using Tausi.Api.Platform;
 using Tausi.Application.Reports;
 
@@ -7,7 +8,7 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this WebApplication app)
     {
-        var reports = app.MapGroup("/api/admin/reports").WithTags("Reports").RequireAuthorization();
+        var reports = app.MapGroup("/api/admin/reports").WithTags("Reports").RequireAuthorization().RequiresLicence(LicensedFeature.Reports);
         reports.MapGet("/", (ReportService r, CancellationToken ct) => r.List(ct));
         reports.MapGet("/options", (ReportService r, CancellationToken ct) => r.Options(ct));
         // Running and exporting only read: POST carries the filters.
@@ -29,7 +30,7 @@ public static class ReportEndpoints
             return Results.File(file.Content, file.ContentType, file.FileName);
         });
 
-        var tickets = app.MapGroup("/api/admin/tickets").WithTags("Reports").RequireAuthorization();
+        var tickets = app.MapGroup("/api/admin/tickets").WithTags("Reports").RequireAuthorization().RequiresLicence(LicensedFeature.Reports);
         tickets.MapGet("/{id:guid}", (Guid id, TicketDetailReport detail, CancellationToken ct) => detail.Execute(id, ct));
         tickets.MapGet("/{id:guid}/pdf", async (Guid id, TicketDetailReport detail, CancellationToken ct) =>
         {

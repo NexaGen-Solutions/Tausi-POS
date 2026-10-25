@@ -1,3 +1,5 @@
+using Tausi.Application.Setup;
+using Tausi.Api.Platform;
 using Microsoft.EntityFrameworkCore;
 using Tausi.Application.Files;
 using Tausi.Application.Settings;
@@ -13,7 +15,7 @@ public static class SettingsEndpoints
         app.MapGet("/api/brand", (GetBrand brand, CancellationToken ct) => brand.Execute(ct))
             .WithTags("Settings").RequireCors(CorsSetup.TerminalApp);
 
-        var settings = app.MapGroup("/api/admin/settings").WithTags("Settings").RequireAuthorization();
+        var settings = app.MapGroup("/api/admin/settings").WithTags("Settings").RequireAuthorization().RequiresLicence(LicensedFeature.Settings);
 
         settings.MapGet("/", (GetSettings get, CancellationToken ct) => get.Execute(ct));
         settings.MapPut("/", (UpdateSettingsRequest request, UpdateSettings update, CancellationToken ct) => update.Execute(request, ct));

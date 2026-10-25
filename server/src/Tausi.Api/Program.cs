@@ -22,6 +22,8 @@ LegacyNames.CopyOldDataDirectory(
 builder.Host.UseWindowsService(o => o.ServiceName = "TausiPOSServer");
 builder.Host.UseSystemd();
 
+// The tests' licence key is trusted only in Development.
+builder.Services.AddSingleton(new Tausi.Application.Setup.LicenceOptions(builder.Environment.IsDevelopment()));
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTausiAuth(builder.Configuration, builder.Environment);
@@ -49,10 +51,13 @@ app.UseCors();
 app.UseMiddleware<DeviceTokenMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<SetupMode>();
 app.UseMiddleware<PinChangeGate>();
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapSystemEndpoints();
+app.MapSetupEndpoints();
+app.MapLicenceEndpoints();
 app.MapAuthEndpoints();
 app.MapTerminalEndpoints();
 app.MapSettingsEndpoints();

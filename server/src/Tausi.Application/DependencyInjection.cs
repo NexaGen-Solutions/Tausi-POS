@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Tausi.Application.Auditing;
 using Tausi.Application.Auth;
@@ -24,6 +25,16 @@ public static class DependencyInjection
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<PrintQueue>();
         services.AddScoped<Reports.ReportService>();
+        services.AddSingleton<Setup.SetupGate>();
+        services.AddScoped<Setup.SetupFlow>();
+        services.AddScoped<Setup.SetupBusiness>();
+        services.AddScoped<Setup.SetupPeople>();
+        services.AddScoped<Setup.LicenceService>();
+        services.AddScoped<Setup.SetupSummary>();
+        services.AddScoped<Setup.SambaPosImport>();
+        services.AddScoped<Stock.StockLocations>();
+        services.AddScoped<Stock.StockFromMenu>();
+        services.TryAddSingleton(new Setup.LicenceOptions(AcceptTestKey: false));
         services.AddScoped<Reports.TicketDetailReport>();
         foreach (var report in new Type[]
                  {

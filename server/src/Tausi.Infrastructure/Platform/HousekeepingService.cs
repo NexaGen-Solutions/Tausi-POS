@@ -27,6 +27,8 @@ public sealed class HousekeepingService(IServiceScopeFactory scopes, TimeProvide
                 var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();
                 var now = clock.GetUtcNow();
                 await CleanUp(db, now, stoppingToken);
+                // The licence remembers the latest time seen, so setting the clock back gains nothing.
+                await scope.ServiceProvider.GetRequiredService<Application.Setup.LicenceService>().Now(stoppingToken);
                 if (now - slipsCleared >= TimeSpan.FromHours(24))
                 {
                     var cleared = await ClearOldSlipText(db, now, stoppingToken);
