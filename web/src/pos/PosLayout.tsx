@@ -3,6 +3,7 @@ import { ApiError, api } from '../shared/api/client';
 import { saveDevice, serverUrl } from '../shared/device/device';
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router';
+import { LicenceBanner } from '../shared/connection/LicenceBanner';
 import { onPosEvent } from '../shared/connection/hub';
 import { LiveUpdates } from '../shared/connection/LiveUpdates';
 import { endPinSession, onPinSessionChange, pinSession } from '../shared/session/session';
@@ -47,7 +48,7 @@ export function PosLayout() {
           endPinSession('expired');
           await saveDevice({ serverUrl: serverUrl(), deviceToken: null });
           queries.clear();
-          navigate('/setup?revoked=1', { replace: true });
+          navigate('/connect?revoked=1', { replace: true });
         }
       }
     };
@@ -64,6 +65,7 @@ export function PosLayout() {
       <LiveUpdates />
       <IdleWatcher />
       {session && <ApprovalsWatcher />}
+      {session && <LicenceBanner admin={false} />}
       <Outlet />
     </>
   );

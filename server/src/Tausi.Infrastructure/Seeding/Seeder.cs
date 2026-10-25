@@ -33,6 +33,25 @@ public sealed partial class Seeder(
     public static string? AdminPasswordFromEnvironment(Func<string, string?>? read = null) =>
         Legacy.LegacyNames.Environment(AdminPasswordVariable, OldAdminPasswordVariable, read);
 
+    /// <summary>
+    /// A seeded (dev, demo or CI) database is set up already: no first-run wizard, and the
+    /// bootstrap admin from TAUSI_ADMIN_PASSWORD. Databases set up through the wizard never get that admin.
+    /// </summary>
+    public async Task MarkSetupComplete(CancellationToken ct)
+    {
+        var state = await db.SetupStates.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+        if (state?.CompletedAt is not null) return;
+        if (state is null)
+        {
+            state = new Domain.Setup.SetupState();
+            db.SetupStates.Add(state);
+        }
+        state.CompletedAt = DateTimeOffset.UtcNow;
+        state.TokenHash = null;
+        state.SessionHash = null;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task SeedBase(CancellationToken ct)
     {
         var roles = await db.Roles.Include(r => r.Permissions).ToListAsync(ct);
@@ -90,6 +109,7 @@ public sealed partial class Seeder(
     public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false, bool openDemoDay = false)
     {
         await SeedBase(ct);
+        await MarkSetupComplete(ct);
 
         if (!await db.BusinessSettings.AnyAsync(ct))
         {

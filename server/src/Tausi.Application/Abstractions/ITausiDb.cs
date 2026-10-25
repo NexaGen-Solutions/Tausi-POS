@@ -68,6 +68,8 @@ public interface ITausiDb
     DbSet<Domain.Stock.StockCount> StockCounts { get; }
     DbSet<Domain.Stock.StockCountLine> StockCountLines { get; }
     DbSet<Domain.Money.MoneyDocument> MoneyDocuments { get; }
+    DbSet<Domain.Setup.SetupState> SetupStates { get; }
+    DbSet<Domain.Setup.SetupProgress> SetupProgress { get; }
 
     DatabaseFacade Database { get; }
 

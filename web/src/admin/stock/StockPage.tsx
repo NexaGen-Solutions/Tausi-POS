@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { api } from '../../shared/api/client';
@@ -152,6 +153,9 @@ export function StockPage() {
         <div className="stock__header">
           <h1 className="admin__title">{t('admin.stock.title')}</h1>
           <div className="stock__buttons">
+            <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/stock/locations">
+              {t('admin.locations.title')}
+            </Link>
             <Button onClick={() => setDialog({ kind: 'waste' })} disabled={!data}>
               {t('admin.stock.recordWaste')}
             </Button>

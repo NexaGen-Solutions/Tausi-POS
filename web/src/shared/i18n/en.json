@@ -747,7 +747,8 @@
       "ticket": "Ticket {id}",
       "stale": "This was changed by someone else. Reload and try again.",
       "sellsFrom": "Sells from (stock location)",
-      "noLocation": "No location (moves no stock)"
+      "noLocation": "No location (moves no stock)",
+      "overLicence": "Over your licence: {used} of {limit} terminals. Paired terminals keep working; new ones can't be paired."
     },
     "tables": {
       "title": "Tables",
@@ -1426,6 +1427,37 @@
       "voided": "Voided: {reason} ({by})",
       "askedBy": "asked by {name}, {at}",
       "decidedBy": "decided by {name}"
+    },
+    "locations": {
+      "title": "Locations",
+      "help": "Where stock is kept. A location in use can be switched off but keeps its history.",
+      "name": "Name",
+      "active": "In use",
+      "new": "New location"
+    },
+    "licence": {
+      "title": "Licence",
+      "state": "Status",
+      "status": {
+        "None": "No licence",
+        "Trial": "Trial",
+        "Active": "Active",
+        "ExpiresSoon": "Ends soon",
+        "Grace": "Ended: grace period",
+        "Expired": "Ended"
+      },
+      "edition": "Edition",
+      "business": "Business",
+      "terminals": "Terminals",
+      "terminalsUsed": "{used} of {limit}",
+      "over": "over your licence",
+      "expires": "Ends",
+      "never": "Never",
+      "daysLeft": "{days} days left",
+      "support": "Support until",
+      "newKey": "New licence key",
+      "enterKey": "Enter licence key",
+      "saved": "The licence key is saved."
     }
   },
   "permissions": {
@@ -1456,5 +1488,224 @@
     "devices.manage": "Terminals and printers",
     "settings.manage": "Settings",
     "erp.manage": "ERPNext sync"
+  },
+  "wizard": {
+    "brand": "Tausi POS",
+    "heading": "Set up your business",
+    "later": "You can change all of this later in Settings.",
+    "stepOf": "Step {n} of 6",
+    "skip": "Skip for now",
+    "skipped": "Skipped",
+    "state": {
+      "Todo": "to do",
+      "Done": "done",
+      "Skipped": "skipped"
+    },
+    "steps": {
+      "business": "Your business",
+      "admin": "First admin and PIN",
+      "devices": "Terminals and printers",
+      "menu": "Import the menu",
+      "stock": "Opening stock count",
+      "licence": "Licence key"
+    },
+    "next": "Next: {step}",
+    "nextName": {
+      "business": "your business",
+      "admin": "first admin",
+      "devices": "terminals and printers",
+      "menu": "import the menu",
+      "stock": "opening stock",
+      "licence": "licence key",
+      "finish": "finish"
+    },
+    "token": {
+      "title": "Enter the setup token",
+      "help": "It is printed in the server's console when it starts, and saved in setup-token.txt in the server's data folder. It keeps anyone else on the network from setting up this server.",
+      "label": "Setup token",
+      "unlock": "Start setup",
+      "locked": "Too many wrong tries. Setup is locked for 5 minutes.",
+      "lockedUntil": "Locked until {time}."
+    },
+    "complete": {
+      "title": "Setup is already complete",
+      "text": "This server is set up. Sign in to the admin site, or pair this device as a terminal.",
+      "admin": "Admin site",
+      "terminal": "Use as a terminal"
+    },
+    "business": {
+      "name": "Business name",
+      "namePlaceholder": "e.g. Mau's Village",
+      "type": "Type",
+      "types": {
+        "Bar": "Bar",
+        "Restaurant": "Restaurant",
+        "BarAndRestaurant": "Bar and restaurant"
+      },
+      "address": "Address",
+      "phone": "Phone",
+      "vat": "VAT rate (prices include VAT)",
+      "currency": "Currency",
+      "timeZone": "Time zone",
+      "timeZoneHint": "Start typing to search, e.g. Africa/Nairobi.",
+      "logo": "Logo",
+      "noLogo": "No logo",
+      "uploadLogo": "Upload logo",
+      "logoHint": "Shown on the login screen and printed on receipts."
+    },
+    "admin": {
+      "fullName": "Full name",
+      "userName": "Admin-site user name",
+      "userNameHint": "For signing in to the admin site, e.g. wanjiku",
+      "password": "Admin-site password",
+      "passwordHint": "At least 10 characters.",
+      "strength": {
+        "short": "Too short: at least 10 characters.",
+        "weak": "Weak: mix letters, digits and signs.",
+        "good": "Good.",
+        "strong": "Strong."
+      },
+      "pin": "PIN (4 digits)",
+      "pinAgain": "PIN again",
+      "createOwner": "Create the owner",
+      "ownerReady": "The owner is set up and signed in.",
+      "staffTitle": "Your staff (optional)",
+      "staffHelp": "Each person gets a random PIN and chooses their own at first login. You can add people later in Staff and PINs.",
+      "personName": "Person {n}",
+      "role": "Role",
+      "roles": {
+        "waiter": "Waiter",
+        "cashier": "Cashier",
+        "supervisor": "Supervisor",
+        "admin": "Admin"
+      },
+      "remove": "Remove",
+      "addPerson": "+ Add person",
+      "createStaff": "Create staff and PINs"
+    },
+    "pins": {
+      "title": "First PINs",
+      "once": "These PINs are shown once. Print the PIN sheet or write them down now.",
+      "name": "Name",
+      "role": "Role",
+      "pin": "PIN",
+      "print": "Print PIN sheet"
+    },
+    "devices": {
+      "addressTitle": "This server's address",
+      "pairHelp": "On each counter PC, open Tausi POS and enter this server's address. Then add the terminal below and type the 6-digit code it shows.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "several": "This PC has more than one network card: use the address on the bar's network.",
+      "kitchen": "For a kitchen printer, set the dispense header to \"Kitchen\"."
+    },
+    "menu": {
+      "how": "How to bring in the menu",
+      "fromFile": "CSV or Excel file",
+      "fromSambaPos": "From SambaPOS",
+      "template": "Download template",
+      "help": "What each column means",
+      "upload": "Upload CSV or Excel",
+      "tooBig": "Choose a file of 2 MB or less.",
+      "column": "Column {n}",
+      "counts": "{ready} items ready, {errors} with errors, {existing} duplicates of existing items (will be skipped)",
+      "updateExisting": "Update existing items",
+      "preview": "Preview",
+      "line": "Line",
+      "category": "Category",
+      "item": "Item",
+      "check": "Check",
+      "duplicate": "Already on the menu: skipped",
+      "import": "Import {count} items",
+      "skippedRows": "Download the skipped rows",
+      "imported": "Imported: {new} new, {updated} updated; {skipped} rows skipped, {existing} already on the menu.",
+      "review": "Review menu",
+      "columns": {
+        "category": "The menu category, e.g. Beers. New ones are made.",
+        "name": "The item's full name (up to 60 characters).",
+        "short_name": "What prints on slips: up to 18 characters. Empty: the name, cut to fit.",
+        "price": "The Standard price, VAT included.",
+        "price_list_2_price": "The price on the second price list (Price 2), if used.",
+        "vat_rate": "16, 8 or 0. Empty: the business's rate.",
+        "vat_exempt": "yes for VAT-exempt items.",
+        "modifier_group": "Option groups by name, e.g. Temperature (separate several with ;).",
+        "erpnext_item_code": "For ERPNext sync, if used.",
+        "active": "yes or no."
+      }
+    },
+    "samba": {
+      "readOnly": "Tausi only reads from SambaPOS. Nothing in the SambaPOS database is changed, and PINs and passwords are never brought across.",
+      "server": "SQL Server",
+      "database": "Database",
+      "login": "Sign in with",
+      "windows": "Windows login",
+      "sql": "SQL login",
+      "user": "User",
+      "password": "Password",
+      "test": "Test connection",
+      "preview": "Preview",
+      "bring": "What to bring across",
+      "parts": {
+        "menu": "Menu",
+        "prices": "Prices",
+        "modifiers": "Modifiers",
+        "tables": "Tables",
+        "users": "Users"
+      },
+      "screenCategories": "Categories from the screen menu (instead of group codes)",
+      "counts": "{items} new items ({existing} already here), {lists} price lists, {groups} modifier groups, {tables} new tables, {users} new staff",
+      "priceLists": "Price lists",
+      "modifiers": "Modifiers",
+      "tables": "Tables",
+      "items": "Items",
+      "prices": "Prices",
+      "existing": "already here",
+      "chooseRole": "Not imported (choose a role)",
+      "import": "Import"
+    },
+    "tables": {
+      "title": "Tables",
+      "from": "From",
+      "to": "To",
+      "area": "Area",
+      "add": "Add tables",
+      "added": "Added {count} tables in {area}."
+    },
+    "stock": {
+      "locations": "Locations",
+      "items": "Stock items from the menu",
+      "itemsHelp": "Each ticked item gets a stock item and a recipe: 1 sale uses 1 bottle (or can). Change the pack if your supplier's differs.",
+      "noSuggestions": "No menu items without a recipe.",
+      "make": "Make",
+      "makeFor": "Make a stock item for {name}",
+      "menuItem": "Menu item",
+      "stockItem": "Stock item",
+      "stockItemFor": "Stock item for {name}",
+      "pack": "Pack",
+      "packName": "Pack name for {name}",
+      "packSize": "Pack size for {name}",
+      "create": "Create stock items",
+      "created": "Made {count} stock items with their recipes.",
+      "count": "Opening count",
+      "countHelp": "Count each location's stock as it is today. The count opens in a new tab: enter each item and its cost, print the count sheet if you like, then submit and approve it. During setup you approve your own count.",
+      "countAt": "Opening count: {name}",
+      "balances": "Opening balances (optional)",
+      "balancesHelp": "Money in the Safe, Bank and M-Pesa, and what each supplier is owed, on the day you start.",
+      "enterBalances": "Enter opening balances"
+    },
+    "licence": {
+      "key": "Licence key",
+      "enter": "Use this key",
+      "trial": "Start 30-day trial",
+      "help": "The key comes from NexaGen Solutions and is checked on this server; no internet is needed. The trial allows 2 terminals with every feature.",
+      "accepted": "{edition} licence for {business}: {terminals} terminals.",
+      "trialStarted": "Trial started: {days} days, {terminals} terminals."
+    },
+    "finish": {
+      "count": "Finish",
+      "title": "Ready to trade",
+      "doLater": "Do it now",
+      "button": "Finish setup"
+    }
   }
 }

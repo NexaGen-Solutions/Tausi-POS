@@ -1,3 +1,4 @@
+import { deviceToken } from '../device/device';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n/i18n';
@@ -71,6 +72,14 @@ export function LiveUpdates() {
       onPosEvent('stock.changed', () => {
         void queries.invalidateQueries({ queryKey: ['stock'] });
         void queries.invalidateQueries({ queryKey: ['deliveries'] });
+      }),
+      onPosEvent(
+        'licence.changed',
+        () => void queries.invalidateQueries({ queryKey: ['licence'] }),
+      ),
+      // A paired terminal goes to its PIN screen when the server's setup is finished.
+      onPosEvent('setup.completed', () => {
+        if (deviceToken() && !location.pathname.startsWith('/setup')) location.assign('/pos');
       }),
       onPosEvent('money.changed', () => {
         void queries.invalidateQueries({ queryKey: ['cashbook'] });

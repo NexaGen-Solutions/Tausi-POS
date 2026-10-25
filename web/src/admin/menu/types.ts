@@ -91,7 +91,7 @@ export interface ImportChange {
 
 export interface ImportRow {
   line: number;
-  status: 'New' | 'Updated' | 'Unchanged' | 'Error';
+  status: 'New' | 'Updated' | 'Unchanged' | 'Existing' | 'Error';
   name: string;
   category: string;
   changes: ImportChange[];
@@ -112,6 +112,8 @@ export interface ImportPreview {
   unchanged: number;
   errors: number;
   priceChanges: number;
+  /** Already on the menu with "Update existing items" off: skipped. */
+  existing: number;
 }
 
 export interface ImportResult {
@@ -120,6 +122,7 @@ export interface ImportResult {
   deactivated: number;
   priceChanges: number;
   skipped: number;
+  existing: number;
 }
 
 export function choiceText(min: number, max: number): string {

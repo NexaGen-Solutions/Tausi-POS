@@ -303,6 +303,29 @@ Each entry: date, decision, reason.
 | 2026-10-25 | The speed test seeds a month straight into the database (30 closed days, about 60,000 lines on 4,000 tickets with 6,000 payments, a stock movement per line, a sale entry per ticket) and times each report after one warm-up run. | Query compilation happens once on a running server; the warm-up keeps the test about the queries. |
 | 2026-10-25 | Excel export uses ClosedXML (MIT). It brings SixLabors.Fonts 1.0.0 (Apache-2.0); later versions of that package have a different licence, so it stays on 1.x. | The prompt's choice; licence noted in THIRD-PARTY-NOTICES. |
 
+## Setup wizard and licences (task 14)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-25 | A new install is in **setup mode** until the wizard finishes, which is a `SetupStates` row with `CompletedAt`. The migration marks existing installs (those that already have users) as set up. `seed --demo` marks setup done, so the demo `admin` user and `TAUSI_ADMIN_PASSWORD` are for development and CI only. | Existing installs and the demo keep working, and a real install has no default password. |
+| 2026-10-25 | In setup mode, `/api` and `/hubs` answer 423 `setup_required`, and GET `/admin*` and `/pos*` redirect to `/setup`. Still open are `/api/setup`, health, `/api/brand`, terminal pairing and `/api/system`. The check runs right after routing, before sign-in. | A 423 the UI can recognise. It comes before auth, so a new install never answers 401 to the wizard. |
+| 2026-10-25 | The terminal's pairing page moved from `/setup` to `/connect`, and `/setup` is now the wizard. | The prompt puts the wizard at `/setup`. |
+| 2026-10-25 | The setup token is 8 characters, `XXXX-XXXX`, from an alphabet without look-alikes (no 0/O, 1/I/L). It is stored hashed and also written to `<data>/setup-token.txt`. A restart reuses it while that file matches. Five wrong tokens lock setup for 5 minutes. Unlocking sets a `tausi_setup` cookie session for the wizard. | Easy to read off a console and type, never stored in plain text in the database, and the same rate limit as PIN logins. |
+| 2026-10-25 | Audit entries gained an **Actor** ("setup") for changes made in the wizard before any user exists, and the audit log shows it when there is no user. | Rule 4 (audit everything) holds from the very first setting. |
+| 2026-10-25 | A Bar gets the Temperature modifier group (Cold, the default, and Warm) and one-button printing. Other business types get neither. | The prompt's bar defaults. |
+| 2026-10-25 | The time zone defaults to the browser's zone. | Whoever sets up is usually at the bar. |
+| 2026-10-25 | Staff added in the wizard or brought from SambaPOS get random PINs that must be changed at first login. They are shown once, with a PDF PIN sheet. | Old PINs are never copied, and the owner hands each one out. |
+| 2026-10-25 | **Finish setup** needs Business, First admin and Licence (a key or the trial). Devices, menu and stock can be skipped. | Without an owner and a licence state, the install can't be run or supported. |
+| 2026-10-25 | During setup only, the owner may approve their own opening stock count (audited as Actor "setup"). After setup someone else approves, as before. | A new bar has nobody else to approve it. |
+| 2026-10-25 | Stock locations are managed with `stock.adjust` (Stock → Locations). A location a terminal sells from can't be switched off. | No new permission key is needed (the list in AGENTS.md is fixed), and it is the closest existing one. |
+| 2026-10-25 | Licence keys are `TAUSI-` plus base32 of the payload JSON and an Ed25519 signature (BouncyCastle, MIT), in groups of five. They are checked offline against the public key built into the server. The private key is kept offline by NexaGen and is not in the repo. A test key pair is accepted only in Development. | No internet needed at the bar (rule 12), and keys can't be forged. |
+| 2026-10-25 | Licence policy, **for the owner to confirm:** a banner 14 days before the expiry, then 14 days of grace. After grace, pairing terminals, menu admin, stock admin, reports and settings are blocked. Selling, printing, settling and cash-ups never are. The trial is 30 days and 2 terminals. A clock set backwards (before the last time seen) counts from the last time seen. A key's business name must match the setup name, ignoring case and spaces. | A licence never stops service. Owners get a fortnight's warning, and changing the date doesn't extend a trial. |
+| 2026-10-25 | The terminal limit is checked when pairing: a new terminal over the limit is refused (re-pairing an existing one is not), and the Terminals page shows a banner. | Existing terminals keep working if the limit drops. |
+| 2026-10-25 | The menu import's file limit stays at 5 MB on the server. The UI checks 2 MB first. Excel (`.xlsx`) files are read with ClosedXML. An item that already exists, matched by category and name (names are unique), is skipped unless **Update existing items** is on. Bad rows are skipped with their reason and can be downloaded. | Importing again never makes duplicates. |
+| 2026-10-25 | SambaPOS import reads, read-only (`ApplicationIntent=ReadOnly`, SELECT only, `TrustServerCertificate`, `Encrypt=Optional`), these tables: MenuItems, MenuItemPortions, MenuItemPrices, OrderTagGroups, OrderTags, OrderTagMaps, EntityTypes, Entities (tables), Users, UserRoles, ScreenMenuCategories and ScreenMenuItems. It never reads `PinCode`. Each portion becomes an item ("Name (Portion)" when there are several), price tags become price lists, order tags become modifier groups (matched by name), and entities of a table type become tables in Main. Users' roles are mapped by name, and the owner chooses any it can't map. Everything gets an `ExternalRef` (`sambapos:…`), so running it again adds nothing twice. All of it is applied in one transaction. | Owners moving from SambaPOS bring their menu without retyping it, and SambaPOS is never changed. |
+| 2026-10-25 | Making stock items from the menu suggests a one-to-one stock item and recipe for items that look like a bottle or can by their name and category (beer, soft drinks, spirits), with a pack the owner can change (a beer crate of 25, a tray of 24 for cans). Items sold in tots, and anything that doesn't look like a bottle, are left for the recipe screen. | Most of a bar's stock is sold as bought; spirits need real recipes. |
+| 2026-10-25 | `reset --confirm` (Development only) deletes and re-creates the database to try the wizard again. | Starting over without Docker commands. |
+
 ## Follow-ups
 
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
@@ -311,7 +334,6 @@ Each entry: date, decision, reason.
 - **Redirect across paper widths:** a job stores its printed bytes, so a slip sent from a 58 mm printer to an 80 mm one keeps the 58 mm layout (and the other way, an 80 mm slip wraps on 58 mm paper). Rebuilding the slip for the new printer needs the slip data stored with the job; consider it with the order screen.
 - **Updater address in the lock-down:** add the update server's origin to the terminal's allowed origins once the updater has an endpoint.
 - **Approvals on the admin site:** `POST /api/auth/approve` needs a terminal. Supervisors on the admin site rarely need it, but decide whether to support it.
-- **Licence checks:** the `Licence` table exists; checking and the grace period come with the setup wizard.
 - **Backups:** nightly database backup plus the data directory (it holds the PIN pepper).
 - **Server installer:** a Windows installer for Tausi Server (service + SQL Server Express) and a Linux package.
 - **Approvals on the admin site:** an action that needs approval can't be approved there yet (the approval pad needs a terminal).
@@ -339,7 +361,6 @@ Each entry: date, decision, reason.
 - **Approval pad after a refused PIN:** a refusal (such as the cashier's own PIN at shift sign-off) closes the pad with a toast, so the cashier taps Close shift again for the supervisor. Consider keeping the pad open with the message for 403s, for every approval.
 - **Option-level recipes:** a modifier option (e.g. a double) can't change the recipe yet.
 - **Stock reports** (on hand, variance, purchases) come in Task 13.
-- **Stock locations admin:** locations are Store and Bar from the seed; adding or renaming one has no screen yet.
 - **Cash book date ranges:** the cash book and summary are per business day; ranges and comparisons come with Task 13's reports.
 - **Late entries on a printed Z:** a late entry changes the cash book but not the Z already printed; consider a "corrections since the close" line on the next day's report.
 - **Accounts ledger width:** at 1280 the ledger's Balance column scrolls inside its box; consider a full-width ledger view if owners find it awkward.
@@ -348,3 +369,8 @@ Each entry: date, decision, reason.
 - **design.md's Reports table:** add Sales by item, VAT summary, Tickets and receipts and the Audit log.
 - **eTIMS:** the VAT summary is ready for an eTIMS export when that task comes.
 - **Scheduled reports:** e-mail or print a report at the close of each day.
+- **Licence policy:** the owner to confirm the 14-day warning and grace and what is blocked after it.
+- **Licence renewal online:** keys are entered by hand; a renewal check against nexagensolutions.com could run in the background (rule 12).
+- **SambaPOS images and stock:** menu item images, inventory items and recipes are not brought across.
+- **SambaPOS on PostgreSQL or MySQL** (SambaPOS 5 is SQL Server only, so not needed yet).
+- **Setup from the terminal app:** the wizard runs in a browser on the LAN; consider opening it from the Tauri app's connect screen when the server is in setup mode.

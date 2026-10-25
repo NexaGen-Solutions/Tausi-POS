@@ -38,6 +38,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("Actor")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uuid");
 
@@ -600,6 +604,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(140)
                         .HasColumnType("character varying(140)");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -625,6 +633,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("numeric(5,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -669,6 +679,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<bool>("Active")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("MaxSelect")
                         .HasColumnType("integer");
 
@@ -688,6 +702,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -835,6 +851,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<bool>("Active")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
 
@@ -848,6 +868,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("IsDefault")
                         .IsUnique()
@@ -1112,6 +1134,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<bool>("Active")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("FailedAttempts")
                         .HasColumnType("integer");
 
@@ -1160,6 +1186,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique();
@@ -1497,6 +1525,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid>("AreaId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -1510,6 +1542,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalRef");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -2186,20 +2220,41 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Edition")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsTrial")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("IssuedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Key")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<DateTimeOffset?>("LastCheckedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LicenceId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
                     b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("SupportUntil")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("TerminalLimit")
                         .HasColumnType("integer");
@@ -2207,6 +2262,70 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.HasKey("Id");
 
                     b.ToTable("Licences");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Setup.SetupProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Step")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Step")
+                        .IsUnique();
+
+                    b.ToTable("SetupProgress");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Setup.SetupState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BusinessType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SessionHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("TokenCreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SetupStates");
                 });
 
             modelBuilder.Entity("Tausi.Domain.Stock.Delivery", b =>

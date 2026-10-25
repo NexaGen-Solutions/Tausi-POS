@@ -5,6 +5,9 @@ namespace Tausi.Domain.Menu;
 /// <summary>Something sold. Prices live in <see cref="MenuItemPrice"/>, one per price list.</summary>
 public class MenuItem : VersionedEntity
 {
+    /// <summary>Where it was imported from, e.g. "sambapos:menuitem:12:portion:3", so a re-import matches it.</summary>
+    public string? ExternalRef { get; set; }
+
     public const int MinNameLength = 2;
     public const int MaxNameLength = 60;
     public const int MaxShortNameLength = 18;

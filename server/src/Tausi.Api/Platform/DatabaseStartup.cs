@@ -26,6 +26,7 @@ public sealed class DatabaseStartup(IServiceScopeFactory scopes, IConfiguration 
             {
                 await Migrate(scopes, stoppingToken);
                 log.LogInformation("Database is up to date");
+                await ShowSetupToken(scopes, log, stoppingToken);
                 Ready.TrySetResult();
                 return;
             }
@@ -35,6 +36,29 @@ public sealed class DatabaseStartup(IServiceScopeFactory scopes, IConfiguration 
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             }
         }
+    }
+
+    /// <summary>
+    /// A new install (setup mode): prints the setup token in the console and the log, and keeps it in
+    /// setup-token.txt in the data folder. The wizard at /setup asks for it.
+    /// </summary>
+    public static async Task ShowSetupToken(IServiceScopeFactory scopes, ILogger log, CancellationToken ct)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<Application.Abstractions.ITausiDb>();
+        if (await scope.ServiceProvider.GetRequiredService<Application.Setup.SetupGate>().IsComplete(db, ct)) return;
+        var token = await scope.ServiceProvider.GetRequiredService<Application.Setup.SetupFlow>().EnsureToken(ct);
+        if (token is null) return;
+        var file = scope.ServiceProvider.GetRequiredService<Application.Setup.ISetupTokenFile>().Path;
+        log.LogWarning("Tausi POS is not set up yet. Open http://<this server>:<port>/setup and enter the setup token {Token} (also in {File})", token, file);
+        Console.WriteLine();
+        Console.WriteLine("  ┌──────────────────────────────────────────────┐");
+        Console.WriteLine("  │  Tausi POS is not set up yet.                │");
+        Console.WriteLine($"  │  Setup token:  {token}                     │");
+        Console.WriteLine("  │  Open /setup on this server in a browser.    │");
+        Console.WriteLine("  └──────────────────────────────────────────────┘");
+        Console.WriteLine($"  The token is also in {file}");
+        Console.WriteLine();
     }
 
     public static async Task Migrate(IServiceScopeFactory scopes, CancellationToken ct)

@@ -16,11 +16,14 @@ import { CashBookPage } from '../admin/money/CashBookPage';
 import { AccountsPage } from '../admin/money/AccountsPage';
 import { ReportsPage } from '../admin/reports/ReportsPage';
 import { TicketPage } from '../admin/reports/TicketPage';
+import { LicencePage } from '../admin/settings/LicencePage';
+import { LocationsPage } from '../admin/stock/LocationsPanel';
 import { ChangePinPage } from '../pos/ChangePinPage';
 import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
 import { RequireSession } from '../pos/RequireSession';
 import { SetupPage } from '../pos/SetupPage';
+import { SetupWizard } from '../setup/SetupWizard';
 import { MySalesPage } from '../pos/MySalesPage';
 import { TablesPage } from '../pos/tables/TablesPage';
 import { OrderPage } from '../pos/order/OrderPage';
@@ -34,7 +37,9 @@ import { RootRedirect } from './RootRedirect';
 
 export const routes: RouteObject[] = [
   { path: '/', element: <RootRedirect /> },
-  { path: '/setup', element: <SetupPage /> },
+  // The terminal's own screen: the server address and pairing (it was /setup before the wizard).
+  { path: '/connect', element: <SetupPage /> },
+  { path: '/setup', element: <SetupWizard /> },
   {
     path: '/pos',
     element: <PosLayout />,
@@ -129,6 +134,8 @@ export const routes: RouteObject[] = [
       { path: 'accounts', element: <AccountsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'tickets/:id', element: <TicketPage /> },
+      { path: 'settings/licence', element: <LicencePage /> },
+      { path: 'stock/locations', element: <LocationsPage /> },
       ...adminNav
         .filter(
           (item) =>

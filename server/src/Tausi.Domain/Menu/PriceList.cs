@@ -8,6 +8,9 @@ namespace Tausi.Domain.Menu;
 /// </summary>
 public class PriceList : VersionedEntity
 {
+    /// <summary>Where it was imported from, e.g. "sambapos:menuitem:12:portion:3", so a re-import matches it.</summary>
+    public string? ExternalRef { get; set; }
+
     public const string StandardName = "Standard";
     public const string Price2Name = "Price 2";
 

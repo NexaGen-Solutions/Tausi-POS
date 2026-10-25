@@ -240,10 +240,10 @@ public sealed class AuditReport : ReportBase
                                                           || (a.NewValueJson != null && a.NewValueJson.Contains(s)));
         }
         var entries = await query.OrderBy(a => a.At).Take(MaxRows + 1)
-            .Select(a => new { a.At, a.UserId, a.TerminalId, a.Action, a.EntityType, a.EntityId, a.OldValueJson, a.NewValueJson, a.ApprovedByUserId })
+            .Select(a => new { a.At, a.UserId, a.TerminalId, a.Action, a.EntityType, a.EntityId, a.OldValueJson, a.NewValueJson, a.ApprovedByUserId, a.Actor })
             .ToListAsync(ct);
         var cut = entries.Count > MaxRows;
-        var rows = entries.Take(MaxRows).Select(a => ReportRow.Of(a.At, c.UserName(a.UserId), c.TerminalName(a.TerminalId), a.Action,
+        var rows = entries.Take(MaxRows).Select(a => ReportRow.Of(a.At, a.UserId is null ? a.Actor ?? "" : c.UserName(a.UserId), c.TerminalName(a.TerminalId), a.Action,
             a.EntityType is null ? null : $"{a.EntityType} {a.EntityId}".Trim(), c.UserName(a.ApprovedByUserId), a.OldValueJson, a.NewValueJson)).ToList();
         var table = new ReportTable(null,
         [

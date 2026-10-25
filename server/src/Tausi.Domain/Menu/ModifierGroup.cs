@@ -5,6 +5,9 @@ namespace Tausi.Domain.Menu;
 /// <summary>A question asked when an item is added, e.g. Temperature: Cold / Warm (choose 1).</summary>
 public class ModifierGroup : VersionedEntity
 {
+    /// <summary>Where it was imported from, e.g. "sambapos:menuitem:12:portion:3", so a re-import matches it.</summary>
+    public string? ExternalRef { get; set; }
+
     public string Name { get; set; } = "";
     public int MinSelect { get; set; }
     public int MaxSelect { get; set; } = 1;

@@ -1,3 +1,4 @@
+import type { LicenceStatus } from '../../setup/types';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../../shared/api/client';
@@ -23,6 +24,10 @@ interface PriceLists {
 
 /** Wireframe 17: terminals and printers, with a right-side panel opened when needed. */
 export function DevicesPage() {
+  const licence = useQuery({
+    queryKey: ['licence'],
+    queryFn: () => api<LicenceStatus>('/api/licence'),
+  });
   const queries = useQueryClient();
   const toast = useToast();
   const terminals = useQuery({
@@ -227,6 +232,14 @@ export function DevicesPage() {
             </Button>
           </div>
         </div>
+        {licence.data?.overLimit && (
+          <Banner>
+            {t('admin.devices.overLicence', {
+              used: licence.data.terminalsUsed,
+              limit: licence.data.terminalLimit,
+            })}
+          </Banner>
+        )}
         {stale && (
           <Banner action={{ label: t('common.reload'), onClick: done }}>
             {t('admin.devices.stale')}

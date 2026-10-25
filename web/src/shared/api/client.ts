@@ -12,6 +12,7 @@ export interface Problem {
   code?: string;
   permission?: string;
   attemptsLeft?: number | null;
+  lockedUntil?: string;
   retryAfterSeconds?: number;
   /** Errors per field (a setting key, or "roleId:key" for a permission cell). */
   fieldErrors?: Record<string, string>;
@@ -140,6 +141,13 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
   if (!response.ok) {
     const problem = await readProblem(response);
+    // A new install answers only the setup wizard until it is set up.
+    if (
+      problem.status === 423 &&
+      problem.code === 'setup_required' &&
+      location.pathname !== '/setup'
+    )
+      location.assign('/setup');
     // The server ended this PIN session (idle, logged out elsewhere, too old): back to the PIN pad.
     if (problem.status === 401 && problem.code === 'session_expired') endPinSession('expired');
     throw new ApiError(problem);

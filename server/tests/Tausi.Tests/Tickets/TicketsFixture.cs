@@ -32,10 +32,14 @@ public sealed class TicketsFixture : IAsyncDisposable
     public RecordingEvents Events { get; } = new();
     public FastPinHasher Hasher { get; } = new();
     public Dictionary<string, Role> Roles { get; private set; } = [];
+    public MemoryTokenFile TokenFile { get; } = new();
+    public FakeSambaPos SambaPos { get; } = new();
 
     private TicketsFixture()
     {
         var services = new ServiceCollection();
+        // Like Development: the tests' licence key is trusted.
+        services.AddSingleton(new Tausi.Application.Setup.LicenceOptions(AcceptTestKey: true));
         services.AddApplication();
         services.AddSingleton<TimeProvider>(Clock);
         services.AddSingleton(_db.Context);
@@ -49,6 +53,8 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton<Tausi.Application.Printing.ILogoProvider, NoLogo>();
         services.AddSingleton<Tausi.Application.Printing.ILogoImages, NoLogoImages>();
         services.AddSingleton<Tausi.Application.Files.IFileStorage, MemoryFileStorage>();
+        services.AddSingleton<Tausi.Application.Setup.ISetupTokenFile>(TokenFile);
+        services.AddSingleton<Tausi.Application.Setup.ISambaPosSource>(SambaPos);
         services.AddScoped<Tausi.Application.Ledger.ILedgerPostingService, Tausi.Infrastructure.Ledger.LedgerPostingService>();
         _services = services.BuildServiceProvider();
     }
@@ -71,6 +77,15 @@ public sealed class TicketsFixture : IAsyncDisposable
         }
         f._db.Context.ChangeTracker.Clear();
         await f.LoginOn("edna", "Counter A");
+        return f;
+    }
+
+    /// <summary>A new install: the base seed only (roles, price lists, ledger accounts, Store and Bar), no business, no users, in setup mode.</summary>
+    public static async Task<TicketsFixture> CreateEmpty()
+    {
+        var f = new TicketsFixture();
+        await new Seeder(f._db.Context, f.Hasher, NullLogger<Seeder>.Instance, clock: f.Clock).SeedBase(CancellationToken.None);
+        f._db.Context.ChangeTracker.Clear();
         return f;
     }
 

@@ -52,7 +52,7 @@ public sealed record PrintCountSheetRequest(Guid PrinterId);
 /// </summary>
 public sealed class StockCountCommands(
     ITausiDb db, ICurrentSession session, StockAccess access, StockBook book, ILedgerPostingService ledger, PrintQueue queue,
-    IAuditLog audit, IPosEvents events, TimeProvider clock)
+    IAuditLog audit, IPosEvents events, IPermissionService permissions, TimeProvider clock)
 {
     public const string LedgerSource = "StockCount";
 
@@ -162,7 +162,11 @@ public sealed class StockCountCommands(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         var count = await Load(id, ct);
         if (count.Status != StockCountStatus.Submitted) throw new ConflictException("This count isn't waiting for approval.", StockCodes.NotPending);
-        await access.RequireApprover(user, PermissionKeys.StockAdjust, count.CountedByUserId, ct);
+        // During the first-run setup the owner approves their own opening count (audited as "setup");
+        // afterwards someone other than the counter always approves.
+        var bySetup = count.IsOpening && count.CountedByUserId == user.UserId && await Setup.SetupFlow.InProgress(db, ct);
+        if (bySetup) await permissions.Require(user, PermissionKeys.StockAdjust, ct: ct);
+        else await access.RequireApprover(user, PermissionKeys.StockAdjust, count.CountedByUserId, ct);
         var day = await WorkPeriods.Current(db, ct);
         var ids = count.Lines.Select(l => l.StockItemId).ToList();
         await book.LockItems(ids, ct);
@@ -197,7 +201,8 @@ public sealed class StockCountCommands(
         count.ApprovedByUserId = user.UserId;
         count.ApprovedAt = clock.GetUtcNow();
         audit.Write(new AuditRecord(AuditActions.StockCountChanged, nameof(StockCount), count.Id.ToString(),
-            new { status = "Submitted" }, new { status = "Approved", variance = count.VarianceValue }, user.UserId));
+            new { status = "Submitted" }, new { status = "Approved", variance = count.VarianceValue }, user.UserId,
+            Actor: bySetup ? Setup.SetupFlow.SetupActor : null));
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         await StockEvents.Publish(events, "counts", ct);
