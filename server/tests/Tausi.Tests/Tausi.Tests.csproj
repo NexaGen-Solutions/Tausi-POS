@@ -27,6 +27,8 @@
     <ProjectReference Include="..\..\src\Tausi.Application\Tausi.Application.csproj" />
     <ProjectReference Include="..\..\src\Tausi.Infrastructure\Tausi.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Tausi.Api\Tausi.Api.csproj" />
+    <ProjectReference Include="..\..\..\tools\Tausi.LicenseTool\Tausi.LicenseTool.csproj" />
+    <ProjectReference Include="..\..\src\Tausi.Licensing\Tausi.Licensing.csproj" />
   </ItemGroup>
 
 </Project>

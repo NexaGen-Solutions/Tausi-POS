@@ -47,11 +47,12 @@ app.UseExceptionHandler();
 app.UseMiddleware<ContentSecurityPolicy>();
 app.UseTausiStaticFiles();
 app.UseRouting();
+// A new install answers only the setup wizard until it is set up.
+app.UseMiddleware<SetupMode>();
 app.UseCors();
 app.UseMiddleware<DeviceTokenMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<SetupMode>();
 app.UseMiddleware<PinChangeGate>();
 app.UseMiddleware<IdempotencyMiddleware>();
 

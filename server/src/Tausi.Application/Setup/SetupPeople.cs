@@ -132,7 +132,7 @@ public sealed class SetupPeople(
         var userName = (r.UserName ?? "").Trim().ToLowerInvariant();
         if (userName.Length is < 3 or > 40 || !userName.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or '_'))
             errors["userName"] = "Use 3 to 40 letters, digits, dots, dashes or underscores.";
-        else if (await db.Users.AnyAsync(u => u.UserName == userName && u.Id != existing!.Id, ct))
+        else if (await db.Users.AnyAsync(u => u.UserName == userName && u.Id != (existing == null ? Guid.Empty : existing.Id), ct))
             errors["userName"] = "That name is taken.";
         if ((r.Password ?? "").Length < StaffAccess.MinPasswordLength)
             errors["password"] = $"At least {StaffAccess.MinPasswordLength} characters.";

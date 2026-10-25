@@ -53,3 +53,24 @@ public sealed class MemoryFileStorage : Tausi.Application.Files.IFileStorage
 
     public Stream? Open(Guid fileId) => _files.TryGetValue(fileId, out var bytes) ? new MemoryStream(bytes) : null;
 }
+
+/// <summary>setup-token.txt, in memory.</summary>
+public sealed class MemoryTokenFile : Tausi.Application.Setup.ISetupTokenFile
+{
+    public string? Token { get; private set; }
+    public string Path => "/data/setup-token.txt";
+    public string? Read() => Token;
+    public void Write(string token) => Token = token;
+    public void Delete() => Token = null;
+}
+
+/// <summary>A SambaPOS database as data, for the import's mapping (the real reader is tested on SQL Server).</summary>
+public sealed class FakeSambaPos : Tausi.Application.Setup.ISambaPosSource
+{
+    public Tausi.Application.Setup.SambaPosData Data { get; set; } = new([], [], [], [], [], [], [], [], [], []);
+
+    public Task<string> Test(Tausi.Application.Setup.SambaPosConnection connection, CancellationToken ct) => Task.FromResult("Connected.");
+
+    public Task<Tausi.Application.Setup.SambaPosData> Read(Tausi.Application.Setup.SambaPosConnection connection, CancellationToken ct) =>
+        Task.FromResult(Data);
+}

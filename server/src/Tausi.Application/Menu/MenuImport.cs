@@ -165,7 +165,7 @@ public sealed class MenuImport(ITausiDb db, MenuAccess access, IAuditLog audit, 
         [
             TemplateColumns,
             ["Beers", "Tusker Lager 500ml", "Tusker", "250", "230", "16", "no", "Temperature", "TUSKER-500", "yes"],
-            ["Soft drinks", "Sodas 300ml", "Soda", "100", "", "16", "no", "", "", "yes"],
+            ["Soft drinks", "Passion Juice 300ml", "Passion Juice", "120", "", "16", "no", "", "", "yes"],
         ]))];
 
     /// <summary>

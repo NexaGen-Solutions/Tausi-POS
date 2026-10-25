@@ -61,6 +61,7 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
 
         var scopes = Services.GetRequiredService<IServiceScopeFactory>();
         await DatabaseStartup.Migrate(scopes, CancellationToken.None);
+        if (!SeedDemo) return;
         await using var scope = scopes.CreateAsyncScope();
         foreach (var user in await scope.ServiceProvider.GetRequiredService<Seeder>().SeedDemo(AdminPassword, CancellationToken.None))
             Pins[user.Name] = user.Pin;
@@ -78,6 +79,11 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Web:Root", Path.Combine(_dataDir, "no-web"));
         builder.ConfigureTestServices(ConfigureTestServices);
     }
+
+    /// <summary>False: a new install (migrated, base seed only), in setup mode.</summary>
+    protected virtual bool SeedDemo => true;
+
+    public string DataDirectory => _dataDir;
 
     /// <summary>"File" sends every printer's jobs to files; "Real" uses each printer's connection.</summary>
     protected virtual string PrintTransport => "File";
@@ -243,3 +249,17 @@ public static class HttpExtensions
         return JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync(), TausiApp.Json);
     }
 }
+
+/// <summary>A new install: migrated with the base seed only, so the server is in setup mode. Its clock moves by hand.</summary>
+public sealed class FreshApp : TausiApp
+{
+    public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+
+    protected override bool SeedDemo => false;
+
+    protected override void ConfigureTestServices(IServiceCollection services) =>
+        services.AddSingleton<TimeProvider>(Clock);
+}
+
+/// <summary>Its own server and database, for the SambaPOS import (it adds items, tables and staff).</summary>
+public sealed class ImportApp : TausiApp;
