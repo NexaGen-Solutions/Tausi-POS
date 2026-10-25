@@ -49,4 +49,7 @@ public sealed class LoginThrottle(TimeProvider clock)
     }
 
     public void Clear(string key) => _failures.TryRemove(key, out _);
+
+    /// <summary>Forgets every failure (as a restart does).</summary>
+    public void Reset() => _failures.Clear();
 }

@@ -17,7 +17,12 @@ public sealed class VersionCheck(RequestDelegate next)
             await next(http);
             return;
         }
-        http.Response.Headers[TerminalVersions.ServerHeader] = SystemEndpoints.Version;
+        // Added as the answer starts, so error answers (written after the headers were reset) carry it too.
+        http.Response.OnStarting(() =>
+        {
+            http.Response.Headers[TerminalVersions.ServerHeader] = SystemEndpoints.Version;
+            return Task.CompletedTask;
+        });
         if (http.Request.Path.StartsWithSegments("/api/auth/pin")
             && http.Request.Headers.ContainsKey(TausiClaims.DeviceTokenHeader)
             && TerminalVersions.TooOld(http.Request.Headers[TerminalVersions.Header]))

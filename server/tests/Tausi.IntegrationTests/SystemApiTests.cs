@@ -49,6 +49,8 @@ public class SystemApiTests(StaffApp app)
     [Fact]
     public async Task Ten_wrong_admin_passwords_lock_the_user_name()
     {
+        var throttle = app.Services.GetRequiredService<Tausi.Application.Auth.LoginThrottle>();
+        throttle.Reset();
         var client = app.CreateClient();
         for (var i = 0; i < 9; i++)
             (await client.PostAsJsonAsync("/api/admin/login", new { userName = "nobody-" + i % 2, password = "wrong" }))
@@ -58,9 +60,7 @@ public class SystemApiTests(StaffApp app)
         var locked = await client.PostAsJsonAsync("/api/admin/login", new { userName = "admin", password = TausiApp.AdminPassword });
         locked.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         locked.Headers.RetryAfter.Should().NotBeNull();
-        app.Services.GetRequiredService<Tausi.Application.Auth.LoginThrottle>().Clear(Tausi.Application.Auth.LoginThrottle.IpKey(null));
-        foreach (var ip in new[] { "127.0.0.1", "::1", "unknown" })
-            app.Services.GetRequiredService<Tausi.Application.Auth.LoginThrottle>().Clear(Tausi.Application.Auth.LoginThrottle.IpKey(ip));
+        throttle.Reset();
     }
 
     private string TerminalFolder => Path.GetFullPath(app.Services.GetRequiredService<IOptions<TausiOptions>>().Value.Updates.TerminalFolder);

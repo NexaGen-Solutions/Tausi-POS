@@ -1,0 +1,12 @@
+{
+  "about": "What the terminal app of release 0.15 (its bundled connect/pairing pages and its Rust side) asks of a server, and the fields it reads. A newer server must keep answering these. When a release changes this contract, add its own file next to this one and keep the older ones while TerminalVersions.Minimum still allows those terminals.",
+  "terminalVersion": "0.15.0",
+  "calls": [
+    { "name": "connect check", "method": "GET", "path": "/api/health", "status": [200], "fields": ["status", "version"] },
+    { "name": "start pairing", "method": "POST", "path": "/api/terminals/pairing", "status": [200], "fields": ["pairingId", "code", "secret", "expiresAt"] },
+    { "name": "claim pairing (not yet approved)", "method": "POST", "path": "/api/terminals/pairing/claim", "body": "claim", "status": [200], "fields": ["status", "deviceToken", "terminalId", "terminalName"] },
+    { "name": "change server: admin check", "method": "POST", "path": "/api/terminals/verify-admin", "body": { "userName": "admin", "password": "wrong" }, "status": [401], "fields": ["detail"] },
+    { "name": "update feed", "method": "GET", "path": "/api/updates/terminal/latest.json", "status": [200, 204], "fields": [] }
+  ],
+  "headers": ["X-Tausi-Server-Version"]
+}
