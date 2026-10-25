@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
 using WixToolset.BootstrapperApplicationApi;
 
 namespace Tausi.Setup
@@ -5,21 +8,31 @@ namespace Tausi.Setup
     /// <summary>The installer's screens, started by the bundle (WiX v5: the bootstrapper application is its own program).</summary>
     internal static class Program
     {
-        [System.STAThread]
+        private static readonly string ErrorFile = Path.Combine(Path.GetTempPath(), "TausiSetup-error.txt");
+
+        [STAThread]
         private static int Main()
         {
+            // Before it reaches the engine there is no log: leave the reason where support finds it.
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => File.AppendAllText(ErrorFile, "Unhandled: " + e.ExceptionObject + Environment.NewLine);
             try
             {
-                var application = new TausiBootstrapper();
-                ManagedBootstrapperApplication.Run(application);
-                return application.ExitCode;
+                return Start();
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                // Before it reaches the engine there is no log: leave the reason where support finds it.
-                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "TausiSetup-error.txt"), e.ToString());
+                File.AppendAllText(ErrorFile, e + Environment.NewLine);
                 return 1;
             }
+        }
+
+        // Separate, so a missing assembly fails here, inside Main's try, not while Main is compiled.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static int Start()
+        {
+            var application = new TausiBootstrapper();
+            ManagedBootstrapperApplication.Run(application);
+            return application.ExitCode;
         }
     }
 }
