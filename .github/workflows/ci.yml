@@ -250,8 +250,11 @@ jobs:
           name: install-logs
           path: out/install-logs
           if-no-files-found: ignore
+      # Uploaded even when the tests fail, so it can be tried on a real PC.
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: tausi-server-windows
-          path: out/b/TausiPOS-Server-Setup-0.15.2.exe
+          path: out/a/TausiPOS-Server-Setup-0.15.1.exe
+          if-no-files-found: ignore
           retention-days: 14
