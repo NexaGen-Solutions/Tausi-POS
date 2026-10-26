@@ -107,6 +107,24 @@ public static class ServerHost
         }
     }
 
+    /// <summary>
+    /// Appends a crash (or a failed command's full error) to tausi-crash.log in the installed logs folder,
+    /// or the temp folder when there is none: an installer step has no console anyone sees.
+    /// </summary>
+    public static void WriteCrash(object error)
+    {
+        try
+        {
+            var home = OperatingSystem.IsWindows() && Directory.Exists(Path.Combine(WindowsHome, "logs")) ? Path.Combine(WindowsHome, "logs") : Path.GetTempPath();
+            File.AppendAllText(Path.Combine(home, "tausi-crash.log"),
+                $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} {string.Join(' ', Environment.GetCommandLineArgs().Skip(1))}{Environment.NewLine}{error}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Nowhere to write it.
+        }
+    }
+
     /// <summary>The folders the data, logs and backups live in, from the settings.</summary>
     public static TausiOptions Options(IConfiguration config) =>
         config.GetSection(TausiOptions.Section).Get<TausiOptions>() ?? new TausiOptions();

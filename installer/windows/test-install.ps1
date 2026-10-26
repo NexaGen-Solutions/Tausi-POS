@@ -123,7 +123,7 @@ if ($failures.Count -gt 0) {
   Write-Host "`n$($failures.Count) check(s) failed:" -ForegroundColor Red
   $failures | ForEach-Object { Write-Host "  - $_" }
   Get-ChildItem "$home_\logs\*.log" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_ $Logs }
-  Get-ChildItem "$env:TEMP\TausiSetup-error.txt", "$env:TEMP\Tausi_POS_Server_*.log" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_ $Logs }
+  Get-ChildItem "$env:TEMP\TausiSetup-error.txt", "$env:TEMP\Tausi_POS_Server_*.log", "C:\Windows\Temp\tausi-crash.log", "C:\Windows\SystemTemp\tausi-crash.log" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_ $Logs }
   exit 1
 }
 Write-Host "`nAll installer checks passed." -ForegroundColor Green

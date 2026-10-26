@@ -10,6 +10,9 @@ using Tausi.Application.Printing;
 using Tausi.Infrastructure;
 using Tausi.Infrastructure.Legacy;
 
+// A crash before the logs are set up (an installer step run as SYSTEM, say) still leaves its reason.
+AppDomain.CurrentDomain.UnhandledException += (_, e) => ServerHost.WriteCrash(e.ExceptionObject);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // An installed server's folders and settings file (C:\ProgramData\Tausi POS), log files and the Event Log.

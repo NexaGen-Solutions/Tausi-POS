@@ -67,6 +67,7 @@ public static class InstallCommands
         {
             // A technician reads this: the reason, not a stack trace (the log has the details).
             Console.Error.WriteLine(e.GetBaseException() == e ? e.Message : $"{e.Message} ({e.GetBaseException().Message})");
+            ServerHost.WriteCrash(e);
             Environment.ExitCode = 1;
         }
         return true;
