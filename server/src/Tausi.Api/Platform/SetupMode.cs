@@ -13,7 +13,7 @@ public sealed class SetupMode(RequestDelegate next)
 {
     public const string Cookie = "tausi_setup";
 
-    private static readonly string[] Open = ["/api/setup", "/api/health", "/health", "/api/brand", "/api/terminals/pairing", "/api/system"];
+    private static readonly string[] Open = ["/api/setup", "/api/health", "/health", "/api/brand", "/api/terminals/pairing", "/api/system", "/api/updates"];
 
     public async Task InvokeAsync(HttpContext http, SetupGate gate, ITausiDb db, SetupFlow flow)
     {

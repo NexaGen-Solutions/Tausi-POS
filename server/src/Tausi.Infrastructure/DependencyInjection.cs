@@ -27,8 +27,8 @@ public static class DependencyInjection
         // Queries load related collections in one SQL statement (EF's default, stated so it doesn't warn);
         // the table map relies on it.
         var provider = config.GetSection("Database").Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Postgres;
-        var connection = config.GetConnectionString(TausiOptions.ConnectionStringName)
-            ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set.");
+        var connection = Platform.MachineSecrets.UnprotectConnectionString(config.GetConnectionString(TausiOptions.ConnectionStringName)
+            ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set."));
         switch (provider)
         {
             case DatabaseProvider.SqlServer:
@@ -64,6 +64,13 @@ public static class DependencyInjection
         services.AddHostedService<PrinterHealthMonitor>();
         services.AddHostedService<HousekeepingService>();
         services.AddHostedService<TicketLockSweeper>();
+
+        services.AddSingleton<Backups.BackupEngine>();
+        services.AddSingleton<Application.Backups.IBackupEngine>(sp => sp.GetRequiredService<Backups.BackupEngine>());
+        services.AddHostedService<Backups.BackupScheduler>();
+        services.AddSingleton<Application.Updates.IUpdateSource, Updates.HttpUpdateSource>();
+        services.AddSingleton<Application.Updates.ITerminalUpdateFiles, Updates.TerminalUpdateFiles>();
+        services.AddSingleton<Application.Terminals.IServerProbe, Updates.ServerProbe>();
         return services;
     }
 }

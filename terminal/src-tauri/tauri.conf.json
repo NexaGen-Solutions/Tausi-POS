@@ -41,15 +41,24 @@
       "icons/icon.ico"
     ],
     "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
       "nsis": {
-        "installMode": "perMachine"
+        "installMode": "perMachine",
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
-      "endpoints": []
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0RDI4MjMwOTVERkE4MEQKUldRTnFOK1ZNSUxTcE91ZEtBYitzaFlzWTlCc3hCYW4yZlR3aTVzZkZCMFlhbW9mVHpMQ0RDMlUK",
+      "endpoints": [],
+      "dangerousInsecureTransportProtocol": true,
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

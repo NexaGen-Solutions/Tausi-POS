@@ -15,7 +15,8 @@ public sealed class SessionTokens(ServerSecrets secrets, TimeProvider clock)
     // Kept from before the rename to Tausi: changing it would end every PIN session on the terminals.
     public const string Issuer = "nexagen";
 
-    public SymmetricSecurityKey Key { get; } = new(secrets.JwtSigningKey);
+    /// <summary>Read on each use, so a restore that brings back other secrets takes effect at once.</summary>
+    public SymmetricSecurityKey Key => new(secrets.JwtSigningKey);
 
     public string Issue(SessionUser user, DateTimeOffset expiresAt)
     {

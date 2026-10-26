@@ -70,7 +70,7 @@ public static class AuthEndpoints
 
         admin.MapPost("/login", async (AdminLoginRequest request, AdminLogin login, HttpContext http, CancellationToken ct) =>
         {
-            var user = await login.Execute(request, ct);
+            var user = await login.Execute(request, ct, http.Connection.RemoteIpAddress?.ToString());
             var identity = new ClaimsIdentity(
                 [new Claim(TausiClaims.UserId, user.UserId.ToString()), new Claim(TausiClaims.Name, user.Name)],
                 TausiClaims.AdminScheme, TausiClaims.Name, null);

@@ -1,0 +1,27 @@
+[Unit]
+Description=Tausi POS Server by NexaGen Solutions
+Documentation=https://nexagensolutions.com
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=tausi
+Group=tausi
+WorkingDirectory=/opt/tausi
+ExecStart=/opt/tausi/TausiServer
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_NOLOGO=1
+EnvironmentFile=/etc/tausi/tausi.env
+Restart=always
+RestartSec=5
+TimeoutStartSec=180
+# The service may write only its own folders.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/tausi /var/log/tausi
+
+[Install]
+WantedBy=multi-user.target

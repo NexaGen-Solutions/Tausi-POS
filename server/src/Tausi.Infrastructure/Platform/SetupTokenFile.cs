@@ -4,11 +4,12 @@ using Tausi.Application.Setup;
 
 namespace Tausi.Infrastructure.Platform;
 
-/// <summary>setup-token.txt in the data folder: the setup token for whoever installs the server. Deleted when setup is finished.</summary>
+/// <summary>setup-token.txt (in the data folder, or an installed server's home folder): the setup token for whoever installs the server. Deleted when setup is finished.</summary>
 public sealed class SetupTokenFile(IOptions<TausiOptions> options, IHostEnvironment env) : ISetupTokenFile
 {
-    public string Path { get; } = System.IO.Path.Combine(
-        System.IO.Path.GetFullPath(options.Value.DataDirectory, env.ContentRootPath), "setup-token.txt");
+    public string Path { get; } = options.Value.SetupTokenFile is { Length: > 0 } file
+        ? System.IO.Path.GetFullPath(file, env.ContentRootPath)
+        : System.IO.Path.Combine(System.IO.Path.GetFullPath(options.Value.DataDirectory, env.ContentRootPath), "setup-token.txt");
 
     public string? Read() => File.Exists(Path) ? File.ReadAllText(Path).Trim() : null;
 

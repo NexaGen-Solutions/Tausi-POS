@@ -114,6 +114,12 @@ export function SettingsPage() {
             <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/licence">
               {t('admin.licence.title')}
             </Link>
+            <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/backups">
+              {t('admin.backups.title')}
+            </Link>
+            <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/system">
+              {t('admin.system.title')}
+            </Link>
             <Button variant="link" onClick={() => setHistory(true)}>
               {t('admin.settings.history')}
             </Button>

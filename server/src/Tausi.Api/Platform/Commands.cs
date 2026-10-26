@@ -22,6 +22,13 @@ public static class Commands
         switch (args[0])
         {
             case "migrate":
+                // Only in the installer's rollback test build: a migration that fails.
+                if (app.Configuration.GetValue("Tausi:Test:FailMigration", false))
+                {
+                    Console.Error.WriteLine("Migration failed (Tausi:Test:FailMigration is set: a test build).");
+                    Environment.ExitCode = 1;
+                    return true;
+                }
                 await DatabaseStartup.Migrate(app.Services.GetRequiredService<IServiceScopeFactory>(), CancellationToken.None);
                 Console.WriteLine("Database is up to date.");
                 return true;
@@ -45,7 +52,7 @@ public static class Commands
                 await Reset(app, args.Contains("--confirm"));
                 return true;
             default:
-                return false;
+                return await InstallCommands.TryRun(app, args);
         }
     }
 

@@ -8,6 +8,7 @@ import {
   openServer,
   saveDevice,
   serverUrl,
+  suggestedServerUrl,
   setServerUrl,
 } from '../shared/device/device';
 import { t } from '../shared/i18n/i18n';
@@ -71,7 +72,7 @@ export function SetupPage() {
 }
 
 function ServerStep({ bundled, onConnected }: { bundled: boolean; onConnected: () => void }) {
-  const [address, setAddress] = useState(serverUrl() ?? 'http://');
+  const [address, setAddress] = useState(serverUrl() ?? suggestedServerUrl() ?? 'http://');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 

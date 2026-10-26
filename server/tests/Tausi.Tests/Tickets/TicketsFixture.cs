@@ -34,6 +34,9 @@ public sealed class TicketsFixture : IAsyncDisposable
     public Dictionary<string, Role> Roles { get; private set; } = [];
     public MemoryTokenFile TokenFile { get; } = new();
     public FakeSambaPos SambaPos { get; } = new();
+    public FakeUpdateSource Updates { get; } = new();
+    public FakeUpdateInstaller UpdateInstaller { get; } = new();
+    public FakeServerProbe Servers { get; } = new();
 
     private TicketsFixture()
     {
@@ -55,6 +58,9 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton<Tausi.Application.Files.IFileStorage, MemoryFileStorage>();
         services.AddSingleton<Tausi.Application.Setup.ISetupTokenFile>(TokenFile);
         services.AddSingleton<Tausi.Application.Setup.ISambaPosSource>(SambaPos);
+        services.AddSingleton<Tausi.Application.Updates.IUpdateSource>(Updates);
+        services.AddSingleton<Tausi.Application.Updates.IUpdateInstaller>(UpdateInstaller);
+        services.AddSingleton<Tausi.Application.Terminals.IServerProbe>(Servers);
         services.AddScoped<Tausi.Application.Ledger.ILedgerPostingService, Tausi.Infrastructure.Ledger.LedgerPostingService>();
         _services = services.BuildServiceProvider();
     }

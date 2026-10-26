@@ -3,7 +3,9 @@ import { NavLink, Navigate, Outlet, useNavigate } from 'react-router';
 import { ApiError, api, apiUrl } from '../shared/api/client';
 import type { Brand, Me } from '../shared/api/types';
 import { LiveUpdates } from '../shared/connection/LiveUpdates';
+import { BackupBanner } from '../shared/connection/BackupBanner';
 import { LicenceBanner } from '../shared/connection/LicenceBanner';
+import { ServerStateOverlay } from '../shared/connection/ServerStateOverlay';
 import { OfflineBanner } from '../shared/connection/OfflineBanner';
 import { t } from '../shared/i18n/i18n';
 import { Button } from '../shared/ui';
@@ -61,6 +63,8 @@ export function AdminLayout() {
       <div className="admin__main">
         <OfflineBanner />
         {me.data && <LicenceBanner admin />}
+        {me.data && <BackupBanner admin />}
+        <ServerStateOverlay />
         {me.data && <LiveUpdates />}
         <Outlet />
       </div>

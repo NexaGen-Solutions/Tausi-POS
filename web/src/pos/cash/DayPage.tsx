@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ApiError, api } from '../../shared/api/client';
 import type { Brand, Me } from '../../shared/api/types';
+import { BackupBanner } from '../../shared/connection/BackupBanner';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { formatAmount, formatMoney, formatSigned } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
@@ -128,6 +129,7 @@ export function DayPage() {
         }
       />
       <OfflineBanner />
+      <BackupBanner admin={false} />
       {status && !status.open && (
         <main className="cash-body cash-body--start">
           <p className="cash-note">{t('pos.day.notOpen')}</p>

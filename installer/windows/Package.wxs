@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tausi POS Server (MSI). Built by build.ps1 with WiX Toolset v5; normally run through the bundle
+  (TausiPOS-Server-Setup-<version>.exe), which asks the questions and passes them as properties.
+
+  Install:   files → the service (NT SERVICE\TausiPOSServer, delayed automatic start, restart after 1 minute)
+             → TausiServer configure (settings, folders, rights) → provision (database, login, update task)
+             → migrate → (restore a backup) → start → wait for /health.
+  Upgrade:   a backup first (with the old program), then the same; if migrating or starting fails the
+             backup is restored and Windows Installer puts the old files back.
+  Uninstall: removes the service, the program and the firewall rule; keeps C:\ProgramData\Tausi POS and
+             the database unless DELETEDATA=1 (with the business name typed).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
+
+  <Package Name="Tausi POS Server" Manufacturer="NexaGen Solutions" Version="$(Version)"
+           UpgradeCode="6B1D5F0A-3C51-4C1E-9A3B-2B9F7E5C1A01" Scope="perMachine" Compressed="yes"
+           Language="1033">
+    <SummaryInformation Description="Tausi POS Server by NexaGen Solutions" />
+
+    <!--
+      Upgrades: the whole upgrade is one transaction, so a failure puts the old version back. The backup is
+      taken with the old program first; the new files go in over the old, and the old version's leftovers are
+      removed at the end (RemoveExistingProducts after InstallExecute).
+    -->
+    <Upgrade Id="6B1D5F0A-3C51-4C1E-9A3B-2B9F7E5C1A01">
+      <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" Maximum="$(Version)" IncludeMaximum="no" Property="WIX_UPGRADE_DETECTED" />
+      <UpgradeVersion Minimum="$(Version)" IncludeMinimum="no" OnlyDetect="yes" Property="WIX_DOWNGRADE_DETECTED" />
+    </Upgrade>
+    <Launch Condition="NOT WIX_DOWNGRADE_DETECTED" Message="A newer Tausi POS Server is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="tausi.ico" SourceFile="tausi.ico" />
+    <Property Id="ARPPRODUCTICON" Value="tausi.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://nexagensolutions.com" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <!-- What the bundle asks (Secure: they reach the elevated steps). Passwords are hidden from the log. -->
+    <Property Id="DBMODE" Secure="yes" Value="sqlexpress" />
+    <Property Id="SQLINSTANCE" Secure="yes" Value=".\TAUSI" />
+    <Property Id="SQLDATABASE" Secure="yes" Value="TausiPOS" />
+    <Property Id="SQLUSER" Secure="yes" />
+    <Property Id="SQLPASSWORD" Secure="yes" Hidden="yes" />
+    <Property Id="SQLSERVICEACCOUNT" Secure="yes" Value="NT SERVICE\MSSQL$TAUSI" />
+    <Property Id="PGHOST" Secure="yes" Value="localhost" />
+    <Property Id="PGPORT" Secure="yes" Value="5432" />
+    <Property Id="PGUSER" Secure="yes" Value="tausi" />
+    <Property Id="PGPASSWORD" Secure="yes" Hidden="yes" />
+    <Property Id="PGDATABASE" Secure="yes" Value="tausipos" />
+    <Property Id="RESTOREFILE" Secure="yes" />
+    <Property Id="RESTOREPASSWORD" Secure="yes" Hidden="yes" />
+    <Property Id="DELETEDATA" Secure="yes" Value="0" />
+    <Property Id="BUSINESSNAME" Secure="yes" />
+
+    <!-- An upgrade keeps the port and the firewall choice it had. -->
+    <Property Id="PORT" Secure="yes" Value="5080">
+      <RegistrySearch Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server" Name="Port" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="FIREWALL" Secure="yes" Value="1">
+      <RegistrySearch Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server" Name="Firewall" Type="raw" Bitness="always64" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="TausiFolder" Name="Tausi POS">
+        <Directory Id="INSTALLFOLDER" Name="Server" />
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Server" Title="Tausi POS Server">
+      <ComponentGroupRef Id="ServerFiles" />
+      <ComponentRef Id="ServerExe" />
+      <ComponentRef Id="Remembered" />
+      <ComponentRef Id="Firewall" />
+    </Feature>
+
+    <ComponentGroup Id="ServerFiles" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.Server)\**">
+        <Exclude Files="!(bindpath.Server)\TausiServer.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <Component Id="ServerExe" Directory="INSTALLFOLDER">
+      <File Id="TausiServerExe" Source="!(bindpath.Server)\TausiServer.exe" KeyPath="yes" />
+      <ServiceInstall Id="TausiPOSServer" Name="TausiPOSServer" DisplayName="Tausi POS Server"
+                      Description="Tausi POS by NexaGen Solutions: holds the data, the rules and printing for the terminals."
+                      Type="ownProcess" Start="auto" ErrorControl="normal" Vital="yes"
+                      Account="NT SERVICE\TausiPOSServer">
+        <util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart"
+                            ThirdFailureActionType="restart" RestartServiceDelayInSeconds="60" ResetPeriodInDays="1" />
+      </ServiceInstall>
+      <ServiceControl Id="TausiPOSServer" Name="TausiPOSServer" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+      <!-- Errors go to the Application log as "Tausi POS". -->
+      <util:EventSource Name="Tausi POS" Log="Application"
+                        EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+    </Component>
+
+    <Component Id="Remembered" Directory="INSTALLFOLDER">
+      <RegistryKey Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server">
+        <RegistryValue Name="Port" Type="string" Value="[PORT]" KeyPath="yes" />
+        <RegistryValue Name="Firewall" Type="string" Value="[FIREWALL]" />
+        <RegistryValue Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" />
+        <RegistryValue Name="Version" Type="string" Value="$(Version)" />
+      </RegistryKey>
+    </Component>
+
+    <!-- The private (home or work) network only, for the server's port. -->
+    <Component Id="Firewall" Directory="INSTALLFOLDER" Condition="FIREWALL = &quot;1&quot;">
+      <RegistryValue Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server" Name="FirewallRule" Type="integer" Value="1" KeyPath="yes" />
+      <fw:FirewallException Id="TausiPort" Name="Tausi POS Server" Port="[PORT]" Protocol="tcp" Profile="private" Scope="any" />
+    </Component>
+
+    <!-- The settings for configure: one database choice each. -->
+    <SetProperty Id="DBARGS" Action="SetDbArgsWindows" Value="--provider SqlServer --sql-server &quot;[SQLINSTANCE]&quot; --database &quot;[SQLDATABASE]&quot; --sql-service-account &quot;[SQLSERVICEACCOUNT]&quot;"
+                 Sequence="execute" Before="CostFinalize" Condition="DBMODE &lt;&gt; &quot;postgres&quot; AND NOT SQLUSER" />
+    <SetProperty Id="DBARGS" Action="SetDbArgsSqlLogin" Value="--provider SqlServer --sql-server &quot;[SQLINSTANCE]&quot; --database &quot;[SQLDATABASE]&quot; --sql-user &quot;[SQLUSER]&quot; --sql-password &quot;[SQLPASSWORD]&quot;"
+                 Sequence="execute" Before="CostFinalize" Condition="DBMODE &lt;&gt; &quot;postgres&quot; AND SQLUSER" />
+    <SetProperty Id="DBARGS" Action="SetDbArgsPostgres" Value="--provider Postgres --pg-host &quot;[PGHOST]&quot; --pg-port [PGPORT] --pg-user &quot;[PGUSER]&quot; --pg-password &quot;[PGPASSWORD]&quot; --database &quot;[PGDATABASE]&quot;"
+                 Sequence="execute" Before="CostFinalize" Condition="DBMODE = &quot;postgres&quot;" />
+
+    <!-- Every step runs TausiServer.exe as SYSTEM. -->
+    <CustomAction Id="PreUpgradeBackup" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; backup --reason upgrade" />
+    <CustomAction Id="Configure" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; configure [DBARGS] --port [PORT]" />
+    <CustomAction Id="Provision" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; provision" />
+    <CustomAction Id="RollbackRestore" Directory="INSTALLFOLDER" Execute="rollback" Impersonate="no" Return="ignore"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; restore --latest-upgrade --yes --no-safety-backup" />
+    <CustomAction Id="Migrate" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; migrate" />
+    <CustomAction Id="RestoreBackup" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check" HideTarget="yes"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; restore &quot;[RESTOREFILE]&quot; --password &quot;[RESTOREPASSWORD]&quot; --yes --no-safety-backup" />
+    <CustomAction Id="WaitHealth" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; wait-health --timeout 180" />
+    <CustomAction Id="Cleanup" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="ignore"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; cleanup" />
+    <CustomAction Id="Purge" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; purge --business &quot;[BUSINESSNAME]&quot;" />
+
+    <InstallExecuteSequence>
+      <Custom Action="PreUpgradeBackup" After="InstallInitialize" Condition="WIX_UPGRADE_DETECTED AND NOT REMOVE" />
+      <!-- Windows Installer allows it only in a few places: after InstallExecute keeps the whole upgrade one
+           transaction and leaves the old program in place for PreUpgradeBackup, which runs first. -->
+      <RemoveExistingProducts After="InstallExecute" />
+      <Custom Action="Configure" After="InstallServices" Condition="NOT REMOVE" />
+      <Custom Action="Provision" After="Configure" Condition="NOT REMOVE" />
+      <Custom Action="RollbackRestore" After="Provision" Condition="WIX_UPGRADE_DETECTED AND NOT REMOVE" />
+      <Custom Action="Migrate" After="RollbackRestore" Condition="NOT REMOVE" />
+      <Custom Action="RestoreBackup" After="Migrate" Condition="RESTOREFILE AND NOT WIX_UPGRADE_DETECTED AND NOT REMOVE" />
+      <Custom Action="WaitHealth" After="StartServices" Condition="NOT REMOVE" />
+      <Custom Action="Purge" After="StopServices" Condition="REMOVE = &quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND DELETEDATA = &quot;1&quot;" />
+      <Custom Action="Cleanup" Before="RemoveFiles" Condition="REMOVE = &quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

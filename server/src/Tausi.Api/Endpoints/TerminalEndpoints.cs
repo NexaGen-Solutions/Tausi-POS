@@ -16,9 +16,16 @@ public static class TerminalEndpoints
             claim.Execute(request, ct)).RequireCors(CorsSetup.TerminalApp);
 
         // The terminal app's setup screen asks for an admin-site login before the server address can change.
-        terminals.MapPost("/verify-admin", async (AdminLoginRequest request, AdminLogin login, CancellationToken ct) =>
+        terminals.MapPost("/verify-admin", async (AdminLoginRequest request, AdminLogin login, HttpContext http, CancellationToken ct) =>
         {
-            await login.Execute(request, ct);
+            await login.Execute(request, ct, http.Connection.RemoteIpAddress?.ToString());
+            return Results.NoContent();
+        }).RequireCors(CorsSetup.TerminalApp);
+
+        // Leaving kiosk mode on a paired terminal: an admin-site login, recorded against the terminal.
+        terminals.MapPost("/kiosk-exit", async (AdminLoginRequest request, KioskExit exit, HttpContext http, CancellationToken ct) =>
+        {
+            await exit.Execute(request, http.Connection.RemoteIpAddress?.ToString(), ct);
             return Results.NoContent();
         }).RequireCors(CorsSetup.TerminalApp);
 
@@ -30,6 +37,8 @@ public static class TerminalEndpoints
         admin.MapGet("/", (ListTerminals list, CancellationToken ct) => list.Execute(ct));
         admin.MapPut("/{id:guid}", (Guid id, TerminalRequest request, UpdateTerminal update, CancellationToken ct) =>
             update.Execute(id, request, ct));
+        // Moving to a new server PC: every running terminal goes to the new address, keeping its pairing.
+        admin.MapPost("/move", async (MoveTerminalsRequest r, MoveTerminals move, CancellationToken ct) => new { serverUrl = await move.Execute(r, ct) });
         admin.MapPost("/pair", (PairTerminalRequest request, PairTerminal pair, CancellationToken ct) => pair.Execute(request, ct));
         admin.MapPost("/{id:guid}/revoke", async (Guid id, RevokeTerminal revoke, CancellationToken ct) =>
         {

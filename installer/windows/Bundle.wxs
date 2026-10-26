@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TausiPOS-Server-Setup-<version>.exe: the installer a bar owner runs. Its screens are TausiSetup.exe
+  (welcome and licence, database, port, progress, finish; remove with "Also delete all data").
+
+  Silent install for technicians (every screen's answer as NAME=value):
+    TausiPOS-Server-Setup.exe /quiet DB=existing SQLINSTANCE=.\SQLEXPRESS PORT=5080
+  DB=sqlexpress (default, installs SQL Server 2022 Express as .\TAUSI) | existing | postgres.
+  See docs/INSTALL.md for the rest (SQLUSER, SQLPASSWORD, PG*, FIREWALL, RESTOREFILE, SQLMEDIA).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Bundle Name="Tausi POS Server" Manufacturer="NexaGen Solutions" Version="$(Version)"
+          UpgradeCode="0E8F3C27-9B7A-4D8B-8C4E-5A1F2D3B4C02" IconSourceFile="tausi.ico"
+          AboutUrl="https://nexagensolutions.com" Compressed="yes">
+
+    <BootstrapperApplication SourceFile="!(bindpath.Setup)\TausiSetup.exe">
+      <Payload SourceFile="!(bindpath.Setup)\WixToolset.BootstrapperApplicationApi.dll" />
+      <Payload SourceFile="!(bindpath.Setup)\mbanative.dll" />
+      <Payload SourceFile="!(bindpath.Setup)\TausiSetup.exe.config" />
+    </BootstrapperApplication>
+
+    <!-- The answers. The screens fill them in; /quiet takes them from the command line. -->
+    <Variable Name="DB" Type="string" Value="sqlexpress" />
+    <Variable Name="SQLINSTANCE" Type="string" Value=".\TAUSI" />
+    <Variable Name="SQLDATABASE" Type="string" Value="TausiPOS" />
+    <Variable Name="SQLUSER" Type="string" Value="" />
+    <Variable Name="SQLPASSWORD" Type="string" Value="" Hidden="yes" />
+    <Variable Name="SQLSERVICEACCOUNT" Type="string" Value="NT SERVICE\MSSQL$TAUSI" />
+    <Variable Name="SQLMEDIA" Type="string" Value="" />
+    <Variable Name="SQLGRANTSYSTEM" Type="string" Value="0" />
+    <Variable Name="PGHOST" Type="string" Value="localhost" />
+    <Variable Name="PGPORT" Type="string" Value="5432" />
+    <Variable Name="PGUSER" Type="string" Value="tausi" />
+    <Variable Name="PGPASSWORD" Type="string" Value="" Hidden="yes" />
+    <Variable Name="PGDATABASE" Type="string" Value="tausipos" />
+    <Variable Name="PORT" Type="string" Value="5080" />
+    <Variable Name="FIREWALL" Type="string" Value="1" />
+    <Variable Name="RESTOREFILE" Type="string" Value="" />
+    <Variable Name="RESTOREPASSWORD" Type="string" Value="" Hidden="yes" />
+    <Variable Name="DELETEDATA" Type="string" Value="0" />
+    <Variable Name="BUSINESSNAME" Type="string" Value="" />
+
+    <!-- An earlier install: SQL Server Express instance TAUSI, and the port it uses. -->
+    <util:RegistrySearch Id="SqlTausi" Root="HKLM" Key="SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"
+                         Value="TAUSI" Result="exists" Variable="SqlTausiInstalled" Bitness="always64" />
+    <util:RegistrySearch Id="InstalledPort" Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server"
+                         Value="Port" Result="value" Variable="InstalledPort" Bitness="always64" />
+
+    <Chain>
+      <!-- Downloads SQL Server 2022 Express (or takes the installer from a USB drive) and installs instance TAUSI. -->
+      <ExePackage Id="SqlExpress" DisplayName="SQL Server 2022 Express" SourceFile="!(bindpath.Setup)\TausiSqlSetup.exe"
+                  InstallArguments="--instance TAUSI --media &quot;[SQLMEDIA]&quot;"
+                  DetectCondition="SqlTausiInstalled" InstallCondition="DB = &quot;sqlexpress&quot;"
+                  PerMachine="yes" Permanent="yes" Vital="yes">
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <MsiPackage Id="TausiServer" SourceFile="!(bindpath.Msi)\TausiPOS-Server.msi" Vital="yes">
+        <MsiProperty Name="DBMODE" Value="[DB]" />
+        <MsiProperty Name="SQLINSTANCE" Value="[SQLINSTANCE]" />
+        <MsiProperty Name="SQLDATABASE" Value="[SQLDATABASE]" />
+        <MsiProperty Name="SQLUSER" Value="[SQLUSER]" />
+        <MsiProperty Name="SQLPASSWORD" Value="[SQLPASSWORD]" />
+        <MsiProperty Name="SQLSERVICEACCOUNT" Value="[SQLSERVICEACCOUNT]" />
+        <MsiProperty Name="PGHOST" Value="[PGHOST]" />
+        <MsiProperty Name="PGPORT" Value="[PGPORT]" />
+        <MsiProperty Name="PGUSER" Value="[PGUSER]" />
+        <MsiProperty Name="PGPASSWORD" Value="[PGPASSWORD]" />
+        <MsiProperty Name="PGDATABASE" Value="[PGDATABASE]" />
+        <MsiProperty Name="PORT" Value="[PORT]" />
+        <MsiProperty Name="FIREWALL" Value="[FIREWALL]" />
+        <MsiProperty Name="RESTOREFILE" Value="[RESTOREFILE]" />
+        <MsiProperty Name="RESTOREPASSWORD" Value="[RESTOREPASSWORD]" />
+        <MsiProperty Name="DELETEDATA" Value="[DELETEDATA]" />
+        <MsiProperty Name="BUSINESSNAME" Value="[BUSINESSNAME]" />
+      </MsiPackage>
+    </Chain>
+  </Bundle>
+</Wix>

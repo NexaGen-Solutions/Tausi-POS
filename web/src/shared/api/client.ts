@@ -1,5 +1,6 @@
 import { deviceToken } from '../device/device';
 import { updateConnection } from '../connection/status';
+import { clientVersion, setServerMode, setServerVersion } from '../connection/serverState';
 import { endPinSession, pinSession, touchSession } from '../session/session';
 
 /** The problem-details body the server sends for errors. */
@@ -148,6 +149,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       location.pathname !== '/setup'
     )
       location.assign('/setup');
+    // A backup is being restored, or this terminal app is too old for the server: say so over everything.
+    if (problem.status === 503 && problem.code === 'server_restoring') setServerMode('restoring');
+    if (problem.status === 426 && problem.code === 'terminal_update_required')
+      setServerMode('updating');
     // The server ended this PIN session (idle, logged out elsewhere, too old): back to the PIN pad.
     if (problem.status === 401 && problem.code === 'session_expired') endPinSession('expired');
     throw new ApiError(problem);
@@ -187,7 +192,7 @@ async function send(
   idempotencyKey?: string,
   approvalToken?: string,
 ): Promise<Response> {
-  const headers = new Headers({ Accept: 'application/json' });
+  const headers = new Headers({ Accept: 'application/json', 'X-Tausi-Version': clientVersion() });
   const device = deviceToken();
   if (device) headers.set('X-Device-Token', device);
   const session = pinSession();
@@ -216,6 +221,7 @@ async function send(
       keepalive: options.keepalive,
     });
     updateConnection({ apiReachable: response.status !== 502 && response.status !== 503 });
+    setServerVersion(response.headers.get('X-Tausi-Server-Version'));
     return response;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;

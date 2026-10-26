@@ -6,9 +6,12 @@ import { Outlet, useNavigate } from 'react-router';
 import { LicenceBanner } from '../shared/connection/LicenceBanner';
 import { onPosEvent } from '../shared/connection/hub';
 import { LiveUpdates } from '../shared/connection/LiveUpdates';
+import { ServerStateOverlay } from '../shared/connection/ServerStateOverlay';
 import { endPinSession, onPinSessionChange, pinSession } from '../shared/session/session';
 import { ApprovalsWatcher } from './approvals/ApprovalsWatcher';
 import { IdleWatcher } from './IdleWatcher';
+import { KioskExit } from './KioskExit';
+import { TerminalUpdater } from './TerminalUpdater';
 import { usePinSession } from './usePinSession';
 import './pos.css';
 
@@ -64,6 +67,9 @@ export function PosLayout() {
     <>
       <LiveUpdates />
       <IdleWatcher />
+      <TerminalUpdater />
+      <KioskExit />
+      <ServerStateOverlay />
       {session && <ApprovalsWatcher />}
       {session && <LicenceBanner admin={false} />}
       <Outlet />

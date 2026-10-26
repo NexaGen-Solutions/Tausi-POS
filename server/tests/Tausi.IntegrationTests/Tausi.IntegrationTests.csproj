@@ -29,4 +29,9 @@
     <ProjectReference Include="..\..\src\Tausi.Api\Tausi.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- What older terminal apps ask of the server (TerminalContractTests). -->
+    <None Include="Contracts\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -82,6 +82,14 @@ public static class AuditActions
     public const string LicenceEntered = "licence.entered";
     public const string LicenceTrialStarted = "licence.trial_started";
     public const string StockLocationChanged = "stock.location_changed";
+    public const string BackupSettingsChanged = "backup.settings_changed";
+    public const string BackupTaken = "backup.taken";
+    public const string BackupDownloaded = "backup.downloaded";
+    public const string BackupRestored = "backup.restored";
+    public const string ServerUpdateStarted = "server.update_started";
+    public const string TerminalKioskExit = "terminal.kiosk_exit";
+    public const string AdminPasswordReset = "admin.password_reset";
+    public const string TerminalsMoved = "terminals.moved";
 }
 
 /// <summary>Entity types of audit entries that more than one place writes or reads.</summary>

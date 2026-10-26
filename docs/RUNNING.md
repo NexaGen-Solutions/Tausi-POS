@@ -538,8 +538,8 @@ working:
 
 1. **Build the installer.** Every CI run of a branch builds it: open the run on GitHub and
    download the **tausi-terminal-windows** artifact (kept 14 days), which holds
-   `TausiPOS-Setup.exe`. A `terminal-v*` tag runs the release workflow, which attaches it to a
-   release. Or build it on a Windows PC with Rust, Node
+   `TausiPOS-Setup.exe` (and **tausi-server-windows**, the server installer). A `v*` tag runs the
+   release workflow (see section 7). Or build it on a Windows PC with Rust, Node
    and the WebView2 runtime: `cd web && npm ci && npm run build`, then
    `cd ../terminal && npm ci && npm run tauri build`. The installer is in
    `terminal/src-tauri/target/release/bundle/nsis/`.
@@ -577,6 +577,11 @@ TAUSI_TEST_POSTGRES='Host=localhost;Port=5432;Username=tausi;Password=tausi_dev'
 The SQL Server migration test starts SQL Server 2022 with Testcontainers, or uses
 `TAUSI_TEST_SQLSERVER`; without Docker or that variable it is skipped.
 
+The backup tests need `pg_dump` and `pg_restore` (PostgreSQL 16's). Without them on the PATH they run
+them in the `postgres:16` Docker image. The terminal app: `cd terminal/src-tauri && cargo test`.
+The installers are tested in CI on Windows (`installer/windows/test-install.ps1`) and the Linux
+package on Ubuntu 24.04 (the `linux-package` job runs `install.sh --with-postgres` for real).
+
 ## 5. SQL Server
 
 ```bash
@@ -600,77 +605,58 @@ dotnet ef migrations add <Name> --project src/Tausi.Infrastructure --startup-pro
 
 ## 7. Production
 
-### Build
+Customers install with the installers: see **[INSTALL.md](INSTALL.md)** (Windows server installer,
+terminal installer, Linux package, backups, updates) and **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
+
+### Backups in development
+
+Settings → Backups works in development too: backups go to `server/src/Tausi.Api/backups/`. It needs
+`pg_dump` and `pg_restore` matching the server (PostgreSQL 16): `sudo apt install postgresql-client-16`,
+or point `Tausi__Backups__PgDump` and `Tausi__Backups__PgRestore` at scripts that run them in Docker:
 
 ```bash
-cd web && npm ci && npm run build && cd ../server
-dotnet publish src/Tausi.Api -c Release -r linux-x64 --self-contained false -o /opt/tausi   # Linux
-dotnet publish src/Tausi.Api -c Release -r win-x64   --self-contained false -o out\tausi    # Windows
+printf '#!/bin/sh\nexec docker run --rm -i --network host -e PGPASSWORD postgres:16 pg_dump "$@"\n' > ~/bin/pg_dump
 ```
 
-Publishing copies `web/dist` into `wwwroot`, so the server alone serves the terminal screens and
-the admin site.
+The nightly backup runs at 05:00 business time while the server runs (`Tausi__Backups__Nightly=false`
+turns it off).
 
-Settings come from `appsettings.json` next to the program, or environment variables:
+### Server commands
 
-| Setting | Example |
+`dotnet run --project src/Tausi.Api -- <command>` in development, `TausiServer.exe <command>` installed:
+`migrate`, `seed`, `backup`, `restore <file>`, `reset-admin`, `test-db`, `wait-health`, `enable-https`,
+`disable-https`, and the installer's `configure`, `provision`, `apply-update`, `business-name`, `purge`,
+`cleanup` (see `server/src/Tausi.Api/Platform/InstallCommands.cs`).
+
+### Building the installers by hand
+
+```bash
+cd web && npm ci && npm run build && cd ..
+# Windows server installer (on Windows, with WiX: dotnet tool install --global wix --version 5.0.2;
+#   wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.Firewall.wixext/5.0.2)
+dotnet publish server/src/Tausi.Api -c Release -r win-x64 --self-contained true -p:Version=1.0.0 -o out/server
+pwsh installer/windows/build.ps1 -Version 1.0.0 -Server out/server -Out out/installer
+# Linux tarball
+dotnet publish server/src/Tausi.Api -c Release -r linux-x64 --self-contained true -p:Version=1.0.0 -o out/server-linux
+packaging/linux/make-tarball.sh 1.0.0 out/server-linux out
+# Terminal installer (on Windows)
+cd terminal && npm ci && npm run tauri build
+```
+
+### Releases
+
+Push a tag `vMAJOR.MINOR.PATCH` (the owner does this). `.github/workflows/release.yml` sets that version
+everywhere (`scripts/set-version.ps1`), builds the terminal installers (online and offline WebView2), the
+server installer with the matching terminal update inside, the Linux tarball and the licence tool, signs
+what it can, and makes a **draft** GitHub release with the files, `SHA256SUMS.txt`, `updates.json`, the
+`.tausiupdate` USB package, the release notes and `CHANGELOG.md`. The owner checks and publishes it, and
+uploads `updates.json` and the installers to the update host (`UPDATE_BASE_URL`). A push to a
+`release/**` branch is a dry run (artifacts only).
+
+Secrets it uses (each optional; without one, those files are marked unsigned):
+
+| Secret | What |
 | --- | --- |
-| `ConnectionStrings__Tausi` | `Host=localhost;Database=tausipos;Username=tausi;Password=...` |
-| `Database__Provider` | `Postgres` or `SqlServer` |
-| `Tausi__DataDirectory` | `/var/lib/tausi` (uploads and server secrets; **back it up with the database**) |
-| `Urls` | `http://0.0.0.0:5080` |
-
-Open port 5080 in the firewall and give the server a fixed IP.
-
-The data directory holds `secrets/pin-pepper.key`. Without it no PIN works and every PIN must be
-reset, so it is part of the backup.
-
-### Linux (systemd)
-
-`/etc/systemd/system/tausi.service`:
-
-```ini
-[Unit]
-Description=Tausi POS Server by NexaGen Solutions
-After=network-online.target postgresql.service
-
-[Service]
-Type=notify
-WorkingDirectory=/opt/tausi
-ExecStart=/usr/bin/dotnet /opt/tausi/Tausi.Api.dll
-Environment=ASPNETCORE_ENVIRONMENT=Production
-Environment=Tausi__DataDirectory=/var/lib/tausi
-EnvironmentFile=-/etc/tausi/env
-User=tausi
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo useradd --system tausi && sudo mkdir -p /var/lib/tausi && sudo chown tausi /var/lib/tausi
-sudo systemctl daemon-reload && sudo systemctl enable --now tausi
-```
-
-### Windows (service)
-
-```powershell
-sc.exe create TausiPOSServer binPath= "C:\Tausi\Tausi.Api.exe" start= auto DisplayName= "Tausi POS Server"
-sc.exe description TausiPOSServer "Tausi POS server by NexaGen Solutions"
-setx /M ConnectionStrings__Tausi "Server=.\SQLEXPRESS;Database=TausiPOS;Trusted_Connection=True;TrustServerCertificate=True"
-setx /M Database__Provider SqlServer
-setx /M Tausi__DataDirectory "C:\ProgramData\Tausi"
-sc.exe start TausiPOSServer
-```
-
-The service account needs rights on the SQL Server database (for example add
-`NT SERVICE\TausiPOSServer` as a login with `db_owner` on `TausiPOS`).
-
-### Terminal installer
-
-Push a tag `terminal-v<version>` (e.g. `terminal-v0.1.0`). GitHub Actions builds the Windows
-installer (NSIS) on `windows-latest` and attaches it to the release as `TausiPOS-Setup.exe`.
-It installs as "Tausi POS" (publisher NexaGen Solutions). On first start the app asks
-for the server address (e.g. `http://POSSERVER2:5080`), shows a pairing code, and after pairing
-opens full screen on the PIN pad. It starts with Windows.
+| `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD` | Code-signing certificate (.pfx, base64) for the .exe and .msi files |
+| `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The terminal updater's key (`~/tausi-updater-keys/tausi-terminal.key`; its public key is in `tauri.conf.json`) |
+| `TAUSI_UPDATE_SIGNING_KEY` | The server update key (`~/tausi-update-keys/private.key`; its public key is `ServerUpdates.ProductionPublicKey`) |

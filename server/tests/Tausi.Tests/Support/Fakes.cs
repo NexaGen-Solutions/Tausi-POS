@@ -74,3 +74,37 @@ public sealed class FakeSambaPos : Tausi.Application.Setup.ISambaPosSource
     public Task<Tausi.Application.Setup.SambaPosData> Read(Tausi.Application.Setup.SambaPosConnection connection, CancellationToken ct) =>
         Task.FromResult(Data);
 }
+
+/// <summary>NexaGen's update feed and its downloads, from memory (files are copied from local paths).</summary>
+public sealed class FakeUpdateSource : Tausi.Application.Updates.IUpdateSource
+{
+    public Tausi.Application.Updates.UpdateFeed? Feed { get; set; }
+    public Dictionary<string, string> Files { get; } = [];
+
+    public Task<Tausi.Application.Updates.UpdateFeed> Fetch(CancellationToken ct) =>
+        Feed is null ? throw new HttpRequestException("No internet.") : Task.FromResult(Feed);
+
+    public Task Download(string url, string path, CancellationToken ct)
+    {
+        File.Copy(Files[url], path, overwrite: true);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Records the installer it would have run.</summary>
+public sealed class FakeUpdateInstaller : Tausi.Application.Updates.IUpdateInstaller
+{
+    public string Platform => "windows-x64";
+    public string? Why { get; set; }
+    public string? CantInstall() => Why;
+    public string DownloadFolder { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "tausi-updates-" + Guid.NewGuid().ToString("N"));
+    public List<(string File, string Version)> Launched { get; } = [];
+    public void Launch(string installer, string version, string sha256, string signature) => Launched.Add((installer, version));
+}
+
+/// <summary>Other Tausi POS servers, by address: the business each one holds (none: it doesn't answer).</summary>
+public sealed class FakeServerProbe : Tausi.Application.Terminals.IServerProbe
+{
+    public Dictionary<string, string> Servers { get; } = [];
+    public Task<string?> BusinessName(string serverUrl, CancellationToken ct) => Task.FromResult(Servers.GetValueOrDefault(serverUrl));
+}

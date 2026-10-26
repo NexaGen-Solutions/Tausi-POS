@@ -34,6 +34,12 @@ public static class DependencyInjection
         services.AddScoped<Setup.SambaPosImport>();
         services.AddScoped<Stock.StockLocations>();
         services.AddScoped<Stock.StockFromMenu>();
+        services.AddSingleton<Backups.MaintenanceGate>();
+        services.AddScoped<Backups.BackupAdmin>();
+        services.AddScoped<Backups.BackupStatus>();
+        services.AddScoped<Updates.ServerUpdates>();
+        services.AddScoped<Setup.AdminRecovery>();
+        services.AddScoped<Updates.TerminalUpdateFeed>();
         services.TryAddSingleton(new Setup.LicenceOptions(AcceptTestKey: false));
         services.AddScoped<Reports.TicketDetailReport>();
         foreach (var report in new Type[]
@@ -137,6 +143,9 @@ public static class DependencyInjection
         services.AddScoped<RoleCommands>();
         services.AddScoped<PermissionsHistory>();
         services.AddScoped<AdminLogin>();
+        services.AddSingleton<LoginThrottle>();
+        services.AddScoped<Terminals.KioskExit>();
+        services.AddScoped<Terminals.MoveTerminals>();
         services.AddScoped<IssueApproval>();
         services.AddScoped<StartPairing>();
         services.AddScoped<PairTerminal>();
