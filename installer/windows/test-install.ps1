@@ -58,7 +58,7 @@ function WaitHealth([int] $seconds = 120) {
 }
 
 Write-Host '1. Silent install on the existing SQL Server Express'
-$code = Setup $First 'install.log' @('DB=existing', 'SQLINSTANCE=.\SQLEXPRESS', 'PORT=5080')
+$code = Setup $First 'install.log' @('DB=existing', 'SQLINSTANCE=.\SQLEXPRESS', 'SQLGRANTSYSTEM=1', 'PORT=5080')
 Check ($code -eq 0) "the installer finished (exit $code)"
 $service = Get-Service TausiPOSServer -ErrorAction SilentlyContinue
 Check ($service -and $service.Status -eq 'Running') 'the service runs'

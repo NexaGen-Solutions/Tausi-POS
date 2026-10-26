@@ -57,6 +57,58 @@ namespace Tausi.Setup
             }
         }
 
+        private const string SystemLogin = @"NT AUTHORITY\SYSTEM";
+
+        /// <summary>Whether this PC's SYSTEM account (which runs the installer's database steps) is a SQL Server administrator there.</summary>
+        public static bool SystemIsSqlAdmin(string instance)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(WindowsSignIn(instance)))
+                using (var cmd = new SqlCommand("SELECT IS_SRVROLEMEMBER('sysadmin', @login)", conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("@login", SystemLogin);
+                    var value = cmd.ExecuteScalar();
+                    return value is int i && i == 1;
+                }
+            }
+            catch (SqlException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Makes this PC's SYSTEM account a SQL Server administrator, as the person installing (who must be one):
+        /// the installer's database steps run as SYSTEM. SQL Server 2012 and later don't add it themselves.
+        /// </summary>
+        public static string GrantSystem(string instance, out bool ok)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(WindowsSignIn(instance)))
+                using (var cmd = new SqlCommand(
+                    "IF SUSER_ID(@login) IS NULL BEGIN DECLARE @create nvarchar(max) = N'CREATE LOGIN ' + QUOTENAME(@login) + N' FROM WINDOWS'; EXEC(@create); END " +
+                    "IF IS_SRVROLEMEMBER('sysadmin', @login) = 0 BEGIN DECLARE @add nvarchar(max) = N'ALTER SERVER ROLE sysadmin ADD MEMBER ' + QUOTENAME(@login); EXEC(@add); END", conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("@login", SystemLogin);
+                    cmd.ExecuteNonQuery();
+                    ok = true;
+                    return "The installer may now set up the Tausi POS database on " + instance + ".";
+                }
+            }
+            catch (SqlException e)
+            {
+                ok = false;
+                return "Couldn't let the installer set up the database (" + e.Message + "). Sign in to Windows as a SQL Server administrator, or use a SQL login.";
+            }
+        }
+
+        private static string WindowsSignIn(string instance) =>
+            new SqlConnectionStringBuilder { DataSource = instance, InitialCatalog = "master", IntegratedSecurity = true, ConnectTimeout = 10 }.ConnectionString;
+
         /// <summary>PostgreSQL: whether something answers at the address (the password is checked while installing).</summary>
         public static string TestPostgres(string host, int port, out bool ok)
         {

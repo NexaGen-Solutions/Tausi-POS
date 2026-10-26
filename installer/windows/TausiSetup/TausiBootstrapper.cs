@@ -110,6 +110,9 @@ namespace Tausi.Setup
 
             if (Silent)
             {
+                // /quiet DB=existing SQLGRANTSYSTEM=1: let the installer (SYSTEM) set up the database there.
+                if (_command.Action != LaunchAction.Uninstall && Get("DB") == "existing" && Get("SQLUSER") == "" && Get("SQLGRANTSYSTEM") == "1")
+                    Log(Checks.GrantSystem(Get("SQLINSTANCE"), out _));
                 Start(_command.Action == LaunchAction.Uninstall ? LaunchAction.Uninstall : LaunchAction.Install);
                 return;
             }

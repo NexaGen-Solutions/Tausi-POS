@@ -38,6 +38,7 @@ namespace Tausi.Setup
         private RadioButton _sqlExpress, _existing, _postgres;
         private TextBox _instance, _sqlUser, _sqlPassword, _pgHost, _pgPort, _pgUser, _pgPassword;
         private RadioButton _windowsAuth, _sqlAuth;
+        private CheckBox _grantSystem;
         private CheckBox _restore;
         private TextBox _restoreFile, _restorePassword;
         private Label _testResult;
@@ -132,6 +133,11 @@ namespace Tausi.Setup
             _sqlAuth = _sqlAuth ?? new RadioButton { Text = "SQL login", AutoSize = true };
             _sqlUser = _sqlUser ?? new TextBox { Width = 160 };
             _sqlPassword = _sqlPassword ?? new TextBox { Width = 160, UseSystemPasswordChar = true };
+            _grantSystem = _grantSystem ?? new CheckBox
+            {
+                Text = "Let the installer set up the database (adds this PC's SYSTEM account as a SQL Server administrator)",
+                Checked = true, AutoSize = true, MaximumSize = new Size(600, 0),
+            };
             _pgHost = _pgHost ?? new TextBox { Text = _ba.Get("PGHOST"), Width = 200 };
             _pgPort = _pgPort ?? new TextBox { Text = _ba.Get("PGPORT"), Width = 60 };
             _pgUser = _pgUser ?? new TextBox { Text = _ba.Get("PGUSER"), Width = 160 };
@@ -146,7 +152,8 @@ namespace Tausi.Setup
             var existingBox = Group(
                 Row(Label_("Server or instance"), _instance),
                 Row(_windowsAuth, _sqlAuth),
-                Row(Label_("User"), _sqlUser, Label_("Password"), _sqlPassword));
+                Row(Label_("User"), _sqlUser, Label_("Password"), _sqlPassword),
+                _grantSystem);
             var postgresBox = Group(
                 Row(Label_("Host"), _pgHost, Label_("Port"), _pgPort),
                 Row(Label_("User"), _pgUser, Label_("Password"), _pgPassword));
@@ -158,6 +165,7 @@ namespace Tausi.Setup
                 postgresBox.Visible = _postgres.Checked;
                 test.Visible = !_sqlExpress.Checked;
                 _sqlUser.Enabled = _sqlPassword.Enabled = _sqlAuth.Checked;
+                _grantSystem.Visible = _windowsAuth.Checked;
                 restoreBox.Visible = _restore.Checked;
             }
             foreach (var c in new Control[] { _sqlExpress, _existing, _postgres, _windowsAuth, _sqlAuth, _restore })
@@ -194,6 +202,21 @@ namespace Tausi.Setup
                     return;
                 }
                 SaveDatabase();
+                // The installer's database steps run as SYSTEM, which SQL Server 2012+ doesn't make an administrator.
+                if (_existing.Checked && _windowsAuth.Checked && !Checks.SystemIsSqlAdmin(_instance.Text.Trim()))
+                {
+                    if (!_grantSystem.Checked)
+                    {
+                        MessageBox.Show(this, "The installer needs to set up the database as this PC's SYSTEM account. Tick the box, or use a SQL login.", Text);
+                        return;
+                    }
+                    var message = Checks.GrantSystem(_instance.Text.Trim(), out var granted);
+                    if (!granted)
+                    {
+                        MessageBox.Show(this, message, Text);
+                        return;
+                    }
+                }
                 if (_sqlExpress.Checked && string.IsNullOrEmpty(_ba.Get("SQLMEDIA")) && !Checks.Online())
                 {
                     MessageBox.Show(this,

@@ -74,6 +74,7 @@ TausiPOS-Server-Setup.exe /quiet DB=existing SQLINSTANCE=.\SQLEXPRESS PORT=5080
 | --- | --- |
 | `DB=sqlexpress` (default), `existing`, `postgres` | Which database |
 | `SQLINSTANCE=.\SQLEXPRESS` | The SQL Server instance (`DB=existing`) |
+| `SQLGRANTSYSTEM=1` | With Windows sign-in to an existing SQL Server: let the installer set up the database (see below) |
 | `SQLUSER=…` `SQLPASSWORD=…` | A SQL login instead of Windows sign-in |
 | `SQLMEDIA=D:\SQLEXPR_x64_ENU.exe` | SQL Server Express from a USB drive (`DB=sqlexpress`, no internet) |
 | `PGHOST=` `PGPORT=` `PGUSER=` `PGPASSWORD=` `PGDATABASE=` | PostgreSQL (`DB=postgres`) |
@@ -84,9 +85,12 @@ TausiPOS-Server-Setup.exe /quiet DB=existing SQLINSTANCE=.\SQLEXPRESS PORT=5080
 
 `/passive` shows only a progress bar. The exit code is 0 when it worked.
 
-With **Windows sign-in to an existing SQL Server**, the installer creates the database as the PC's
-SYSTEM account. If that fails ("can't create the database"), add `NT AUTHORITY\SYSTEM` as a SQL Server
-administrator, or install with a SQL login (`SQLUSER`, `SQLPASSWORD`) that may create databases.
+With **Windows sign-in to an existing SQL Server**, the installer's database steps run as the PC's SYSTEM
+account, which SQL Server 2012 and later don't make an administrator. The Database page's **Let the
+installer set up the database** (ticked) adds `NT AUTHORITY\SYSTEM` as a SQL Server administrator, signed
+in as you, so you must be one (the Windows user who installed SQL Server usually is). Silently, add
+`SQLGRANTSYSTEM=1`. Prefer not to? Install with a SQL login (`SQLUSER`, `SQLPASSWORD`) that may create
+databases.
 
 ## 3. Install the terminals
 

@@ -29,6 +29,7 @@
     <Variable Name="SQLPASSWORD" Type="string" Value="" Hidden="yes" />
     <Variable Name="SQLSERVICEACCOUNT" Type="string" Value="NT SERVICE\MSSQL$TAUSI" />
     <Variable Name="SQLMEDIA" Type="string" Value="" />
+    <Variable Name="SQLGRANTSYSTEM" Type="string" Value="0" />
     <Variable Name="PGHOST" Type="string" Value="localhost" />
     <Variable Name="PGPORT" Type="string" Value="5432" />
     <Variable Name="PGUSER" Type="string" Value="tausi" />
