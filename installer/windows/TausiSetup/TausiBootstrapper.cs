@@ -132,7 +132,16 @@ namespace Tausi.Setup
                 Finish(args.Status, "The installer couldn't plan the " + (_planned == LaunchAction.Uninstall ? "removal." : "install."));
                 return;
             }
-            _engine.Apply(_window);
+            try
+            {
+                _engine.Apply(_window);
+            }
+            catch (System.Runtime.InteropServices.COMException e)
+            {
+                // Never wait for an apply that didn't start.
+                Log("apply failed to start: " + e.Message);
+                Finish(e.HResult, FailureText(e.HResult));
+            }
         }
 
         protected override void OnPlanPackageBegin(PlanPackageBeginEventArgs args)
