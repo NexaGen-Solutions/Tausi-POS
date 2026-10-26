@@ -164,6 +164,7 @@ jobs:
     # rollback, uninstall; and the terminal installer's silent install.
     runs-on: windows-latest
     needs: terminal-windows
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -201,6 +202,7 @@ jobs:
       - name: The setup screens start on their own (no engine; they report why they stop)
         shell: pwsh
         continue-on-error: true
+        timeout-minutes: 5
         run: |
           Remove-Item "$env:TEMP\TausiSetup-error.txt" -ErrorAction SilentlyContinue
           $p = Start-Process out/a/work/setup/TausiSetup.exe -PassThru -Wait
@@ -213,6 +215,7 @@ jobs:
           path: out/terminal
       - name: Test the installers
         shell: pwsh
+        timeout-minutes: 50
         run: installer/windows/test-install.ps1 -First out/a/TausiPOS-Server-Setup-0.15.1.exe -Upgrade out/b/TausiPOS-Server-Setup-0.15.2.exe -Broken out/c/TausiPOS-Server-Setup-0.15.3.exe -Terminal out/terminal/TausiPOS-Setup.exe
       - uses: actions/upload-artifact@v7
         if: always()
