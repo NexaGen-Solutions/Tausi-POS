@@ -48,10 +48,17 @@ namespace Tausi.Setup
             foreach (var pair in _command.ParseCommandLine().Variables)
                 _engine.SetVariableString(pair.Key, pair.Value, false);
 
+            // The WiX library calls Run on its own UI thread (single-threaded apartment), as Windows Forms needs.
+            RunScreens();
+            _engine.Quit(ExitCode);
+        }
+
+        private void RunScreens()
+        {
             if (Silent)
             {
                 _quiet = new ApplicationContext();
-                // Engine events may come on another thread; this hidden control brings them to the loop's.
+                // Engine events come on another thread; this hidden control brings them to the loop's.
                 _marshal = new Control();
                 _marshal.CreateControl();
                 _engine.Detect();
@@ -65,7 +72,6 @@ namespace Tausi.Setup
                 _form.Shown += (s, e) => _engine.Detect();
                 Application.Run(_form);
             }
-            _engine.Quit(ExitCode);
         }
 
         public string Get(string name) => _engine.ContainsVariable(name) ? _engine.GetVariableString(name) : "";

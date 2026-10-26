@@ -10,7 +10,8 @@ namespace Tausi.Setup
     {
         private static readonly string ErrorFile = Path.Combine(Path.GetTempPath(), "TausiSetup-error.txt");
 
-        [STAThread]
+        // No [STAThread]: WiX's native part sets up COM for this thread itself (multi-threaded), and
+        // runs the screens on a UI thread of its own.
         private static int Main()
         {
             // Before it reaches the engine there is no log: leave the reason where support finds it.
