@@ -223,18 +223,23 @@ public static class InstallCommands
             b.InitialCatalog = "master";
             await using var conn = new SqlConnection(b.ConnectionString);
             await conn.OpenAsync();
-            await Sql(conn, "IF DB_ID(@db) IS NULL EXEC(N'CREATE DATABASE ' + QUOTENAME(@db))", database);
+            // EXEC can't take a function call: each statement is built in a variable first.
+            await Sql(conn, "IF DB_ID(@db) IS NULL BEGIN DECLARE @create nvarchar(max) = N'CREATE DATABASE ' + QUOTENAME(@db); EXEC(@create); END", database);
             if (windows)
             {
                 var account = Option(args, "--service-account") ?? ServiceAccount;
                 await Sql(conn, """
-                    IF SUSER_ID(@login) IS NULL EXEC(N'CREATE LOGIN ' + QUOTENAME(@login) + N' FROM WINDOWS');
+                    IF SUSER_ID(@login) IS NULL
+                    BEGIN
+                        DECLARE @createLogin nvarchar(max) = N'CREATE LOGIN ' + QUOTENAME(@login) + N' FROM WINDOWS';
+                        EXEC(@createLogin);
+                    END
                     DECLARE @owner sysname = (SELECT SUSER_SNAME(owner_sid) FROM sys.databases WHERE name = @db);
                     IF @owner IS NULL OR @owner <> @login
                     BEGIN
                         DECLARE @sql nvarchar(max) = N'USE ' + QUOTENAME(@db) + N';
                             DECLARE @u sysname = (SELECT name FROM sys.database_principals WHERE sid = SUSER_SID(N''' + REPLACE(@login, '''', '''''') + N'''));
-                            IF @u IS NOT NULL AND @u <> N''dbo'' EXEC(N''DROP USER '' + QUOTENAME(@u));
+                            IF @u IS NOT NULL AND @u <> N''dbo'' BEGIN DECLARE @drop nvarchar(max) = N''DROP USER '' + QUOTENAME(@u); EXEC(@drop); END
                             ALTER AUTHORIZATION ON DATABASE::' + QUOTENAME(@db) + N' TO ' + QUOTENAME(@login) + N';';
                         EXEC(@sql);
                     END
