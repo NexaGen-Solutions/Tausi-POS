@@ -42,7 +42,7 @@ public static class ServerHost
         return installed ? AppContext.BaseDirectory : null;
     }
 
-    public static void Configure(WebApplicationBuilder builder)
+    public static void Configure(WebApplicationBuilder builder, bool loadSettingsFile = true)
     {
         var home = Home(builder.Configuration);
         if (home is not null)
@@ -64,7 +64,7 @@ public static class ServerHost
                 },
             });
             var config = Path.Combine(home, "config");
-            if (Directory.Exists(config))
+            if (loadSettingsFile && Directory.Exists(config))
                 sources.Insert(at + 1, new ProtectedJsonSource
                 {
                     FileProvider = new PhysicalFileProvider(config),

@@ -18,7 +18,8 @@ AppDomain.CurrentDomain.UnhandledException += (_, e) => ServerHost.WriteCrash(e.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = ServerHost.InstalledContentRoot() });
 
 // An installed server's folders and settings file (C:\ProgramData\Tausi POS), log files and the Event Log.
-ServerHost.Configure(builder);
+// `configure` writes (and repairs) the installed settings file, so it doesn't load it at start-up.
+ServerHost.Configure(builder, loadSettingsFile: args.FirstOrDefault() != "configure");
 
 // Settings and the dev data folder from before the rename to Tausi still work (warned once each).
 LegacyNames.ApplyToConfiguration(builder.Configuration);
