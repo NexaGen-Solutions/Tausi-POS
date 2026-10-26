@@ -101,6 +101,9 @@ public static class InstallCommands
         foreach (var dir in new[] { "config", "data", "logs", "backups", Path.Combine("backups", "work") })
             Directory.CreateDirectory(Path.Combine(home, dir));
 
+        // The rights first: a settings file an earlier install left unreadable is readable again before it is read.
+        LockFolders(home, args);
+
         var file = Settings(home);
         var json = file.Read();
         if (!file.Exists || Flag(args, "--force"))
@@ -119,6 +122,13 @@ public static class InstallCommands
         }
         file.Write(json);
 
+        Console.WriteLine($"Settings: {file.Path}");
+        return 0;
+    }
+
+    /// <summary>The installed folders' rights (Windows); see <see cref="Lock"/>.</summary>
+    private static void LockFolders(string home, string[] args)
+    {
         if (OperatingSystem.IsWindows())
         {
             // Only SYSTEM, administrators and the service's own account get into the settings (its
@@ -143,8 +153,6 @@ public static class InstallCommands
                 }
             }
         }
-        Console.WriteLine($"Settings: {file.Path}");
-        return 0;
     }
 
     public static void SetHttpPort(JsonObject json, int port)
@@ -188,11 +196,18 @@ public static class InstallCommands
 
     /// <summary>
     /// The folder's rights replaced by: SYSTEM and administrators full control, the service <paramref name="rights"/>.
-    /// Set on the folder only (no /T): Windows passes these inheritable rights down to everything inside.
+    /// Set on the folder only (no /T on it): Windows passes these inheritable rights down to everything inside.
     /// (/T would also set (OI)(CI) on files, where those flags are invalid, leaving files nobody can open.)
+    /// Anything already inside (an earlier install, or an earlier install's mistakes) is then made to take
+    /// the folder's rights again: owned by administrators, its own rights reset to the inherited ones.
     /// </summary>
-    private static void Lock(string folder, string rights) =>
+    private static void Lock(string folder, string rights)
+    {
         Run("icacls.exe", [folder, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", $"{ServiceAccount}:(OI)(CI){rights}", "/Q"]);
+        if (!Directory.EnumerateFileSystemEntries(folder).Any()) return;
+        Run("takeown.exe", ["/F", Path.Combine(folder, "*"), "/A", "/R", "/D", "Y"], check: false);
+        Run("icacls.exe", [Path.Combine(folder, "*"), "/reset", "/T", "/C", "/Q"]);
+    }
 
     private static void Grant(string folder, string account, string rights) =>
         Run("icacls.exe", [folder, "/grant", $"{account}:(OI)(CI){rights}", "/Q"]);
