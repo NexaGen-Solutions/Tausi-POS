@@ -31,6 +31,17 @@ public static class ServerHost
         return OperatingSystem.IsWindows() && Directory.Exists(Path.Combine(WindowsHome, "config")) ? WindowsHome : null;
     }
 
+    /// <summary>
+    /// The program's own folder when this is an installed server (Tausi__Home set, or the Windows home made
+    /// by the installer); null otherwise, so development keeps the project folder.
+    /// </summary>
+    public static string? InstalledContentRoot()
+    {
+        var installed = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("Tausi__Home"))
+                        || (OperatingSystem.IsWindows() && Directory.Exists(Path.Combine(WindowsHome, "config")));
+        return installed ? AppContext.BaseDirectory : null;
+    }
+
     public static void Configure(WebApplicationBuilder builder)
     {
         var home = Home(builder.Configuration);
