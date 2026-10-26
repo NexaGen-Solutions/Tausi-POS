@@ -21,8 +21,9 @@
     <SummaryInformation Description="Tausi POS Server by NexaGen Solutions" />
 
     <!--
-      Upgrades: the whole upgrade is one transaction, so a failure puts the old version back. The old
-      version is removed only after the backup taken with it (RemoveExistingProducts after PreUpgradeBackup).
+      Upgrades: the whole upgrade is one transaction, so a failure puts the old version back. The backup is
+      taken with the old program first; the new files go in over the old, and the old version's leftovers are
+      removed at the end (RemoveExistingProducts after InstallExecute).
     -->
     <Upgrade Id="6B1D5F0A-3C51-4C1E-9A3B-2B9F7E5C1A01">
       <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" Maximum="$(Version)" IncludeMaximum="no" Property="WIX_UPGRADE_DETECTED" />
@@ -140,7 +141,9 @@
 
     <InstallExecuteSequence>
       <Custom Action="PreUpgradeBackup" After="InstallInitialize" Condition="WIX_UPGRADE_DETECTED AND NOT REMOVE" />
-      <RemoveExistingProducts After="PreUpgradeBackup" />
+      <!-- Windows Installer allows it only in a few places: after InstallExecute keeps the whole upgrade one
+           transaction and leaves the old program in place for PreUpgradeBackup, which runs first. -->
+      <RemoveExistingProducts After="InstallExecute" />
       <Custom Action="Configure" After="InstallServices" Condition="NOT REMOVE" />
       <Custom Action="Provision" After="Configure" Condition="NOT REMOVE" />
       <Custom Action="RollbackRestore" After="Provision" Condition="WIX_UPGRADE_DETECTED AND NOT REMOVE" />

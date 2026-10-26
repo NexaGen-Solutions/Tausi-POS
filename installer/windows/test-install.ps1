@@ -116,7 +116,7 @@ if ($Terminal) {
   Check ($null -ne $exe) 'in C:\Program Files\Tausi POS\Terminal'
   $run = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).'Tausi POS'
   Check ($run -like '*Tausi POS\Terminal*') 'starts for every user at sign-in'
-  Check ((Get-Content 'C:\ProgramData\Tausi POS\Terminal\server.txt' -ErrorAction SilentlyContinue) -match '192.168.1.10:5080') 'the server address is pre-filled'
+  Check ([string](Get-Content 'C:\ProgramData\Tausi POS\Terminal\server.txt' -Raw -ErrorAction SilentlyContinue) -match '192.168.1.10:5080') 'the server address is pre-filled'
 }
 
 if ($failures.Count -gt 0) {
