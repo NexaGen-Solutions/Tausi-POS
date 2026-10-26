@@ -17,6 +17,8 @@ namespace Tausi.Setup
         private SetupForm _form;
         private ApplicationContext _quiet;
         private Control _marshal;
+        /// <summary>The window Apply runs under (WiX needs one, even with no screens): the form's, or the hidden control's.</summary>
+        private IntPtr _window;
         private LaunchAction _planned;
 
         public int ExitCode { get; private set; }
@@ -61,6 +63,7 @@ namespace Tausi.Setup
                 // Engine events come on another thread; this hidden control brings them to the loop's.
                 _marshal = new Control();
                 _marshal.CreateControl();
+                _window = _marshal.Handle;
                 _engine.Detect();
                 Application.Run(_quiet);
             }
@@ -69,7 +72,11 @@ namespace Tausi.Setup
                 Application.EnableVisualStyles();
                 _form = new SetupForm(this);
                 // Detect once the window exists, so its answer can be shown.
-                _form.Shown += (s, e) => _engine.Detect();
+                _form.Shown += (s, e) =>
+                {
+                    _window = _form.Handle;
+                    _engine.Detect();
+                };
                 Application.Run(_form);
             }
         }
@@ -125,7 +132,7 @@ namespace Tausi.Setup
                 Finish(args.Status, "The installer couldn't plan the " + (_planned == LaunchAction.Uninstall ? "removal." : "install."));
                 return;
             }
-            _engine.Apply(_form != null ? (IntPtr)_form.Invoke(new Func<IntPtr>(() => _form.Handle)) : IntPtr.Zero);
+            _engine.Apply(_window);
         }
 
         protected override void OnPlanPackageBegin(PlanPackageBeginEventArgs args)
