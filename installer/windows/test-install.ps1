@@ -35,7 +35,7 @@ function Setup([string] $exe, [string] $log, [string[]] $more) {
   $p = Start-Process -FilePath $exe -ArgumentList $args_ -PassThru
   # A hung installer fails the test after 15 minutes instead of holding the job for hours.
   if (-not $p.WaitForExit(15 * 60 * 1000)) {
-    Write-Host "  ($log: still running after 15 minutes; stopping it)" -ForegroundColor Red
+    Write-Host "  (${log}: still running after 15 minutes; stopping it)" -ForegroundColor Red
     Get-Process | Where-Object { $_.ProcessName -match 'TausiPOS-Server-Setup|TausiSetup|msiexec|TausiServer' } | Stop-Process -Force -ErrorAction SilentlyContinue
     Get-ChildItem "$env:TEMP\TausiSetup-error.txt", "$env:TEMP\Tausi_POS_Server_*.log" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_ $Logs }
     return -1
