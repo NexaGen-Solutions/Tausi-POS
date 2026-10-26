@@ -186,12 +186,16 @@ public static class InstallCommands
         return b.ConnectionString.Replace("__PASSWORD__", MachineSecrets.Protect(Option(args, "--pg-password") ?? ""), StringComparison.Ordinal);
     }
 
-    /// <summary>The folder's rights replaced by: SYSTEM and administrators full control, the service <paramref name="rights"/>.</summary>
+    /// <summary>
+    /// The folder's rights replaced by: SYSTEM and administrators full control, the service <paramref name="rights"/>.
+    /// Set on the folder only (no /T): Windows passes these inheritable rights down to everything inside.
+    /// (/T would also set (OI)(CI) on files, where those flags are invalid, leaving files nobody can open.)
+    /// </summary>
     private static void Lock(string folder, string rights) =>
-        Run("icacls.exe", [folder, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", $"{ServiceAccount}:(OI)(CI){rights}", "/T", "/Q"]);
+        Run("icacls.exe", [folder, "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", $"{ServiceAccount}:(OI)(CI){rights}", "/Q"]);
 
     private static void Grant(string folder, string account, string rights) =>
-        Run("icacls.exe", [folder, "/grant", $"{account}:(OI)(CI){rights}", "/T", "/Q"]);
+        Run("icacls.exe", [folder, "/grant", $"{account}:(OI)(CI){rights}", "/Q"]);
 
     private static (int Code, string Output) Run(string file, IEnumerable<string> args, bool check = true)
     {
