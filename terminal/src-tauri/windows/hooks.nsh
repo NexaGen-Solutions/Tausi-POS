@@ -24,8 +24,10 @@
   ${GetOptions} $R0 "SERVER=" $R1
   ${IfNot} ${Errors}
   ${AndIf} $R1 != ""
-    CreateDirectory "$COMMONAPPDATA\Tausi POS\Terminal"
-    FileOpen $R2 "$COMMONAPPDATA\Tausi POS\Terminal\server.txt" w
+    ; All users' application data: C:\ProgramData (the per-machine install already uses this context).
+    SetShellVarContext all
+    CreateDirectory "$APPDATA\Tausi POS\Terminal"
+    FileOpen $R2 "$APPDATA\Tausi POS\Terminal\server.txt" w
     FileWrite $R2 "$R1$\r$\n"
     FileClose $R2
   ${EndIf}
