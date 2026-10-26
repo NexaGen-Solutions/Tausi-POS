@@ -57,6 +57,13 @@ function WaitHealth([int] $seconds = 120) {
   return $null
 }
 
+Write-Host '0. A settings file an earlier, failed install left unreadable (no rights at all)'
+New-Item -ItemType Directory -Force "$home_\config" | Out-Null
+'{ "ConnectionStrings": { "Tausi": "Server=.\\SQLEXPRESS;Database=TausiPOS;Integrated Security=True;TrustServerCertificate=True;Encrypt=Optional" }, "Database": { "Provider": "SqlServer" }, "Urls": "http://0.0.0.0:5080" }' |
+  Set-Content "$home_\config\appsettings.Production.json" -Encoding utf8
+icacls "$home_\config\appsettings.Production.json" /inheritance:r | Out-Null
+Check (-not (Get-Acl "$home_\config\appsettings.Production.json").Access) 'the leftover file has no rights'
+
 Write-Host '1. Silent install on the existing SQL Server Express'
 $code = Setup $First 'install.log' @('DB=existing', 'SQLINSTANCE=.\SQLEXPRESS', 'SQLGRANTSYSTEM=1', 'PORT=5080')
 Check ($code -eq 0) "the installer finished (exit $code)"
