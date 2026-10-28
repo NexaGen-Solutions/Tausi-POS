@@ -142,7 +142,8 @@ public static class Report
         var lines = new List<string>
         {
             $"Run: {o.Hours} simulated hours at {o.Speed}× ({elapsed:hh\\:mm\\:ss} real), {o.Provider}, {s.CountOf("tickets")} tickets, " +
-            $"{s.CountOf("prints")} prints, {s.CountOf("voids")} voids, {s.CountOf("settled")} settled, {s.CountOf("payments")} payments.",
+            $"{s.CountOf("prints")} prints, {s.CountOf("voids")} voids, {s.CountOf("settled")} settled, {s.CountOf("payments")} payments, " +
+            $"{s.CountOf("map events")} table-map events seen by another terminal.",
             "",
             "| Measure | p50 | p95 | Target (p95) | Samples | Met |",
             "| --- | --- | --- | --- | --- | --- |",

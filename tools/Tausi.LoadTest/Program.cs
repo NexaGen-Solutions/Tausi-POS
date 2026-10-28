@@ -107,29 +107,28 @@ var printed = new PrintWatcher(options.PrintOutput, stats);
 var sw = Stopwatch.StartNew();
 
 // ---- The table map on another terminal: a change shows there within 500 ms ----
-var changes = new System.Collections.Concurrent.ConcurrentQueue<long>();
+// As the screen does: "ticket.changed" names the table, and the map fetches just that table again.
+// Each sample runs from the start of the action on the table to that fetch's answer.
+var changes = new System.Collections.Concurrent.ConcurrentDictionary<Guid, System.Collections.Concurrent.ConcurrentQueue<long>>();
+void Changing(Guid table) => changes.GetOrAdd(table, _ => new()).Enqueue(sw.ElapsedTicks);
 var hub = new HubConnectionBuilder()
     .WithUrl(new Uri(options.Server, $"/hubs/pos?device_token={Uri.EscapeDataString(observer.DeviceToken!)}"))
     .WithAutomaticReconnect()
     .Build();
-var refreshing = 0;
-hub.On<JsonElement>("tables.changed", payload =>
+hub.On<JsonElement>("ticket.changed", payload =>
 {
-    // Refetch once per burst, as the screens do; time it from the oldest change not yet seen.
-    if (Interlocked.Exchange(ref refreshing, 1) == 1) return;
+    stats.Count("map events");
+    if (!payload.TryGetProperty("tableId", out var id) || id.ValueKind != JsonValueKind.String) return;
+    var table = id.GetGuid();
+    if (!changes.TryGetValue(table, out var waiting) || !waiting.TryDequeue(out var since)) return;
     _ = Task.Run(async () =>
     {
         try
         {
-            if (!changes.TryPeek(out _)) return;
-            var since = new List<long>();
-            while (changes.TryDequeue(out var t)) since.Add(t);
-            await observer.Get("/api/pos/tables");
-            var now = sw.ElapsedTicks;
-            foreach (var t in since) stats.Record("map", (now - t) * 1000.0 / Stopwatch.Frequency);
+            await observer.Get($"/api/pos/tables?tableIds={table}");
+            stats.Record("map", (sw.ElapsedTicks - since) * 1000.0 / Stopwatch.Frequency);
         }
         catch (Exception e) { stats.Error($"map refresh: {e.Message}"); }
-        finally { Interlocked.Exchange(ref refreshing, 0); }
     });
 });
 await hub.StartAsync();
@@ -182,9 +181,9 @@ object[] Round(int count) => Enumerable.Range(0, count).Select(_ =>
     return (object)new { menuItemId = item.Id, optionIds = item.Options, quantity = 1 };
 }).ToArray();
 
-async Task Print(Api api, Guid ticket, long number)
+async Task Print(Api api, Guid ticket, long number, Guid table)
 {
-    changes.Enqueue(sw.ElapsedTicks);
+    Changing(table);
     printed.Expect(number);
     await api.Send(HttpMethod.Post, $"/api/pos/tickets/{ticket}/print", null, stats, "print");
     stats.Count("prints");
@@ -195,17 +194,17 @@ async Task RunTicket(int t, string waiter)
     // Round 1: a new ticket on a table, printed.
     Guid ticket = default;
     long ticketNumber = 0;
+    var table = tables[random.Next(tables.Length)];
     var lines = Round(random.Next(2, 6));
     await OnTerminal(t, waiter, async api =>
     {
-        changes.Enqueue(sw.ElapsedTicks);
-        var created = await api.Send(HttpMethod.Post, "/api/pos/tickets",
-            new { tableId = tables[random.Next(tables.Length)], lines }, stats, "start");
+        Changing(table);
+        var created = await api.Send(HttpMethod.Post, "/api/pos/tickets", new { tableId = table, lines }, stats, "start");
         ticket = created.GetProperty("id").GetGuid();
         ticketNumber = created.GetProperty("number").GetInt64();
         stats.Count("tickets");
         stats.Count("quantity", lines.Length);
-        await Print(api, ticket, ticketNumber);
+        await Print(api, ticket, ticketNumber, table);
         await api.Delete($"/api/pos/tickets/{ticket}/lock");
     });
 
@@ -220,7 +219,7 @@ async Task RunTicket(int t, string waiter)
             foreach (var line in more)
                 await api.Send(HttpMethod.Post, $"/api/pos/tickets/{ticket}/lines", line, stats, "add");
             stats.Count("quantity", more.Length);
-            await Print(api, ticket, ticketNumber);
+            await Print(api, ticket, ticketNumber, table);
             await api.Delete($"/api/pos/tickets/{ticket}/lock");
         });
     }
@@ -263,7 +262,7 @@ async Task RunTicket(int t, string waiter)
             await Pay(api, ticket, new { type = "Cash", amount = cash, tendered = cash }, cash);
             await Pay(api, ticket, new { type = "Mpesa", amount = due - cash, mpesaCode = MpesaCode() }, due - cash);
         }
-        changes.Enqueue(sw.ElapsedTicks);
+        Changing(table);
         await api.Send(HttpMethod.Post, $"/api/pos/tickets/{ticket}/settle", null, stats, "settle");
         stats.Count("settled");
         stats.Sum("settled amount", due);
