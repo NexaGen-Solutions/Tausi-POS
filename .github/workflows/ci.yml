@@ -86,9 +86,8 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Tausi: "Host=localhost;Port=5432;Username=tausi;Password=tausi_ci;Database=tausi_shots"
-      Urls: http://localhost:5080
+      Urls: http://0.0.0.0:5080
       TAUSI_ADMIN_PASSWORD: ci-screens-1
-      WEB_URL: http://localhost:5080
       OUT: ${{ github.workspace }}/screenshots
     steps:
       - uses: actions/checkout@v7
@@ -102,6 +101,10 @@ jobs:
           cache-dependency-path: |
             web/package-lock.json
             tools/screenshots/package-lock.json
+      - name: Use the runner's network address, not localhost
+        # As at a business: plain http://<server>:5080 is not a secure page, so browser features
+        # that need HTTPS or localhost (crypto.randomUUID, the clipboard) are missing here too.
+        run: echo "WEB_URL=http://$(hostname -I | awk '{print $1}'):5080" >> "$GITHUB_ENV"
       - name: Build the web app (the server serves web/dist in Development)
         working-directory: web
         run: npm ci && npm run build
