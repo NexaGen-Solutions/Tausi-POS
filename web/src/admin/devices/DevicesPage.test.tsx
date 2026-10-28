@@ -252,9 +252,12 @@ describe('Terminals and printers', () => {
       const local = within(panel).getByLabelText('Printer name on that PC');
       expect(within(local).getByRole('option', { name: 'EPSON TM-T20III' })).toBeInTheDocument();
 
-      await userEvent.selectOptions(within(panel).getByLabelText('Connection'), 'File');
-      expect(within(panel).queryByLabelText('Printer name on that PC')).not.toBeInTheDocument();
-      expect(within(panel).queryByLabelText('Share name')).not.toBeInTheDocument();
+      // The File printer is for development: a new printer isn't offered it.
+      expect(
+        within(within(panel).getByLabelText('Connection')).queryByRole('option', {
+          name: 'File (dev)',
+        }),
+      ).not.toBeInTheDocument();
     });
 
     it('checks the connection and shows the result in plain words', async () => {

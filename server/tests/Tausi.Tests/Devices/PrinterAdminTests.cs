@@ -44,14 +44,26 @@ public class PrinterAdminTests : IAsyncLifetime
         (await Save(null, PrinterConnection.WindowsShare, @"\\COUNTER-A\TP1", name: "Share")).ConnectionText.Should().Be(@"Windows share · \\COUNTER-A\TP1");
         var usb = await Save(null, PrinterConnection.ViaTerminal, "POS-80", _f.Terminal("Pillar 2").Id, name: "USB");
         usb.ConnectionText.Should().Be("Via terminal (USB) · Pillar 2");
-        (await Save(null, PrinterConnection.File, null, name: "Dev")).ConnectionText.Should().Be("File (dev)");
+    }
+
+    [Fact]
+    public async Task The_File_printer_is_refused_on_an_installed_server_and_allowed_in_development()
+    {
+        var ex = await FluentActions.Awaiting(() => Save(null, PrinterConnection.File, null, name: "Dev"))
+            .Should().ThrowAsync<DomainException>();
+        ex.Which.Code.Should().Be(PrinterCodes.DevelopmentOnly);
+
+        await using var dev = await DevicesFixture.Create(development: true);
+        var saved = await dev.Get<SavePrinter>().Execute(null,
+            new PrinterRequest("Dev", PrinterConnection.File, null, null, 80, true, false, true, 0), CancellationToken.None);
+        saved.ConnectionText.Should().Be("File (dev)");
     }
 
     [Fact]
     public async Task A_printer_in_use_cannot_be_deactivated_and_says_where()
     {
         var tp1 = _f.Printer("Ticket Printer 1");
-        var ex = await FluentActions.Awaiting(() => Save(tp1.Id, PrinterConnection.File, null, active: false, name: tp1.Name, version: tp1.RowVersion))
+        var ex = await FluentActions.Awaiting(() => Save(tp1.Id, PrinterConnection.Network9100, "192.168.1.50", active: false, name: tp1.Name, version: tp1.RowVersion))
             .Should().ThrowAsync<DomainException>();
         ex.Which.Code.Should().Be(PrinterCodes.InUse);
         ex.Which.Message.Should().Contain("Counter A").And.Contain("Pillar 1");

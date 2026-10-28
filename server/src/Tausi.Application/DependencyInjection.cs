@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<Setup.AdminRecovery>();
         services.AddScoped<Updates.TerminalUpdateFeed>();
         services.TryAddSingleton(new Setup.LicenceOptions(AcceptTestKey: false));
+        services.TryAddSingleton(new Common.DevelopmentHost(IsDevelopment: false));
         services.AddScoped<Reports.TicketDetailReport>();
         foreach (var report in new Type[]
                  {
