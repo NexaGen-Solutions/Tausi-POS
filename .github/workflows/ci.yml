@@ -55,6 +55,83 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
+      - name: No customer names in the product (and the check's own self-test)
+        working-directory: .
+        run: |
+          node --test scripts/check-customer-names.test.mjs
+          node scripts/check-customer-names.mjs
+      - name: Brand icons (every size, and the references to them)
+        working-directory: .
+        run: node --test tools/brand/icons.test.mjs
+
+  screenshots:
+    # The main screens in the brand colours, for a person to look at (not compared pixel by pixel).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tausi
+          POSTGRES_PASSWORD: tausi_ci
+          POSTGRES_DB: tausi_shots
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tausi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Tausi: "Host=localhost;Port=5432;Username=tausi;Password=tausi_ci;Database=tausi_shots"
+      Urls: http://localhost:5080
+      TAUSI_ADMIN_PASSWORD: ci-screens-1
+      WEB_URL: http://localhost:5080
+      OUT: ${{ github.workspace }}/screenshots
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            tools/screenshots/package-lock.json
+      - name: Build the web app (the server serves web/dist in Development)
+        working-directory: web
+        run: npm ci && npm run build
+      - name: Build the server
+        working-directory: server
+        run: dotnet build src/Tausi.Api -c Debug
+      - name: Install Playwright
+        working-directory: tools/screenshots
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: A server that isn't set up yet - wizard, pairing, splash
+        run: |
+          (cd server && dotnet run --no-build --project src/Tausi.Api > "$RUNNER_TEMP/server-1.log" 2>&1 &)
+          for i in $(seq 1 90); do curl -s $WEB_URL/api/health | grep -q '"database":"ok"' && test -f server/src/Tausi.Api/data/setup-token.txt && break; sleep 1; done
+          cd tools/screenshots && SETUP_TOKEN_FILE=../../server/src/Tausi.Api/data/setup-token.txt node capture.mjs fresh
+      - name: The demo business - PIN, tables, order, settle, admin, About
+        run: |
+          pkill -f TausiServer || true
+          sleep 2
+          (cd server && dotnet run --no-build --project src/Tausi.Api -- seed --demo > "$RUNNER_TEMP/seed.txt")
+          (cd server && dotnet run --no-build --project src/Tausi.Api > "$RUNNER_TEMP/server-2.log" 2>&1 &)
+          for i in $(seq 1 90); do curl -s $WEB_URL/api/health | grep -q '"database":"ok"' && break; sleep 1; done
+          cd tools/screenshots && SEED_OUTPUT="$RUNNER_TEMP/seed.txt" node capture.mjs demo
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: |
+            screenshots/
+            ${{ runner.temp }}/server-*.log
+          if-no-files-found: warn
 
   terminal-windows:
     # The Windows terminal app (Tauri) with real printing through the Windows spooler.
