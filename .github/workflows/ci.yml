@@ -149,12 +149,19 @@ jobs:
           (cd server && dotnet run --no-build --project src/Tausi.Api > "$RUNNER_TEMP/server-2.log" 2>&1 &)
           for i in $(seq 1 90); do curl -s $WEB_URL/api/health | grep -q '"database":"ok"' && break; sleep 1; done
           cd tools/screenshots && SEED_OUTPUT="$RUNNER_TEMP/seed.txt" node capture.mjs demo
+      - name: The user guides' pictures and their PDFs (docs/guides)
+        run: |
+          cd tools/screenshots
+          SEED_OUTPUT="$RUNNER_TEMP/seed.txt" OUT=../../docs/guides/images node capture.mjs guides
+          node guides-pdf.mjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: screenshots
           path: |
             screenshots/
+            docs/guides/images/
+            docs/guides/pdf/
             ${{ runner.temp }}/server-*.log
           if-no-files-found: warn
 

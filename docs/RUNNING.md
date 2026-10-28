@@ -616,6 +616,14 @@ WEB_URL=http://localhost:5080 SEED_OUTPUT=seed.txt TAUSI_ADMIN_PASSWORD=... node
 The pictures land in `tools/screenshots/out/`. The demo run pairs the browser as Counter A,
 replacing any earlier pairing.
 
+The **user guides** (`docs/guides/`) use their own pictures. On a freshly seeded demo database:
+
+```bash
+cd tools/screenshots
+WEB_URL=http://localhost:5080 SEED_OUTPUT=seed.txt TAUSI_ADMIN_PASSWORD=... OUT=../../docs/guides/images node capture.mjs guides
+node guides-pdf.mjs     # docs/guides/pdf/*.pdf, A4
+```
+
 ## 5. SQL Server
 
 ```bash

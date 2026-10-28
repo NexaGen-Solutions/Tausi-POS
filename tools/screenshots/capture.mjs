@@ -62,6 +62,10 @@ function pins() {
 async function typePin(page, pin) {
   await page.getByRole('heading', { name: 'Enter your PIN', exact: true }).waitFor();
   for (const digit of pin) await page.getByRole('button', { name: digit, exact: true }).click();
+  // The pad submits by itself at the PIN length; if it hasn't moved on, press Enter as a person would.
+  await page.waitForURL((url) => !url.pathname.endsWith('/pos'), { timeout: 2000 }).catch(async () => {
+    await page.getByRole('button', { name: 'Enter', exact: true }).click();
+  });
 }
 
 /** Table 7's ticket, from the table map (one tap opens a table with one ticket). */
@@ -130,10 +134,133 @@ async function demo() {
   await shot(admin, '12-about-admin');
 }
 
+/** Pairs a new browser as Counter A, through the admin's session; returns the PIN pad page. */
+async function pairedTerminal(admin) {
+  const pos = await newPage();
+  await pos.goto(`${web}/connect`);
+  const code = (await pos.locator('.setup__code').filter({ hasText: /\d{3} \d{3}/ }).textContent()).replace(/\D/g, '');
+  const terminals = await (await admin.request.get(`${web}/api/admin/terminals`)).json();
+  const counterA = terminals.find((t) => t.name === 'Counter A');
+  const paired = await admin.request.post(`${web}/api/admin/terminals/pair`, {
+    data: { code, terminalId: counterA.id, confirmReplace: true },
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+  });
+  if (!paired.ok()) throw new Error(`pairing failed: ${paired.status()} ${await paired.text()}`);
+  await pos.waitForURL('**/pos');
+  return pos;
+}
+
+async function logOut(page) {
+  await page.getByRole('button', { name: 'Log out' }).click();
+  await page.getByRole('heading', { name: 'Enter your PIN', exact: true }).waitFor();
+}
+
+/** The pictures in docs/guides (after `seed --demo`): one set per guide, named for the guide. */
+async function guides() {
+  const pin = pins();
+  const admin = await newPage();
+  await admin.goto(`${web}/admin/login`);
+  await admin.getByLabel('User name').fill('admin');
+  await admin.getByLabel('Password').fill(process.env.TAUSI_ADMIN_PASSWORD);
+  await admin.getByRole('button', { name: 'Sign in' }).click();
+  await admin.getByRole('link', { name: 'Menu and prices' }).waitFor();
+
+  // ---- Waiter ----
+  const pos = await pairedTerminal(admin);
+  await shot(pos, 'waiter-1-pin');
+  await typePin(pos, pin.edna);
+  await pos.waitForURL('**/pos/tables');
+  await pos.getByRole('button', { name: /^7: / }).waitFor();
+  await shot(pos, 'waiter-2-tables');
+
+  // A free table: the first tap selects it, the second opens a new ticket.
+  await pos.getByRole('button', { name: /^2: / }).click();
+  if (!/\/ticket\//.test(pos.url())) await pos.getByRole('button', { name: /^2: / }).click();
+  await pos.waitForURL(/\/pos\/ticket\//);
+  await pos.getByRole('button', { name: /^Tusker Lager/ }).first().click();
+  await pos.getByRole('dialog').waitFor();
+  await shot(pos, 'waiter-3-cold-warm');
+  await pos.getByRole('dialog').getByRole('button', { name: /^Add 1/ }).click();
+  await pos.getByRole('dialog').waitFor({ state: 'detached' });
+  await pos.getByRole('region', { name: 'Ticket' }).getByRole('button', { name: /Tusker Lager/ }).waitFor();
+  await shot(pos, 'waiter-4-order');
+  await pos.getByRole('button', { name: /^Print/ }).first().click();
+  await pos.getByText(/Printed/).first().waitFor();
+  await shot(pos, 'waiter-5-printed');
+
+  await pos.getByRole('region', { name: 'Ticket' }).getByRole('button', { name: /Tusker Lager/ }).first().click();
+  await pos.getByRole('button', { name: 'Void', exact: true }).click();
+  await pos.getByRole('dialog').waitFor();
+  await shot(pos, 'waiter-6-void');
+  await pos.keyboard.press('Escape');
+  await pos.getByRole('dialog').waitFor({ state: 'detached' });
+  await pos.getByRole('button', { name: 'Tables', exact: true }).click();
+  await pos.waitForURL('**/pos/tables');
+  await pos.getByRole('button', { name: 'My sales', exact: true }).click();
+  await pos.getByRole('heading', { name: /^My sales/ }).waitFor();
+  await shot(pos, 'waiter-7-my-sales');
+  await pos.getByRole('button', { name: 'Tables', exact: true }).click();
+  await logOut(pos);
+
+  // ---- Cashier ----
+  await typePin(pos, pin.CAROL);
+  await pos.waitForURL('**/pos/tables');
+  await pos.getByRole('button', { name: 'My shift', exact: true }).click();
+  await pos.waitForURL('**/pos/shift');
+  await pos.getByRole('button', { name: 'Start shift', exact: true }).waitFor();
+  await shot(pos, 'cashier-1-start-shift');
+  await pos.getByLabel(/float/i).first().fill('5000').catch(() => {});
+  await pos.getByRole('button', { name: 'Start shift', exact: true }).click();
+  await pos.getByRole('button', { name: 'Start shift', exact: true }).waitFor({ state: 'detached' });
+  await shot(pos, 'cashier-4-shift');
+  await pos.getByRole('button', { name: 'Tables', exact: true }).click();
+  await pos.waitForURL('**/pos/tables');
+  await openTable7(pos);
+  await pos.getByRole('button', { name: 'Settle', exact: true }).click();
+  await pos.getByRole('heading', { name: /^Settle/ }).waitFor();
+  await shot(pos, 'cashier-2-settle');
+  await pos.getByRole('button', { name: 'M-Pesa', exact: true }).click();
+  await shot(pos, 'cashier-3-mpesa');
+
+  // ---- Supervisor ----
+  await pos.goto(`${web}/pos`);
+  await pos.getByRole('heading', { name: 'Enter your PIN', exact: true }).waitFor();
+  await typePin(pos, pin.SAM);
+  await pos.waitForURL('**/pos/tables');
+  await pos.getByRole('button', { name: /^Approvals/ }).click();
+  await pos.waitForURL('**/pos/approvals');
+  await pos.getByRole('heading', { level: 1 }).first().waitFor();
+  await shot(pos, 'supervisor-1-approvals');
+  await pos.getByRole('button', { name: 'Tables', exact: true }).click();
+  await pos.waitForURL('**/pos/tables');
+  await pos.getByRole('button', { name: 'Close day', exact: true }).click();
+  await pos.waitForURL('**/pos/day');
+  await pos.getByRole('heading', { name: 'Close the day', exact: true }).waitFor();
+  await shot(pos, 'supervisor-2-close-day');
+
+  // ---- Owner / admin ----
+  for (const [path, name] of [
+    ['menu', 'owner-1-menu'], ['permissions', 'owner-3-permissions'], ['terminals', 'owner-4-terminals'],
+    ['stock-counts', 'owner-6-counts'], ['reports', 'owner-8-reports'], ['settings/backups', 'owner-9-backups'],
+    ['settings/system', 'owner-11-system'], ['settings/training', 'owner-12-training'],
+  ]) {
+    await admin.goto(`${web}/admin/${path}`);
+    await admin.getByRole('heading', { level: 1 }).first().waitFor();
+    await shot(admin, name);
+  }
+}
+
 try {
   if (process.argv[2] === 'fresh') await fresh();
   else if (process.argv[2] === 'demo') await demo();
-  else throw new Error('Usage: node capture.mjs fresh|demo');
+  else if (process.argv[2] === 'guides') await guides();
+  else throw new Error('Usage: node capture.mjs fresh|demo|guides');
+} catch (error) {
+  // What every page showed when it went wrong, for whoever reads the CI artifact.
+  let n = 0;
+  for (const context of browser.contexts())
+    for (const page of context.pages()) await page.screenshot({ path: join(out, `failed-${++n}.png`) }).catch(() => {});
+  throw error;
 } finally {
   await browser.close();
 }
