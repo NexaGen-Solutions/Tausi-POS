@@ -87,6 +87,8 @@ public static class AuditActions
     public const string BackupDownloaded = "backup.downloaded";
     public const string BackupRestored = "backup.restored";
     public const string DiagnosticsDownloaded = "diagnostics.downloaded";
+    public const string TrainingModeChanged = "training.terminal_changed";
+    public const string TrainingDataCleared = "training.cleared";
     public const string ServerUpdateStarted = "server.update_started";
     public const string TerminalKioskExit = "terminal.kiosk_exit";
     public const string AdminPasswordReset = "admin.password_reset";

@@ -13,7 +13,8 @@ public sealed record DeviceInfo(
     Guid? LogoFileId,
     WorkPeriodDto? WorkPeriod,
     DevicePrinting? Printing = null,
-    PosRules? Rules = null);
+    PosRules? Rules = null,
+    bool Training = false);
 
 /// <summary>
 /// The settings that change what the terminal screens offer (the server enforces each of them too):
@@ -57,6 +58,7 @@ public sealed class GetDeviceInfo(ITausiDb db, ICurrentSession session)
             await WorkPeriods.Current(db, ct),
             new DevicePrinting((business?.PrintMode ?? Domain.Settings.PrintMode.OneButton).ToString(),
                 printers?.Receipt, printers?.Dispense, printers?.Template ?? printers?.Dispense),
-            PosRules.From(SettingsRegistry.Read(business)));
+            PosRules.From(SettingsRegistry.Read(business)),
+            terminal.Training);
     }
 }

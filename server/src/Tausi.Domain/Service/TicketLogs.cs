@@ -6,8 +6,11 @@ namespace Tausi.Domain.Service;
 /// One void: what was taken off, why, who asked and who approved. <see cref="WasPoured"/> tells
 /// stock (Task 11) whether the drink was used up ("Spilled or broken" is always yes).
 /// </summary>
-public class VoidLog : Entity
+public class VoidLog : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MaxReasonLength = 200;
 
     public Guid TicketId { get; set; }
@@ -29,8 +32,11 @@ public class VoidLog : Entity
 }
 
 /// <summary>One gift: the item keeps its price for reports; it counts as sold for stock.</summary>
-public class GiftLog : Entity
+public class GiftLog : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public Guid TicketId { get; set; }
     public Guid OrderLineId { get; set; }
     public Guid? MenuItemId { get; set; }
@@ -49,8 +55,11 @@ public class GiftLog : Entity
 }
 
 /// <summary>A ticket discount set, changed or removed (Kind null).</summary>
-public class DiscountLog : Entity
+public class DiscountLog : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public Guid TicketId { get; set; }
     public DiscountKind? Kind { get; set; }
     public decimal Value { get; set; }

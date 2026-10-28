@@ -2,8 +2,11 @@ using Tausi.Domain.Common;
 
 namespace Tausi.Domain.Audit;
 
-public class AuditEntry : Entity
+public class AuditEntry : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public DateTimeOffset At { get; set; }
     public Guid? UserId { get; set; }
     public Guid? TerminalId { get; set; }

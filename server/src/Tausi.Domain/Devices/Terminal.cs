@@ -33,6 +33,12 @@ public class Terminal : VersionedEntity
     /// <summary>The stock location its sales come from (the Bar by default); null moves no stock.</summary>
     public Guid? SellsFromLocationId { get; set; }
 
+    /// <summary>
+    /// Training mode (Settings → Training mode): this terminal's tickets, payments and shifts are
+    /// practice, kept apart from real sales and cleared with "Clear training data".
+    /// </summary>
+    public bool TrainingMode { get; set; }
+
     public DateTimeOffset? LastSeenAt { get; set; }
     public string? AppVersion { get; set; }
 

@@ -24,8 +24,11 @@ public sealed record TicketLock(Guid TerminalId, Guid UserId, Guid SessionId, Da
 /// gets its number then. Its total is always the sum of its lines; nothing stores a total.
 /// While it is on screen on a terminal it carries an edit lock, renewed by that terminal.
 /// </summary>
-public class Ticket : VersionedEntity
+public class Ticket : VersionedEntity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MaxCustomerNameLength = 60;
     public const int MaxNoteLength = 1000;
 

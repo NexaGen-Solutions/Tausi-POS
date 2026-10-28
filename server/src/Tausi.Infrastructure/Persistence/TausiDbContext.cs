@@ -187,7 +187,8 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
 
         m.Entity<WorkPeriod>(e =>
         {
-            var openIndex = e.HasIndex(x => x.IsOpen).IsUnique();
+            // One open real day, and one open training day (task 16).
+            var openIndex = e.HasIndex(x => new { x.IsOpen, x.IsTraining }).IsUnique();
             if (OpenWorkPeriodFilter is not null) openIndex.HasFilter(OpenWorkPeriodFilter);
             e.HasIndex(x => x.OpenedAt);
             e.HasIndex(x => x.BusinessDate);
@@ -378,7 +379,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
 
         m.Entity<Ticket>(e =>
         {
-            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => new { x.Number, x.IsTraining }).IsUnique();
             e.HasIndex(x => new { x.Status, x.TableId });
             // Reports: a period's tickets by status.
             e.HasIndex(x => new { x.WorkPeriodId, x.Status });
@@ -390,7 +391,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Ignore(x => x.AmountDue);
             e.Ignore(x => x.Paid);
             e.Ignore(x => x.Remaining);
-            var receipt = e.HasIndex(x => x.ReceiptNumber).IsUnique();
+            var receipt = e.HasIndex(x => new { x.ReceiptNumber, x.IsTraining }).IsUnique();
             if (NotNullFilter(nameof(Ticket.ReceiptNumber)) is { } receiptFilter) receipt.HasFilter(receiptFilter);
             e.HasMany(x => x.Payments).WithOne().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Restrict);
             e.Ignore(x => x.DiscountTotal);
@@ -436,8 +437,8 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.Note).HasMaxLength(CashierShift.MaxNoteLength);
             e.Ignore(x => x.IsOpen);
             // One open shift per cashier and one per drawer, even if two terminals try at once.
-            var perCashier = e.HasIndex(x => new { x.CashierUserId, x.Status }).IsUnique();
-            var perDrawer = e.HasIndex(x => new { x.TerminalId, x.Status }).IsUnique();
+            var perCashier = e.HasIndex(x => new { x.CashierUserId, x.Status, x.IsTraining }).IsUnique();
+            var perDrawer = e.HasIndex(x => new { x.TerminalId, x.Status, x.IsTraining }).IsUnique();
             if (OpenShiftFilter is { } open)
             {
                 perCashier.HasFilter(open);
@@ -472,7 +473,7 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Ignore(x => x.Counts);
             // An M-Pesa code is used once, ever (removed payments included).
-            var code = e.HasIndex(x => x.MpesaCode).IsUnique();
+            var code = e.HasIndex(x => new { x.MpesaCode, x.IsTraining }).IsUnique();
             if (NotNullFilter(nameof(Payment.MpesaCode)) is { } codeFilter) code.HasFilter(codeFilter);
             e.HasIndex(x => new { x.TicketId, x.Status });
             e.HasIndex(x => x.WorkPeriodId);
@@ -552,6 +553,8 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.Edition).HasMaxLength(40);
         });
 
+        ConfigureTraining(m);
+
         // Every editable entity carries an optimistic concurrency token.
         foreach (var type in m.Model.GetEntityTypes().Where(t => typeof(VersionedEntity).IsAssignableFrom(t.ClrType)))
             m.Entity(type.ClrType).Property(nameof(VersionedEntity.RowVersion)).IsConcurrencyToken();
@@ -559,12 +562,14 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        KeepTrainingApart();
         BumpRowVersions();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        KeepTrainingApart();
         BumpRowVersions();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }

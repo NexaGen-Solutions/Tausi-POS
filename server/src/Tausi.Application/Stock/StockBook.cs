@@ -35,6 +35,8 @@ public sealed class StockBook(ITausiDb db, IStockDatabase stockDb, TimeProvider 
             ReferenceType = referenceType, ReferenceId = referenceId, LineQuantity = lineQuantity, UserId = userId,
             WorkPeriodId = workPeriodId, At = at ?? clock.GetUtcNow(),
         };
+        // Training sales never move stock: the movement is made for the caller but not saved.
+        if (db.TrainingMode) return new Moved(movement);
         db.StockMovements.Add(movement);
         await AddToOnHand(itemId, locationId, quantity, ct);
         return new Moved(movement);

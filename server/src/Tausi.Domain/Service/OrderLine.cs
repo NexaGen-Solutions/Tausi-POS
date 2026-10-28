@@ -27,8 +27,11 @@ public enum OrderLineStatus
 /// discount: Net + Vat = Gross - Discount. The ticket total is the sum of Gross - Discount.
 /// </para>
 /// </summary>
-public class OrderLine : Entity
+public class OrderLine : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MaxNoteLength = 200;
 
     public Guid TicketId { get; set; }

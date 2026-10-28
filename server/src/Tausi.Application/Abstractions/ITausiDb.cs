@@ -74,4 +74,10 @@ public interface ITausiDb
     DatabaseFacade Database { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True for a training terminal's requests: they see and save only training data, and the
+    /// ledger and stock are left alone (see ITrainingData).
+    /// </summary>
+    bool TrainingMode { get; }
 }

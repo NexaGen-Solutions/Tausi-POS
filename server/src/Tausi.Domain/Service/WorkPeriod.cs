@@ -6,8 +6,11 @@ namespace Tausi.Domain.Service;
 /// A business day ("work period"). Only one may be open at a time; the database enforces it
 /// with a unique index on <see cref="IsOpen"/> for open rows. Closing comes with cash-up.
 /// </summary>
-public class WorkPeriod : VersionedEntity
+public class WorkPeriod : VersionedEntity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public DateTimeOffset OpenedAt { get; set; }
 
     /// <summary>The day's date: when it was opened, in the business's time zone. Its entries carry this date.</summary>

@@ -7,7 +7,7 @@ namespace Tausi.Api.Auth;
 /// <summary>
 /// Works out which terminal sent the request from its device token (header, or query string for
 /// the SignalR WebSocket). An unknown token is treated as no terminal. Also notes when the terminal
-/// was last seen and which app version it runs.
+/// was last seen and which app version it runs, and puts a training terminal's requests in training mode.
 /// </summary>
 public sealed class DeviceTokenMiddleware(RequestDelegate next)
 {
@@ -24,11 +24,13 @@ public sealed class DeviceTokenMiddleware(RequestDelegate next)
             var hash = SecureTokens.Hash(token);
             var terminal = await db.Terminals.AsNoTracking()
                 .Where(t => t.DeviceTokenHash == hash)
-                .Select(t => new { t.Id, t.Name, t.LastSeenAt, t.AppVersion })
+                .Select(t => new { t.Id, t.Name, t.LastSeenAt, t.AppVersion, t.TrainingMode })
                 .FirstOrDefaultAsync(http.RequestAborted);
             if (terminal is not null)
             {
-                http.Features.Set(new DeviceTerminal(terminal.Id, terminal.Name));
+                http.Features.Set(new DeviceTerminal(terminal.Id, terminal.Name, terminal.TrainingMode));
+                // A training terminal sees and saves training data only (TausiDbContext.Training).
+                db.TrainingMode = terminal.TrainingMode;
 
                 var now = clock.GetUtcNow();
                 // The terminal app's version: X-Tausi-Version (sent with every call), or the older X-App-Version.

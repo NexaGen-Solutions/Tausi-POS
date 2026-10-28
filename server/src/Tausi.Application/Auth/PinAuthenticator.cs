@@ -4,6 +4,7 @@ using Tausi.Application.Auditing;
 using Tausi.Application.Common;
 using Tausi.Application.Security;
 using Tausi.Domain.People;
+using Tausi.Domain.Service;
 
 namespace Tausi.Application.Auth;
 
@@ -27,6 +28,7 @@ public sealed class PinAuthenticator(ITausiDb db, IPinHasher hasher, IAuditLog a
         if (user is not null)
         {
             await db.PinFailures.Where(f => f.TerminalId == terminalId).ExecuteDeleteAsync(ct);
+            if (terminal.TrainingMode && db.TrainingMode) await OpenTrainingDay(user, terminalId, now, ct);
             return user;
         }
 
@@ -54,6 +56,30 @@ public sealed class PinAuthenticator(ITausiDb db, IPinHasher hasher, IAuditLog a
 
         await db.SaveChangesAsync(ct);
         throw new LoginRejectedException("That PIN is not right.", LoginLockout.MaxFailures - recent.Count);
+    }
+
+    /// <summary>
+    /// A training terminal always has a training day open, so practice never waits for a supervisor to
+    /// open one. It is separate from the real day (it can be closed to practise closing).
+    /// </summary>
+    private async Task OpenTrainingDay(User user, Guid terminalId, DateTimeOffset now, CancellationToken ct)
+    {
+        if (await db.WorkPeriods.AnyAsync(w => w.IsOpen, ct)) return;
+        var day = new WorkPeriod
+        {
+            OpenedAt = now, BusinessDate = await Money.BusinessDates.Today(db, clock, ct),
+            OpenedByUserId = user.Id, OpenedTerminalId = terminalId,
+        };
+        db.WorkPeriods.Add(day);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
+        {
+            // Another training terminal opened it at the same moment.
+            ((DbContext)db).Entry(day).State = EntityState.Detached;
+        }
     }
 
     private async Task<User?> FindUser(string pin, CancellationToken ct)

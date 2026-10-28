@@ -148,6 +148,28 @@ public sealed class ReceiptBuilder
 
     public PrintDocument Build() => new(_bytes.ToArray(), _text.ToString());
 
+    /// <summary>What every slip from a training terminal says, at its top and bottom (printers have no "·").</summary>
+    public const string TrainingBanner = "TRAINING - NOT A RECEIPT";
+
+    /// <summary>
+    /// A slip with the training banner after the printer reset at its top and before its last paper cut
+    /// (or at its end), centred and bold whatever the paper width.
+    /// </summary>
+    public static PrintDocument MarkTraining(PrintDocument document)
+    {
+        byte[] banner = [0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, .. ToPrinterBytes(TrainingBanner), 0x0A, 0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00];
+        var bytes = document.EscPos;
+        var top = bytes.AsSpan().StartsWith(Init) ? Init.Length : 0;
+        var cut = bytes.AsSpan().LastIndexOf(CutPaper);
+        var bottom = cut >= top ? cut : bytes.Length;
+        byte[] marked = [.. bytes.AsSpan(0, top), .. banner, .. bytes.AsSpan(top, bottom - top), .. banner, .. bytes.AsSpan(bottom)];
+        var text = document.Text;
+        var cutLine = text.LastIndexOf("[cut]", StringComparison.Ordinal);
+        var lineStart = cutLine < 0 ? text.Length : text.LastIndexOf('\n', Math.Max(0, cutLine - 1)) + 1;
+        var markedText = $"{TrainingBanner}\n{text[..lineStart]}{TrainingBanner}\n{text[lineStart..]}";
+        return new PrintDocument(marked, markedText);
+    }
+
     private void SetStyle(TextStyle style)
     {
         Write(0x1B, 0x61, (byte)(style.HasFlag(TextStyle.Center) ? 1 : 0));
