@@ -48,7 +48,18 @@ h3 {
   white-space: nowrap;
 }
 
+/*
+ * Focus: a 3 px gold ring with a 3 px deep teal edge around it, so it shows on teal and dark panels
+ * (the gold) and on white and cream (the teal edge). The edge is a shadow outside the ring.
+ */
 :focus-visible {
-  outline: 3px solid var(--color-selected);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+  /* The ring covers 2–5 px out; the edge shows from 5 to 8 px. */
+  box-shadow: 0 0 0 8px var(--color-focus-edge);
+}
+/* Containers the app focuses itself to catch keys (the PIN pad, a dialog) are not tab stops. */
+[tabindex='-1']:focus-visible {
+  outline: none;
+  box-shadow: none;
 }

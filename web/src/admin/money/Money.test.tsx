@@ -196,8 +196,7 @@ describe('Cash book', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/cashbook': () =>
           json(200, { ...current, date: url.searchParams.get('date') ?? current.date }),
         'GET /api/admin/awaiting': () => json(200, awaiting),
@@ -480,7 +479,7 @@ describe('Cash book', () => {
         location: '24 Oct',
         value: 800,
         status: 'Pending',
-        by: 'MAU',
+        by: 'SAM',
         approvedBy: null,
         note: null,
         approveKey: 'cash.book',
@@ -517,8 +516,7 @@ describe('Accounts', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/accounts': () => json(200, accounts(difference)),
         'GET /api/admin/accounts/SAFE/ledger': () =>
           json(200, {

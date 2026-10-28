@@ -1,0 +1,12 @@
+{
+  "name": "tausi-brand-tools",
+  "private": true,
+  "type": "module",
+  "description": "Builds every icon and installer image from brand/ (node build-icons.mjs).",
+  "scripts": {
+    "build": "node build-icons.mjs"
+  },
+  "dependencies": {
+    "sharp": "0.34.4"
+  }
+}

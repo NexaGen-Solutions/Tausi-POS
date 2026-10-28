@@ -19,7 +19,7 @@ public class AuthTests(TausiApp app)
         var device = await (await terminal.Http.GetAsync("/api/device")).Json();
 
         device.GetProperty("terminalName").GetString().Should().Be(terminal.Name);
-        device.GetProperty("businessName").GetString().Should().Be("Mau's Village");
+        device.GetProperty("businessName").GetString().Should().Be("Demo Bar");
     }
 
     [Fact]

@@ -40,9 +40,9 @@
   cursor: pointer;
 }
 .map-tab--active {
-  border-color: var(--color-text);
-  background: var(--color-text);
-  color: var(--color-panel);
+  border-color: var(--color-surface-dark);
+  background: var(--color-surface-dark);
+  color: var(--color-topbar-text);
   font-weight: 600;
 }
 .map-legend {
@@ -70,8 +70,8 @@
   background: var(--color-selected);
 }
 .map-swatch--idle {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: var(--color-warning);
+  background: var(--color-warning);
 }
 .map-moving {
   display: flex;
@@ -130,11 +130,11 @@
 .map-tile--occupied {
   border-color: var(--color-selected);
   background: var(--color-selected);
-  color: #ffffff;
+  color: var(--color-selected-text);
 }
 .map-tile--idle {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: var(--color-warning);
+  background: var(--color-warning);
   color: var(--color-primary-text);
 }
 .map-tile--selected {
@@ -335,7 +335,7 @@
 .ticket-lines th,
 .ticket-lines td {
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid #e3e3df;
+  border-bottom: 1px solid var(--color-divider);
   text-align: left;
 }
 .ticket-lines__qty,

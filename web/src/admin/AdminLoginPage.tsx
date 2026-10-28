@@ -1,7 +1,9 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ApiError, api } from '../shared/api/client';
+import { ApiError, api, apiUrl } from '../shared/api/client';
+import type { Brand } from '../shared/api/types';
+import { TausiMark } from '../shared/brand';
 import { t } from '../shared/i18n/i18n';
 import { Button, Field } from '../shared/ui';
 import './admin.css';
@@ -14,6 +16,7 @@ export function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const brand = useQuery({ queryKey: ['brand'], queryFn: () => api<Brand>('/api/brand') });
 
   const signIn = async () => {
     setBusy(true);
@@ -38,6 +41,14 @@ export function AdminLoginPage() {
           void signIn();
         }}
       >
+        {brand.data && (
+          <div className="admin__login-business">
+            {brand.data.logoFileId && (
+              <img src={apiUrl(`/files/${brand.data.logoFileId}`)} alt={t('admin.logo')} />
+            )}
+            <p className="admin__business">{brand.data.name}</p>
+          </div>
+        )}
         <h1>{t('admin.loginTitle')}</h1>
         <Field
           label={t('admin.userName')}
@@ -58,6 +69,10 @@ export function AdminLoginPage() {
           {t('admin.signIn')}
         </Button>
       </form>
+      <p className="admin__login-tausi">
+        <TausiMark size={24} label={null} />
+        {t('common.appName')}
+      </p>
     </main>
   );
 }

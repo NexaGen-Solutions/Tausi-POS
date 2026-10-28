@@ -39,7 +39,7 @@ function request(id: string, extra: Partial<ApprovalRequest> = {}): ApprovalRequ
     requestedBy: 'edna',
     terminal: 'Pillar 1',
     requestedAt: minutesAgo(1),
-    preferredApproverId: 'id-MAU',
+    preferredApproverId: 'id-SAM',
     sentToMe: true,
     mine: false,
     canDecide: true,
@@ -59,7 +59,7 @@ describe('approvals screen', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock);
     setDeviceForTests({ deviceToken: 'device-1' });
-    setPinSession(sessionFor('MAU', 'Supervisor'));
+    setPinSession(sessionFor('SAM', 'Supervisor'));
     pending = [request('r1')];
     decided = [
       request('d1', {
@@ -91,10 +91,10 @@ describe('approvals screen', () => {
         return json(200, url.searchParams.get('status') === 'decided' ? decided : pending);
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, {
-            user: { id: 'id-MAU', name: 'MAU', role: 'Supervisor' },
+            user: { id: 'id-SAM', name: 'SAM', role: 'Supervisor' },
             permissions: { 'order.void': 'Allowed' },
           }),
         'GET /api/pos/tables': () =>
@@ -231,7 +231,7 @@ describe('approvals screen', () => {
     fetchMock.mockImplementation(
       fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, {
             user: { id: 'id-edna', name: 'edna', role: 'Waiter' },

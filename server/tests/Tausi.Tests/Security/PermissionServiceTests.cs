@@ -23,7 +23,7 @@ public class PermissionServiceTests : IAsyncLifetime
         _roles = await Builders.SeedRoles(_db.Context);
         var edna = await Builders.AddUser(_db.Context, _hasher, "edna", _roles["Waiter"], "1111");
         var carol = await Builders.AddUser(_db.Context, _hasher, "CAROL", _roles["Cashier"], "2222");
-        _supervisor = await Builders.AddUser(_db.Context, _hasher, "MAU", _roles["Supervisor"], "3333");
+        _supervisor = await Builders.AddUser(_db.Context, _hasher, "SAM", _roles["Supervisor"], "3333");
         _waiter = Builders.Session(edna, _roles["Waiter"]);
         _cashier = Builders.Session(carol, _roles["Cashier"]);
         _permissions = new PermissionService(_db.Context, _clock);

@@ -1,20 +1,57 @@
-/* Design tokens from AGENTS.md. Use these variables; never hard-code colours. */
+/*
+ * Design tokens from AGENTS.md. Components use these semantic names only, never colour values or
+ * colour names, so a colour change is this one file. docs/BRAND.md explains them; tokens.test.ts
+ * checks every text/background pair the UI uses against WCAG AA.
+ */
 :root {
+  /* Grounds and panels. Cream is the brand ground: PIN screen, setup wizard, splash, pairing. */
   --color-ground: #f4f4f2;
+  --color-ground-brand: #f6f1e4;
   --color-panel: #ffffff;
   --color-border: #c9c9c4;
+  /* Quieter greys: row dividers, striped or read-only rows, disabled controls, input edges. */
+  --color-divider: #e3e3df;
+  --color-row-alt: #f7f7f5;
+  --color-readonly: #f0f0ed;
+  --color-disabled: #e3e3df;
+  --color-key-disabled: #ececea;
+  --color-input-border: #8f8f8a;
+
   --color-text: #1c1c1c;
   --color-text-secondary: #3d3d3a;
   --color-text-muted: #5c5c58;
-  --color-topbar: #1c1c1c;
+
+  /* Deep teal: the top bar and the dark panels (PIN pad's left side, the wizard's step list, splash). */
+  --color-surface-dark: #0a4a52;
+  --color-surface-dark-text: #f6f1e4;
+  --color-surface-dark-muted: #cfe0de;
+  --color-surface-dark-raised: #333331;
+  --color-topbar: var(--color-surface-dark);
   --color-topbar-text: #ffffff;
-  --color-topbar-muted: #b8b8b2;
-  --color-primary: #b34a0c;
+  --color-topbar-muted: var(--color-surface-dark-muted);
+
+  /* Primary action: teal, white text; darker when pressed. Never orange. */
+  --color-primary: #0e6670;
+  --color-primary-pressed: #0a4a52;
   --color-primary-text: #ffffff;
+
+  /* Gold accent: active tab underline, focus ring, small badges. Never text on light grounds. */
+  --color-accent: #c9a227;
+  --color-accent-text: #1c1c1c;
+  --color-focus: var(--color-accent);
+  --color-focus-edge: var(--color-surface-dark);
+
+  /* Selected and occupied: blue, so a selected item never looks like a button. */
   --color-selected: #1f5fa8;
   --color-selected-tint: #e6eef8;
+  --color-selected-text: #ffffff;
+
+  /* Warning, needs attention (idle tables, Not printed, failed, differences, Void): orange. */
+  --color-warning: #b34a0c;
+  --color-warning-on: #ffffff;
   --color-warning-tint: #fbe7da;
   --color-warning-text: #8a3708;
+
   --color-ok: #4f9a5a;
   --color-key: #f4f4f2;
   --color-overlay: rgba(28, 28, 28, 0.55);

@@ -29,3 +29,4 @@ print-output/
 .DS_Store
 *.swp
 .env
+tools/screenshots/out/

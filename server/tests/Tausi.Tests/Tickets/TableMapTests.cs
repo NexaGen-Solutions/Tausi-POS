@@ -106,7 +106,7 @@ public class TableMapTests : IAsyncLifetime
         // The day it was opened in ends (in development; cash-up will refuse while tickets are open)
         // and a new day starts.
         await _f.Db.WorkPeriods.ExecuteUpdateAsync(u => u.SetProperty(w => w.IsOpen, false));
-        _f.Db.WorkPeriods.Add(new WorkPeriod { OpenedAt = _f.Clock.GetUtcNow(), OpenedByUserId = _f.User("MAU").Id });
+        _f.Db.WorkPeriods.Add(new WorkPeriod { OpenedAt = _f.Clock.GetUtcNow(), OpenedByUserId = _f.User("SAM").Id });
         await _f.Db.SaveChangesAsync();
 
         var seven = (await Map()).Tables.Single(t => t.Name == "7");

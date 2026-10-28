@@ -25,12 +25,12 @@ public class PrintTicketTests : IAsyncLifetime
         _f.Read().PrintJobs.Include(j => j.Printer).Where(j => j.TicketId == ticketId).AsEnumerable()
             .OrderBy(j => j.CreatedAt).ThenBy(j => j.Id).ToList();
 
-    /// <summary>edna on Counter A: 2 Tusker (Cold), 1 Pineapple Punch, 1 Mau's Water on Table 4.</summary>
+    /// <summary>edna on Counter A: 2 Tusker (Cold), 1 Pineapple Punch, 1 House Water on Table 4.</summary>
     private async Task<TicketDetailDto> Table4()
     {
         var ticket = await _f.Start("4", "Tusker Lager", 2, "Cold");
         await _f.Add(ticket.Id, "Pineapple Punch");
-        return await _f.Add(ticket.Id, "Mau's Water 1L");
+        return await _f.Add(ticket.Id, "House Water 1L");
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class PrintTicketTests : IAsyncLifetime
         jobs.Select(j => j.Printer!.Name).Should().Equal("Ticket Printer 1", "Ticket Printer 1");
         jobs[0].CreatedAt.Should().BeBefore(jobs[1].CreatedAt, "the bill always prints first");
         jobs[0].TextPreview.Should().Contain("BILL 1 · Ticket #1001").And.Contain("2 x Tusker Lager (Cold)")
-            .And.Contain("1 x Pineapple Punch").And.Contain("1 x Mau's Water 1L").And.Contain("Total includes VAT 16%")
+            .And.Contain("1 x Pineapple Punch").And.Contain("1 x House Water 1L").And.Contain("Total includes VAT 16%")
             .And.NotContain("Replaces earlier bills");
         jobs[1].TextPreview.Should().Contain("COUNTER A").And.Contain("2 x Tusker Lager").And.Contain("COLD")
             .And.NotContain("KSh").And.NotContain("250");
@@ -75,13 +75,13 @@ public class PrintTicketTests : IAsyncLifetime
     [Fact]
     public async Task An_exempt_item_is_billed_as_vat_exempt_and_a_zero_rated_one_at_vat_0_percent()
     {
-        await _f.Db.MenuItems.Where(i => i.Name == "Mau's Water 1L")
+        await _f.Db.MenuItems.Where(i => i.Name == "House Water 1L")
             .ExecuteUpdateAsync(u => u.SetProperty(i => i.VatExempt, true).SetProperty(i => i.VatRate, 0m));
         await _f.Db.MenuItems.Where(i => i.Name == "Pineapple Punch").ExecuteUpdateAsync(u => u.SetProperty(i => i.VatRate, 0m));
         var ticket = await Table4();
 
         var saved = _f.Ticket(ticket.Number).Lines;
-        saved.Single(l => l.Name == "Mau's Water 1L").Should().Match<OrderLine>(l => l.VatExempt && l.Vat == 0m && l.Net == l.Gross);
+        saved.Single(l => l.Name == "House Water 1L").Should().Match<OrderLine>(l => l.VatExempt && l.Vat == 0m && l.Net == l.Gross);
         saved.Single(l => l.Name == "Pineapple Punch").Should().Match<OrderLine>(l => !l.VatExempt && l.VatRate == 0m && l.Vat == 0m);
 
         await Print(ticket.Id);
@@ -194,8 +194,8 @@ public class PrintTicketTests : IAsyncLifetime
         var token = await _f.ApprovalToken(PermissionKeys.TicketReprint);
         _f.Approval.ApprovalToken = token;
         (await Reprint(ticket.Id)).BillNumber.Should().Be(2);
-        var mau = _f.User("MAU").Id;
-        _f.Read().AuditEntries.Single(a => a.Action == AuditActions.BillReprinted).ApprovedByUserId.Should().Be(mau);
+        var sam = _f.User("SAM").Id;
+        _f.Read().AuditEntries.Single(a => a.Action == AuditActions.BillReprinted).ApprovedByUserId.Should().Be(sam);
 
         _f.Approval.ApprovalToken = token;
         await FluentActions.Awaiting(() => Reprint(ticket.Id)).Should().ThrowAsync<ApprovalRequiredException>().WithMessage("*already used*");

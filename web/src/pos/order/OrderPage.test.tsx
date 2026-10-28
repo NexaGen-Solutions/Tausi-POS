@@ -229,7 +229,7 @@ describe('order screen', () => {
             },
             rules,
           }),
-        'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'id-edna', name: 'edna', role: 'Waiter' }, permissions }),
         'GET /api/pos/menu': () => json(200, menu),
@@ -685,7 +685,7 @@ describe('order screen', () => {
       gross: 600,
       printedAt: '2026-10-20T19:42:00Z',
     });
-  const mau = { userId: 'u-mau', name: 'MAU', role: 'Supervisor', terminal: 'Counter B' };
+  const sam = { userId: 'u-sam', name: 'SAM', role: 'Supervisor', terminal: 'Counter B' };
   // Times show on the terminal's own clock, whatever time zone the test runs in.
   const hhmm = (iso: string) =>
     new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -832,7 +832,7 @@ describe('order screen', () => {
     permissions['order.void'] = 'NeedsApproval';
     ticket = ticketWith([printedGuiness()]);
     extra = {
-      'GET /api/pos/approvals/approvers': () => json(200, [mau]),
+      'GET /api/pos/approvals/approvers': () => json(200, [sam]),
       'POST /api/pos/approvals': ({ body }) => {
         ticket = {
           ...ticket,
@@ -862,7 +862,7 @@ describe('order screen', () => {
 
     expect(within(dialog).getByText('Option 1 · supervisor is here')).toBeInTheDocument();
     expect(within(dialog).getByRole('combobox', { name: 'Send request to' })).toHaveDisplayValue(
-      'MAU (Supervisor) · Counter B',
+      'SAM (Supervisor) · Counter B',
     );
     const send = within(dialog).getByRole('button', { name: 'Send void request' });
     expect(send).toBeDisabled();
@@ -880,14 +880,14 @@ describe('order screen', () => {
         ticketId: 'k1',
         lineId: 'l2',
         payload: { quantity: 1, reason: 'Wrong item', note: null, wasPoured: false },
-        preferredApproverId: 'u-mau',
+        preferredApproverId: 'u-sam',
       },
     );
     expect(await screen.findByText('Request sent: Void 1 × Guiness.')).toBeInTheDocument();
     await waitFor(() => expect(lineButton(/Guiness/)).toHaveTextContent('Void pending'));
     expect(screen.getByRole('button', { name: 'Cancel request' })).toBeInTheDocument();
 
-    // MAU approves at Counter B: edna's screen updates live.
+    // SAM approves at Counter B: edna's screen updates live.
     ticket = ticketWith([
       { ...printedGuiness(), quantity: 1, gross: 300 },
       line('l3', {
@@ -905,9 +905,9 @@ describe('order screen', () => {
       ticketId: 'k1',
       status: 'Approved',
       requestedByUserId: 'id-edna',
-      decidedBy: 'MAU',
+      decidedBy: 'SAM',
     });
-    expect(await screen.findByText('MAU approved the void.')).toBeInTheDocument();
+    expect(await screen.findByText('SAM approved the void.')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('KSh 300')).toBeInTheDocument());
     expect(screen.queryByText('Void pending')).not.toBeInTheDocument();
   });
@@ -921,10 +921,10 @@ describe('order screen', () => {
       ticketId: 'k1',
       status: 'Rejected',
       requestedByUserId: 'id-edna',
-      decidedBy: 'MAU',
+      decidedBy: 'SAM',
       note: 'Already poured',
     });
-    expect(await screen.findByText('MAU rejected: Already poured')).toBeInTheDocument();
+    expect(await screen.findByText('SAM rejected: Already poured')).toBeInTheDocument();
   });
 
   it('the supervisor PIN in the void pop-up voids now with the token', async () => {
@@ -933,9 +933,9 @@ describe('order screen', () => {
     ticket = ticketWith([printedGuiness()]);
     let token: string | null = null;
     extra = {
-      'GET /api/pos/approvals/approvers': () => json(200, [mau]),
+      'GET /api/pos/approvals/approvers': () => json(200, [sam]),
       'POST /api/auth/approve': () =>
-        json(200, { approvalToken: 'pin-token', approvedByName: 'MAU' }),
+        json(200, { approvalToken: 'pin-token', approvedByName: 'SAM' }),
       'POST /api/pos/tickets/k1/lines/l2/void': ({ headers }) => {
         token = headers.get('X-Approval-Token');
         return detail();
@@ -1074,7 +1074,7 @@ describe('order screen', () => {
     extra = {
       'POST /api/pos/tickets/k1/reprint-bill': () =>
         json(403, { status: 403, approvalRequired: true, permission: 'ticket.reprint' }),
-      'GET /api/pos/approvals/approvers': () => json(200, [mau]),
+      'GET /api/pos/approvals/approvers': () => json(200, [sam]),
       'POST /api/pos/approvals': ({ body }) =>
         json(200, { id: 'r9', kind: 'Reprint', summary: 'Reprint bill', status: 'Pending', body }),
     };
@@ -1091,7 +1091,7 @@ describe('order screen', () => {
         ticketId: 'k1',
         lineId: null,
         payload: { reason: null },
-        preferredApproverId: 'u-mau',
+        preferredApproverId: 'u-sam',
       },
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

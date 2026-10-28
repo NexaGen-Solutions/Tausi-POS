@@ -23,7 +23,7 @@ public sealed class BackupFileTests : IDisposable
     }
 
     private static BackupManifest Header => new(BackupManifest.CurrentFormat, "Tausi POS", "1.0.0", "20261025_SetupWizard", "Postgres",
-        "Mau's Village", new DateTimeOffset(2026, 10, 25, 2, 0, 0, TimeSpan.Zero), BackupReason.Nightly, []);
+        "Demo Bar", new DateTimeOffset(2026, 10, 25, 2, 0, 0, TimeSpan.Zero), BackupReason.Nightly, []);
 
     private async Task<string> Zip()
     {
@@ -38,7 +38,7 @@ public sealed class BackupFileTests : IDisposable
     public async Task A_backup_holds_the_database_the_keys_and_a_manifest_with_checksums()
     {
         var manifest = await BackupFile.Check(await Zip(), None);
-        manifest.Business.Should().Be("Mau's Village");
+        manifest.Business.Should().Be("Demo Bar");
         manifest.Files.Select(f => f.Path).Should().Equal("database/tausi.pgdump", "data/secrets/pin-pepper.key", "data/keys/key-1.xml");
         manifest.Files[1].Sha256.Should().HaveLength(64);
     }
@@ -82,7 +82,7 @@ public sealed class BackupFileTests : IDisposable
 
         var plain = Path.Combine(_dir, "plain.zip");
         await BackupFile.Decrypt(encrypted, plain, "correct horse", None);
-        (await BackupFile.Check(plain, None)).Business.Should().Be("Mau's Village");
+        (await BackupFile.Check(plain, None)).Business.Should().Be("Demo Bar");
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class BackupFileTests : IDisposable
     public void The_manifest_is_readable_json()
     {
         var json = JsonSerializer.Serialize(Header, BackupFile.Json);
-        json.Should().Contain("\"reason\": \"Nightly\"").And.Contain("\"business\": \"Mau's Village\"");
+        json.Should().Contain("\"reason\": \"Nightly\"").And.Contain("\"business\": \"Demo Bar\"");
     }
 
     // ---- Keeping ----

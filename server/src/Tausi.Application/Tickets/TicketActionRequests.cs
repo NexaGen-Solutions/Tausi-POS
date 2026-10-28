@@ -82,7 +82,7 @@ public static class ApprovalKinds
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
-    /// <summary>"void", "gift", "price change" … for "MAU approved the void".</summary>
+    /// <summary>"void", "gift", "price change" … for "SAM approved the void".</summary>
     public static string Noun(ApprovalKind kind) => kind switch
     {
         ApprovalKind.PriceChange => "price change",

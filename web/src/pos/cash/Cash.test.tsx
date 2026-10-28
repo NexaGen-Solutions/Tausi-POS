@@ -86,7 +86,7 @@ describe('cash screens', () => {
       calls.push({ method, path: url.pathname, body, headers: new Headers(init?.headers) });
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-22T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'id-CAROL', name: 'CAROL', role: 'Cashier' }, permissions }),
         'GET /api/pos/shifts/current': () =>
@@ -162,10 +162,10 @@ describe('cash screens', () => {
       'POST /api/pos/shifts/s1/close': ({ headers }) => {
         token = headers.get('X-Approval-Token');
         return token
-          ? json(200, { ...current, status: 'Closed', signedOffBy: 'MAU' })
+          ? json(200, { ...current, status: 'Closed', signedOffBy: 'SAM' })
           : json(403, { status: 403, approvalRequired: true, permission: 'day.open_close' });
       },
-      'POST /api/auth/approve': () => json(200, { approvalToken: 'sign-1', approvedByName: 'MAU' }),
+      'POST /api/auth/approve': () => json(200, { approvalToken: 'sign-1', approvedByName: 'SAM' }),
     };
     const router = renderRoutes(routes, '/pos/shift');
 
@@ -285,7 +285,7 @@ describe('cash screens', () => {
 
   it('close day lists what blocks it with links, then shows the summary', async () => {
     const user = userEvent.setup();
-    setPinSession(sessionFor('MAU', 'Supervisor'));
+    setPinSession(sessionFor('SAM', 'Supervisor'));
     permissions = {
       'day.open_close': 'Allowed',
       'ticket.settle': 'Allowed',
@@ -298,7 +298,7 @@ describe('cash screens', () => {
           open: true,
           workPeriodId: 'w1',
           openedAt: '2026-10-22T08:00:00Z',
-          openedBy: 'MAU',
+          openedBy: 'SAM',
           blockers: blocked
             ? {
                 openTickets: [

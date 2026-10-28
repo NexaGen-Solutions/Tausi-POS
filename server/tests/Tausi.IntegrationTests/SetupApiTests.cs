@@ -48,9 +48,9 @@ public class SetupApiTests(FreshApp app) : IClassFixture<FreshApp>
         // Steps 1 and 2: the owner is signed in, so the later steps use the admin API.
         await Ok(await browser.PutAsJsonAsync("/api/setup/business", new
         {
-            name = "Mau's Village", type = "Bar", address = "Ruiru", phone = "0700", vatRate = 16, currency = "KES", timeZone = "Africa/Nairobi",
+            name = "Demo Bar", type = "Bar", address = "Ruiru", phone = "0700", vatRate = 16, currency = "KES", timeZone = "Africa/Nairobi",
         }));
-        await Ok(await browser.PostAsJsonAsync("/api/setup/admin", new { fullName = "Wanjiku Mau", userName = "wanjiku", password = "a long password", pin = "4826", pinAgain = "4826" }));
+        await Ok(await browser.PostAsJsonAsync("/api/setup/admin", new { fullName = "Wanjiku Njeri", userName = "wanjiku", password = "a long password", pin = "4826", pinAgain = "4826" }));
         var staff = await (await browser.PostAsJsonAsync("/api/setup/staff", new { people = new[] { new { name = "edna", role = "Waiter" }, new { name = "CAROL", role = "Cashier" } } })).Json();
         staff.GetProperty("people").GetArrayLength().Should().Be(2);
         staff.GetProperty("people")[0].GetProperty("pin").GetString().Should().MatchRegex("^[0-9]{4}$");

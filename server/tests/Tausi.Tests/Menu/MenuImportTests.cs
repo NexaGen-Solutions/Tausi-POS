@@ -39,14 +39,14 @@ public class MenuImportTests : IAsyncLifetime
     [Fact]
     public async Task The_vat_exempt_column_marks_items_exempt()
     {
-        var csv = "category,name,vat_rate,vat_exempt,price\r\nWater & juice,Mau's Water 1L,0,yes,50\r\n";
+        var csv = "category,name,vat_rate,vat_exempt,price\r\nWater & juice,House Water 1L,0,yes,50\r\n";
 
         var preview = await Preview(Utf8(csv));
         preview.Rows.Single().Changes.Should().Contain(c => c.Field == "VAT exempt" && c.Old == "no" && c.New == "yes");
         await Apply(Utf8(csv));
 
-        _f.Item("Mau's Water 1L").VatExempt.Should().BeTrue();
-        (await Export()).Should().Contain("Mau's Water 1L,Mau's Water 1L,0,yes,yes,");
+        _f.Item("House Water 1L").VatExempt.Should().BeTrue();
+        (await Export()).Should().Contain("House Water 1L,House Water 1L,0,yes,yes,");
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class MenuImportTests : IAsyncLifetime
     public async Task Changing_prices_by_import_needs_edit_prices()
     {
         await _f.SetPermission("Supervisor", PermissionKeys.MenuEdit, PermissionValue.Allowed);
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
 
         await FluentActions.Awaiting(() => Apply(Utf8("category,name,price\r\nBeers,Tusker Lager,260\r\n")))
             .Should().ThrowAsync<PermissionDeniedException>();

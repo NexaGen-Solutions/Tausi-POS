@@ -433,7 +433,7 @@ public static class SettleChecks
             })
             .ToListAsync(ct);
         if (pending.Count == 0) return;
-        // "Waiting for MAU to approve a void on Guiness" (or "a supervisor" when sent to anyone).
+        // "Waiting for SAM to approve a void on Guiness" (or "a supervisor" when sent to anyone).
         var first = pending[0];
         var on = first.Summary.Contains(" × ") ? first.Summary[(first.Summary.IndexOf(" × ", StringComparison.Ordinal) + 3)..] : null;
         var what = ApprovalKinds.Noun(first.Kind);

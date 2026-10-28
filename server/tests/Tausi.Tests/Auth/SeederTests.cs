@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Tausi.Application.Auth;
 using Tausi.Domain.Devices;
+using Tausi.Domain.Settings;
 using Tausi.Infrastructure.Seeding;
 using Tausi.Tests.Support;
 
@@ -15,6 +16,32 @@ public class SeederTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private Seeder Seeder() => new(_db.Context, new FastPinHasher(), NullLogger<Seeder>.Instance);
+
+    [Fact]
+    public async Task Seed_demo_creates_the_generic_demo_business_Demo_Bar()
+    {
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+        await Seeder().SeedDemoMenu(CancellationToken.None);
+
+        var db = _db.NewContext();
+        (await db.BusinessSettings.SingleAsync()).Name.Should().Be("Demo Bar");
+        (await db.MenuItems.AnyAsync(i => i.Name == "House Water 1L")).Should().BeTrue();
+        (await db.Users.Include(u => u.Role).SingleAsync(u => u.Name == "SAM")).Role!.Name.Should().Be("Supervisor");
+    }
+
+    [Fact]
+    public async Task Seed_demo_never_renames_an_existing_business()
+    {
+        _db.Context.BusinessSettings.Add(new BusinessSettings
+        {
+            Name = "Joe's Bar", VatRate = 16m, Currency = "KES", OtherJson = "{}", TimeZone = "Africa/Nairobi",
+        });
+        await _db.Context.SaveChangesAsync();
+
+        await Seeder().SeedDemo("pw", CancellationToken.None);
+
+        (await _db.NewContext().BusinessSettings.SingleAsync()).Name.Should().Be("Joe's Bar");
+    }
 
     [Fact]
     public async Task In_development_demo_printers_print_to_files()

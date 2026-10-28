@@ -64,7 +64,7 @@ public class MenuTests : IAsyncLifetime
     public async Task Menu_edit_without_edit_prices_can_rename_but_not_price()
     {
         await _f.SetPermission("Supervisor", PermissionKeys.MenuEdit, PermissionValue.Allowed);
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
 
         await Rename("Tusker Lager", "Tusker Lager 500ml");
         var view = await _f.Get<GetAdminMenu>().Execute(CancellationToken.None);
@@ -96,7 +96,7 @@ public class MenuTests : IAsyncLifetime
     [Fact]
     public async Task Nobody_without_either_menu_permission_sees_the_menu_admin()
     {
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
         await FluentActions.Awaiting(() => _f.Get<GetAdminMenu>().Execute(CancellationToken.None))
             .Should().ThrowAsync<PermissionDeniedException>();
     }
@@ -105,7 +105,7 @@ public class MenuTests : IAsyncLifetime
     public async Task Edit_prices_can_not_be_approved_so_needs_approval_counts_as_not_allowed()
     {
         await _f.SetPermission("Supervisor", PermissionKeys.MenuEditPrices, PermissionValue.NeedsApproval);
-        _f.ActAs("MAU", _f.CounterA);
+        _f.ActAs("SAM", _f.CounterA);
         var token = SecureTokens.New();
         _f.Db.ApprovalGrants.Add(new ApprovalGrant
         {

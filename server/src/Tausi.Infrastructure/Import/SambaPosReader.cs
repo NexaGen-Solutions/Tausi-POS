@@ -19,7 +19,7 @@ public sealed class SambaPosReader : ISambaPosSource
 
     public static string ConnectionString(SambaPosConnection c)
     {
-        if (string.IsNullOrWhiteSpace(c.Server)) throw new DomainException("Enter the SambaPOS server, for example POSSERVER2\\SQLEXPRESS.", "sambapos_server");
+        if (string.IsNullOrWhiteSpace(c.Server)) throw new DomainException("Enter the SambaPOS server, for example POS-SERVER\\SQLEXPRESS.", "sambapos_server");
         var b = new SqlConnectionStringBuilder
         {
             DataSource = c.Server.Trim(),

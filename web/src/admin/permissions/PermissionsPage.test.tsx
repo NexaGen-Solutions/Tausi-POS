@@ -24,7 +24,7 @@ const roles = [
     id: 'r-supervisor',
     name: 'Supervisor',
     systemKey: 'supervisor',
-    users: ['MAU'],
+    users: ['SAM'],
     rowVersion: 1,
   },
   { id: 'r-admin', name: 'Admin', systemKey: 'admin', users: ['Administrator'], rowVersion: 1 },
@@ -107,8 +107,7 @@ describe('Permissions', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/permissions': () => json(200, current),
         ...extra,
       })(input, init);

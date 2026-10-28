@@ -61,7 +61,7 @@ public class LicenceTests : ApprovalsFixtureBase
     [Fact]
     public async Task Entering_a_key_needs_settings_manage()
     {
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await FluentActions.Awaiting(() => Licences.Enter(new EnterLicenceRequest(Key()), false, None)).Should().ThrowAsync<PermissionDeniedException>();
     }
 
@@ -145,13 +145,13 @@ public class LicenceTests : ApprovalsFixtureBase
             LicenceTool.Run(["generate-keypair", folder]).Should().Be(0);
             LicenceTool.Run(["generate-keypair", folder]).Should().Be(1, "an existing private key is never overwritten");
             output.GetStringBuilder().Clear();
-            LicenceTool.Run(["issue", Path.Combine(folder, "private.key"), "--business", "Mau's Village", "--terminals", "4", "--expires", "never"])
+            LicenceTool.Run(["issue", Path.Combine(folder, "private.key"), "--business", "Demo Bar", "--terminals", "4", "--expires", "never"])
                 .Should().Be(0);
             var key = output.ToString().Trim();
             key.Should().StartWith("TAUSI-");
             var publicKey = File.ReadAllText(Path.Combine(folder, "public.key")).Trim();
             LicenceKeys.TryRead(key, [Convert.FromBase64String(publicKey)], out var payload).Should().Be(LicenceKeyProblem.None);
-            (payload!.Business, payload.MaxTerminals, payload.Expires).Should().Be(("Mau's Village", 4, (DateTimeOffset?)null));
+            (payload!.Business, payload.MaxTerminals, payload.Expires).Should().Be(("Demo Bar", 4, (DateTimeOffset?)null));
             LicenceTool.Run(["verify", Path.Combine(folder, "public.key"), key]).Should().Be(0);
             LicenceTool.Run(["verify", Path.Combine(folder, "public.key"), key.Replace("TAUSI-A", "TAUSI-B")]).Should().NotBe(0);
         }

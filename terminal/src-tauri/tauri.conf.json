@@ -47,7 +47,10 @@
       },
       "nsis": {
         "installMode": "perMachine",
-        "installerHooks": "./windows/hooks.nsh"
+        "installerHooks": "./windows/hooks.nsh",
+        "installerIcon": "windows/installer.ico",
+        "headerImage": "windows/nsis-header.bmp",
+        "sidebarImage": "windows/nsis-sidebar.bmp"
       }
     }
   },

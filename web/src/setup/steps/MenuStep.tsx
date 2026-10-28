@@ -311,7 +311,7 @@ function SambaImport({ onImported }: { onImported: (summary: string) => void }) 
       <div className="wizard__grid">
         <Field
           label={t('wizard.samba.server')}
-          placeholder="POSSERVER2\SQLEXPRESS"
+          placeholder="POS-SERVER\SQLEXPRESS"
           value={connection.server}
           onChange={(e) => set('server', e.target.value)}
         />

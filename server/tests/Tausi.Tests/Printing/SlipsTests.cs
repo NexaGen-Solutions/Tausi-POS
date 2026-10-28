@@ -14,7 +14,7 @@ public class SlipsTests
     private static string[] Lines(PrintDocument d) => d.Text.Split(Environment.NewLine);
 
     private static PrintDocument Test(int paper, bool poweredBy = false) => Slips.Test(
-        new TestSlip("Mau's Village", "Ticket Printer 1", "Network · 192.168.1.50:9100", paper, 16m, At),
+        new TestSlip("Demo Bar", "Ticket Printer 1", "Network · 192.168.1.50:9100", paper, 16m, At),
         new SlipStyle(paper == 58 ? 32 : 42, Cut: true, Logo: null, PoweredBy: poweredBy));
 
     private static SlipLine Line(decimal qty, string name, decimal price, string? options = null, decimal rate = 16m,
@@ -24,21 +24,21 @@ public class SlipsTests
         return new SlipLine(qty, name, options, amounts.Gross, price, rate, amounts.Vat, shortName ?? name, note, exempt);
     }
 
-    private static readonly BusinessInfo Mau = new("Mau's Village", "Ruaka Road, Nairobi", "Tel 0712 345 678", "Thank you. Karibu tena!");
+    private static readonly BusinessInfo Demo = new("Demo Bar", "Ruaka Road, Nairobi", "Tel 0712 345 678", "Thank you. Karibu tena!");
 
     /// <summary>
     /// A bill with lines added at different times: two separate Tusker (Cold) lines, a long name, a
     /// zero-rated item and a VAT-exempt one.
     /// </summary>
     private static BillSlip SampleBill(int number = 1, bool reprint = false, BusinessInfo? business = null) => new(
-        business ?? Mau, number, 1042, reprint, "Table 7", "edna", "Counter A", At,
+        business ?? Demo, number, 1042, reprint, "Table 7", "edna", "Counter A", At,
         [
             Line(2, "Tusker Lager", 250m, "Cold", shortName: "Tusker"),
             Line(1, "Pineapple Punch", 270m),
             Line(1, "Tusker Lager", 250m, "Cold", shortName: "Tusker"),
             Line(1, "Johnnie Walker Black Label Blended Scotch Whisky 750ml", 4500m, shortName: "JW Black"),
             Line(1, "Fresh Milk 500ml", 70m, rate: 0m, shortName: "Milk"),
-            Line(2, "Mau's Water 1L", 50m, rate: 0m, shortName: "Water", exempt: true),
+            Line(2, "House Water 1L", 50m, rate: 0m, shortName: "Water", exempt: true),
         ]);
 
     [Theory]
@@ -60,7 +60,7 @@ public class SlipsTests
         var doc = Test(paper);
         var columns = paper == 58 ? 32 : 42;
 
-        doc.Text.Should().Contain("Mau's Village").And.Contain("Ticket Printer 1").And.Contain("192.168.1.50:9100")
+        doc.Text.Should().Contain("Demo Bar").And.Contain("Ticket Printer 1").And.Contain("192.168.1.50:9100")
             .And.Contain($"{paper} mm · {columns} columns").And.Contain("Bold line").And.Contain("Double-height line")
             .And.Contain("Centred line").And.Contain("Bill and dispense slips")
             .And.Contain("2 x Tusker Lager (Cold)").And.Contain("VAT 16%")
@@ -73,7 +73,7 @@ public class SlipsTests
     public void The_test_prints_sample_bill_and_slip_are_the_real_layouts()
     {
         var lines = Slips.SampleLines(16m);
-        var bill = Slips.Bill(new BillSlip(new BusinessInfo("Mau's Village"), 1, 1042, false, "Table 7", "edna", "Counter A", At, lines), new SlipStyle(42, true, null));
+        var bill = Slips.Bill(new BillSlip(new BusinessInfo("Demo Bar"), 1, 1042, false, "Table 7", "edna", "Counter A", At, lines), new SlipStyle(42, true, null));
         var slip = Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1042, At, [new DispenseGroup("edna", lines)]), new SlipStyle(42, true, null));
 
         foreach (var line in Lines(bill).Concat(Lines(slip)).Where(l => l.Trim() is not ("" or "[cut]")))
@@ -94,7 +94,7 @@ public class SlipsTests
     [InlineData(32)]
     public void A_void_slip_has_the_header_item_options_reason_and_who(int columns) =>
         Golden($"void-{columns}", Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At,
-            [Line(1, "Guiness", 300m, "Cold", shortName: "Guiness")], "Wrong item", "edna", "MAU"), new SlipStyle(columns, true, null)));
+            [Line(1, "Guiness", 300m, "Cold", shortName: "Guiness")], "Wrong item", "edna", "SAM"), new SlipStyle(columns, true, null)));
 
     /// <summary>
     /// Bill 3 after a void (1 of 2 Tusker), a gift (1 Guiness) and a 10% discount, built the way the
@@ -116,10 +116,10 @@ public class SlipsTests
         voided.Status = OrderLineStatus.Voided;
         var gift = L("Guiness", 1, 300m, "Cold");
         gift.IsGift = true;
-        var ticket = new Ticket { Number = 1042, Lines = [tusker, voided, L("Guiness", 1, 300m, "Cold"), gift, L("Pineapple Punch", 1, 270m), L("Mau's Water 1L", 1, 100m, exempt: true)] };
+        var ticket = new Ticket { Number = 1042, Lines = [tusker, voided, L("Guiness", 1, 300m, "Cold"), gift, L("Pineapple Punch", 1, 270m), L("House Water 1L", 1, 100m, exempt: true)] };
         ticket.SetDiscount(DiscountKind.Percent, 10m, "Regular customer");
 
-        var slip = new BillSlip(Mau, 3, 1042, false, "Table 7", "edna", "Pillar 1", At,
+        var slip = new BillSlip(Demo, 3, 1042, false, "Table 7", "edna", "Pillar 1", At,
             ticket.Lines.Where(l => l.Counts).Select(Tausi.Application.Tickets.TicketPrints.ToSlipLine).ToList(),
             Corrected: true, DiscountLabel: Tausi.Application.Tickets.TicketPrints.DiscountLabel(ticket));
         Golden($"bill-corrected-{columns}", Slips.Bill(slip, new SlipStyle(columns, true, null)));
@@ -130,7 +130,7 @@ public class SlipsTests
     private static Tausi.Application.Cash.ShiftDto CashUpShift(decimal counted, IReadOnlyDictionary<string, int> notes, decimal coins) =>
         new(Guid.Empty, "Closed", Guid.Empty, "CAROL", Guid.Empty, "Counter A", At.AddHours(-6), At,
             2000m, 370m, 200m, 1000m, 1170m, 2, 1300m, 1, 270m, true, true, notes, coins, counted, counted - 1170m,
-            null, "MAU", 3, 1, 3, [1000, 500, 200, 100, 50],
+            null, "SAM", 3, 1, 3, [1000, 500, 200, 100, 50],
             [new(Guid.Empty, "edna", 370m, 0), new(Guid.Empty, "CYNTHIA", 0m, 1)],
             [new(Guid.Empty, "PayOut", 200m, "Transport", "Taxi for ice", "CAROL", At.AddHours(-2)),
              new(Guid.Empty, "Drop", 1000m, null, "To the safe", "CAROL", At.AddHours(-1))],
@@ -142,7 +142,7 @@ public class SlipsTests
     public void A_cash_up_slip_shows_the_drawer_the_count_and_the_sign_off(int columns) =>
         Golden($"cashup-{columns}", Tausi.Application.Cash.CashSlips.CashUp(
             CashUpShift(1170m, new Dictionary<string, int> { ["1000"] = 1, ["100"] = 1, ["50"] = 1 }, 20m),
-            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+            "Demo Bar", at => at, new SlipStyle(columns, true, null)));
 
     [Theory]
     [InlineData(42)]
@@ -150,7 +150,7 @@ public class SlipsTests
     public void A_short_cash_up_says_short(int columns) =>
         Golden($"cashup-short-{columns}", Tausi.Application.Cash.CashSlips.CashUp(
             CashUpShift(1070m, new Dictionary<string, int> { ["1000"] = 1, ["50"] = 1 }, 20m),
-            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+            "Demo Bar", at => at, new SlipStyle(columns, true, null)));
 
     [Theory]
     [InlineData(42)]
@@ -160,10 +160,10 @@ public class SlipsTests
         var style = new SlipStyle(columns, true, null);
         Golden($"payout-{columns}", Tausi.Application.Cash.CashSlips.Movement(
             new Tausi.Domain.Cash.DrawerMovement { Kind = Tausi.Domain.Cash.DrawerMovementKind.PayOut, Amount = 200m, CategoryName = "Transport", Note = "Taxi for ice", At = At },
-            "Mau's Village", "Counter A", "CAROL", "MAU", at => at, style));
+            "Demo Bar", "Counter A", "CAROL", "SAM", at => at, style));
         Golden($"drop-{columns}", Tausi.Application.Cash.CashSlips.Movement(
             new Tausi.Domain.Cash.DrawerMovement { Kind = Tausi.Domain.Cash.DrawerMovementKind.Drop, Amount = 1000m, At = At },
-            "Mau's Village", "Counter A", "CAROL", null, at => at, style));
+            "Demo Bar", "Counter A", "CAROL", null, at => at, style));
     }
 
     [Theory]
@@ -173,7 +173,7 @@ public class SlipsTests
         Golden($"waiter-{columns}", Tausi.Application.Cash.CashSlips.Waiter(
             new Tausi.Application.Cash.MySalesDto("edna", At.AddHours(-8), 3400m, 6, 1370m, 1000m, 270m,
                 [new(Guid.Empty, 1047, "Table 7", 540m)], []),
-            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+            "Demo Bar", at => at, new SlipStyle(columns, true, null)));
 
     [Theory]
     [InlineData(42)]
@@ -184,7 +184,7 @@ public class SlipsTests
                 [new("VAT 16%", 1931.04m, 308.96m)],
                 [new("Cash", 1, 370m), new("M-Pesa", 2, 1300m), new("Card", 2, 570m)], 2240m, 0m,
                 [new("CAROL", "Counter A", 0m)], 200m),
-            "Mau's Village", At.AddHours(-10), At, "MAU", new SlipStyle(columns, true, null)));
+            "Demo Bar", At.AddHours(-10), At, "SAM", new SlipStyle(columns, true, null)));
 
     [Theory]
     [InlineData(42)]
@@ -198,18 +198,18 @@ public class SlipsTests
                 new Tausi.Application.Money.DailySummaryDto(new DateOnly(2026, 10, 20), 2240m, 308.96m, 1931.04m, 820m, 1111.04m, 57.5m,
                     1700m, [new("Repairs", 1500m), new("Transport", 200m)], 220m, [new("Waste", 120m), new("Cash over/short", 100m)],
                     50m, 0m, -858.96m, ["Pool Table"])),
-            "Mau's Village", At.AddHours(-10), At, "MAU", new SlipStyle(columns, true, null)));
+            "Demo Bar", At.AddHours(-10), At, "SAM", new SlipStyle(columns, true, null)));
 
     [Fact]
     public void A_zero_rated_item_is_in_the_vat_lines_at_0_percent_and_only_exempt_items_say_vat_exempt()
     {
-        BillSlip Bill(params SlipLine[] lines) => new(Mau, 1, 1042, false, "Table 7", "edna", "Counter A", At, lines);
+        BillSlip Bill(params SlipLine[] lines) => new(Demo, 1, 1042, false, "Table 7", "edna", "Counter A", At, lines);
         var style = new SlipStyle(42, true, null);
 
         var zeroRated = Slips.Bill(Bill(Line(1, "Fresh Milk 500ml", 70m, rate: 0m)), style).Text;
         zeroRated.Should().Contain("Total includes VAT 0%: KSh 0.00").And.NotContain("exempt");
 
-        var exempt = Slips.Bill(Bill(Line(2, "Mau's Water 1L", 50m, rate: 0m, exempt: true)), style).Text;
+        var exempt = Slips.Bill(Bill(Line(2, "House Water 1L", 50m, rate: 0m, exempt: true)), style).Text;
         exempt.Should().MatchRegex(@"VAT exempt: +KSh 100\.00").And.NotContain("Total includes VAT");
 
         // An exempt item with a rate still carries no VAT, and is not in the 16% line.
@@ -234,7 +234,7 @@ public class SlipsTests
     [InlineData(32)]
     public void Without_a_footer_and_with_powered_by(int columns) =>
         Golden($"bill-no-footer-powered-by-{columns}",
-            Slips.Bill(SampleBill(business: Mau with { Footer = null }), new SlipStyle(columns, true, null, PoweredBy: true)));
+            Slips.Bill(SampleBill(business: Demo with { Footer = null }), new SlipStyle(columns, true, null, PoweredBy: true)));
 
     [Theory]
     [InlineData(42)]
@@ -300,14 +300,14 @@ public class SlipsTests
     private static Ticket Table7(params OrderLine[] extra) => new()
     {
         Number = 1042,
-        Lines = [OL("Tusker Lager", 2, 250m, "Cold"), OL("Guiness", 1, 300m), OL("Mau's Water 1L", 1, 100m, exempt: true),
+        Lines = [OL("Tusker Lager", 2, 250m, "Cold"), OL("Guiness", 1, 300m), OL("House Water 1L", 1, 100m, exempt: true),
             OL("Sodas 300ml", 2, 100m, "Cold"), OL("Pineapple Punch", 1, 270m), .. extra],
     };
 
     private static ReceiptSlip Receipt(IReadOnlyList<ReceiptPayment> payments, Ticket? ticket = null, bool copy = false, bool drawer = false)
     {
         var t = ticket ?? Table7();
-        return new ReceiptSlip(Mau, 2041, t.Number, copy, "Table 7", "edna", "CAROL", "Counter A", At,
+        return new ReceiptSlip(Demo, 2041, t.Number, copy, "Table 7", "edna", "CAROL", "Counter A", At,
             t.Lines.Where(l => l.Counts).Select(Tausi.Application.Tickets.TicketPrints.ToSlipLine).ToList(),
             Tausi.Application.Tickets.TicketPrints.DiscountLabel(t), t.RoundingAmount, payments, drawer);
     }
@@ -373,7 +373,7 @@ public class SlipsTests
         var lines = Tausi.Application.Tickets.TicketPrints.ReceiptLines(ticket, showVoids: true);
         Tausi.Application.Tickets.TicketPrints.ReceiptLines(ticket, showVoids: false).Should().HaveCount(5, "off: voids are left out");
 
-        var receipt = new ReceiptSlip(Mau, 2041, 1042, false, "Table 7", "edna", "CAROL", "Counter A", At, lines, null, 0m,
+        var receipt = new ReceiptSlip(Demo, 2041, 1042, false, "Table 7", "edna", "CAROL", "Counter A", At, lines, null, 0m,
             [new("M-Pesa", 1000m, null, null, null, "edna"), new("Cash", 370m, 500m, 130m, null, "edna")], ShowBroughtBy: false);
 
         var doc = Slips.Receipt(receipt, new SlipStyle(columns, true, null));
@@ -390,7 +390,7 @@ public class SlipsTests
             {
                 MpesaNoCodeCount = 1, MpesaNoCodeTotal = 500m,
             },
-            "Mau's Village", at => at, new SlipStyle(columns, true, null)));
+            "Demo Bar", at => at, new SlipStyle(columns, true, null)));
 
     [Theory]
     [InlineData(42)]
@@ -399,14 +399,14 @@ public class SlipsTests
     {
         var values = Tausi.Application.Settings.SettingsRegistry.Read(new Tausi.Domain.Settings.BusinessSettings
         {
-            Name = "Mau's Village", Address = "Ruaka Road, Nairobi", Phone = "Tel 0712 345 678", ReceiptFooter = "Thank you. Karibu tena!",
+            Name = "Demo Bar", Address = "Ruaka Road, Nairobi", Phone = "Tel 0712 345 678", ReceiptFooter = "Thank you. Karibu tena!",
             VatRate = 16m, Currency = "KES", TimeZone = "Africa/Nairobi",
             OtherJson = """{"print":{"showVoidsOnReceipt":true,"poweredByFooter":true}}""",
         });
         var (bill, receipt) = Tausi.Application.Settings.ReceiptPreview.Render(values, columns, null, At);
 
         bill.Text.Should().Be(Slips.Bill(
-            new BillSlip(Mau, 1, 1042, false, "Table 7", "edna", "Counter A", At, Slips.SampleLines(16m)),
+            new BillSlip(Demo, 1, 1042, false, "Table 7", "edna", "Counter A", At, Slips.SampleLines(16m)),
             new SlipStyle(columns, true, null, "KES", PoweredBy: true)).Text);
         receipt.Text.Should().Contain("1 x Guiness VOID").And.Contain("Cash brought by edna").And.Contain(Slips.PoweredByText);
         Golden($"preview-bill-{columns}", bill);
@@ -417,8 +417,8 @@ public class SlipsTests
     public void Void_and_receipt_slips_render()
     {
         var style = new SlipStyle(42, true, null);
-        Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At, [new(1, "Guiness", null, 300m)], "Wrong item", "edna", "MAU"), style)
-            .Text.Should().Contain("VOID").And.Contain("Wrong item").And.Contain("By: edna · Approved: MAU");
+        Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At, [new(1, "Guiness", null, 300m)], "Wrong item", "edna", "SAM"), style)
+            .Text.Should().Contain("VOID").And.Contain("Wrong item").And.Contain("By: edna · Approved: SAM");
         var receipt = Slips.Receipt(Receipt([new("M-Pesa", 1000m, null, null, "SJK3ABC123", "edna"), new("Cash", 370m, 500m, 130m, null, "edna")]), style);
         receipt.Text.Should().Contain("M-Pesa SJK3ABC123").And.Contain("Change 130").And.Contain("Served by edna");
         receipt.Text.Should().NotContain(Slips.NotAReceiptText);

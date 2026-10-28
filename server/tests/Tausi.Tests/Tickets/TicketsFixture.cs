@@ -18,7 +18,7 @@ using Tausi.Tests.Support;
 namespace Tausi.Tests.Tickets;
 
 /// <summary>
-/// Application services on SQLite with Mau's demo layout, menu, staff and terminals, an open day
+/// Application services on SQLite with the demo layout, menu, staff and terminals, an open day
 /// and no tickets. <see cref="LoginOn"/> logs a person in on a terminal with a real session.
 /// </summary>
 public sealed class TicketsFixture : IAsyncDisposable
@@ -78,7 +78,7 @@ public sealed class TicketsFixture : IAsyncDisposable
         await f._db.Context.WorkPeriods.ExecuteDeleteAsync();
         if (openDay)
         {
-            f._db.Context.WorkPeriods.Add(new WorkPeriod { OpenedAt = f.Clock.GetUtcNow(), OpenedByUserId = f.User("MAU").Id });
+            f._db.Context.WorkPeriods.Add(new WorkPeriod { OpenedAt = f.Clock.GetUtcNow(), OpenedByUserId = f.User("SAM").Id });
             await f._db.Context.SaveChangesAsync();
         }
         f._db.Context.ChangeTracker.Clear();
@@ -158,7 +158,7 @@ public sealed class TicketsFixture : IAsyncDisposable
     }
 
     /// <summary>A supervisor's approval token for one action, as the approval pad would get it.</summary>
-    public async Task<string> ApprovalToken(string permission, string approver = "MAU", TimeSpan? age = null)
+    public async Task<string> ApprovalToken(string permission, string approver = "SAM", TimeSpan? age = null)
     {
         var token = SecureTokens.New();
         var created = Clock.GetUtcNow() - (age ?? TimeSpan.Zero);

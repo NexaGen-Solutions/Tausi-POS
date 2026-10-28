@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ApiError, api } from '../shared/api/client';
+import { TausiMark } from '../shared/brand';
 import { t } from '../shared/i18n/i18n';
 import { Button, Field } from '../shared/ui';
 import { AdminStep } from './steps/AdminStep';
@@ -77,7 +78,10 @@ export function SetupWizard() {
   return (
     <div className="wizard">
       <aside className="wizard__side">
-        <p className="wizard__brand">{t('wizard.brand')}</p>
+        <p className="wizard__brand">
+          <TausiMark size={36} label={null} />
+          {t('wizard.brand')}
+        </p>
         <h1 className="wizard__heading">{t('wizard.heading')}</h1>
         <ol className="wizard__steps">
           {stepKeys.map((key, i) => {

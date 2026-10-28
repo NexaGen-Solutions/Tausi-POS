@@ -18,6 +18,7 @@ use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::ipc::CapabilityBuilder;
+use tauri::window::Color;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
@@ -99,7 +100,7 @@ pub fn read_installer_server(path: &Path) -> Option<String> {
     origin_of(text.lines().next()?.trim())
 }
 
-/// The paired server's origin ("http://posserver2:5080"), the only remote place the window may go.
+/// The paired server's origin ("http://pos-server:5080"), the only remote place the window may go.
 struct AllowedServer(Mutex<Option<String>>);
 
 fn load_config(app: &AppHandle) -> Result<DeviceConfig, String> {
@@ -183,21 +184,23 @@ pub fn navigation_allowed(url: &Url, server_origin: Option<&str>, dev: bool) -> 
     server_origin.is_some_and(|s| s == origin)
 }
 
-/// The address the window should show: the server's POS screens once paired, else the setup screen.
+/// The bundled page the window opens: the splash once paired (it shows the logo while it reaches the
+/// server, then opens the server's POS screens), else the setup screen.
+pub fn start_page(config: &DeviceConfig) -> &'static str {
+    match (&config.server_url, &config.device_token) {
+        (Some(_), Some(_)) => "splash",
+        _ => "connect",
+    }
+}
+
+/// The address the window should show. Bundled pages are the web build's routes (Tauri serves
+/// index.html for them).
 fn start_url(config: &DeviceConfig) -> Result<WebviewUrl, String> {
     // In development the window always loads the Vite dev server, which proxies to the server.
     if cfg!(debug_assertions) {
         return Ok(WebviewUrl::App("index.html".into()));
     }
-    match (&config.server_url, &config.device_token) {
-        (Some(server), Some(_)) => {
-            let url = Url::parse(server)
-                .and_then(|base| base.join("/pos"))
-                .map_err(|e| e.to_string())?;
-            Ok(WebviewUrl::External(url))
-        }
-        _ => Ok(WebviewUrl::App("index.html".into())),
-    }
+    Ok(WebviewUrl::App(start_page(config).into()))
 }
 
 #[tauri::command]
@@ -224,7 +227,7 @@ fn save_device_config(app: AppHandle, config: DeviceConfig) -> Result<(), String
 /// token is dropped, and the app restarts so only the new server is allowed.
 #[tauri::command]
 fn set_server_url(app: AppHandle, server_url: String) -> Result<(), String> {
-    let origin = origin_of(&server_url).ok_or("Enter an address like http://POSSERVER2:5080")?;
+    let origin = origin_of(&server_url).ok_or("Enter an address like http://POS-SERVER:5080")?;
     store_config(
         &app,
         &DeviceConfig {
@@ -463,6 +466,8 @@ pub fn run() {
             let window = WebviewWindowBuilder::new(app, MAIN_WINDOW, start_url(&config)?)
                 .title(MAIN_WINDOW_TITLE)
                 .inner_size(1280.0, 800.0)
+                // Deep teal (the splash) from the first frame, never a white flash.
+                .background_color(Color(0x0A, 0x4A, 0x52, 0xFF))
                 .fullscreen(full_screen)
                 .decorations(!full_screen)
                 .focused(true)
@@ -629,6 +634,19 @@ mod tests {
     }
 
     #[test]
+    fn a_paired_terminal_starts_on_the_splash_and_any_other_on_setup() {
+        let paired = DeviceConfig {
+            server_url: Some("http://pos-server:5080".into()),
+            device_token: Some("token".into()),
+            ..Default::default()
+        };
+        assert_eq!(start_page(&paired), "splash");
+        let unpaired = DeviceConfig { device_token: None, ..paired.clone() };
+        assert_eq!(start_page(&unpaired), "connect");
+        assert_eq!(start_page(&DeviceConfig::default()), "connect");
+    }
+
+    #[test]
     fn updates_are_never_newer_than_the_server() {
         let v = |s: &str| semver::Version::parse(s).unwrap();
         assert!(wanted(&v("1.0.0"), &v("1.1.0"), &v("1.1.0")));
@@ -671,8 +689,8 @@ mod tests {
     #[test]
     fn origins_are_normalised() {
         assert_eq!(
-            origin_of("http://POSSERVER2:5080/pos").as_deref(),
-            Some("http://posserver2:5080")
+            origin_of("http://POS-SERVER:5080/pos").as_deref(),
+            Some("http://pos-server:5080")
         );
         assert_eq!(
             origin_of("https://pos.example/").as_deref(),
@@ -684,17 +702,17 @@ mod tests {
 
     #[test]
     fn only_the_paired_server_and_bundled_pages_are_allowed() {
-        let server = Some("http://posserver2:5080");
+        let server = Some("http://pos-server:5080");
         let ok = |u: &str, dev: bool| navigation_allowed(&Url::parse(u).unwrap(), server, dev);
-        assert!(ok("http://posserver2:5080/pos", false));
+        assert!(ok("http://pos-server:5080/pos", false));
         assert!(ok("http://tauri.localhost/connect", false));
         assert!(ok("tauri://localhost/index.html", false));
-        assert!(!ok("http://posserver2:5081/pos", false));
+        assert!(!ok("http://pos-server:5081/pos", false));
         assert!(!ok("https://example.com", false));
         assert!(!ok("http://localhost:5173/pos", false));
         assert!(ok("http://localhost:5173/pos", true));
         assert!(!navigation_allowed(
-            &Url::parse("http://posserver2:5080/").unwrap(),
+            &Url::parse("http://pos-server:5080/").unwrap(),
             None,
             false
         ));

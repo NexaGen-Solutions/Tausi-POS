@@ -23,7 +23,7 @@ const nouns: Record<string, string> = {
 /**
  * On every terminal screen after login: keeps the approval lists live. A new request I can
  * decide plays a chime and shows "edna asks: Void 1 × Guiness · Table 7 · Open"; a decision on
- * my own request shows "MAU approved the void" or "MAU rejected: …".
+ * my own request shows "SAM approved the void" or "SAM rejected: …".
  */
 export function ApprovalsWatcher() {
   const session = usePinSession();

@@ -26,7 +26,7 @@ public class OpenDayTests : IAsyncLifetime
         var hasher = new FastPinHasher();
         var roles = await Builders.SeedRoles(_db.Context);
         var terminal = await Builders.AddTerminal(_db.Context);
-        _supervisor = Builders.Session(await Builders.AddUser(_db.Context, hasher, "MAU", roles["Supervisor"], "3871"), roles["Supervisor"], terminal);
+        _supervisor = Builders.Session(await Builders.AddUser(_db.Context, hasher, "SAM", roles["Supervisor"], "3871"), roles["Supervisor"], terminal);
         _waiter = Builders.Session(await Builders.AddUser(_db.Context, hasher, "edna", roles["Waiter"], "4821"), roles["Waiter"], terminal);
     }
 

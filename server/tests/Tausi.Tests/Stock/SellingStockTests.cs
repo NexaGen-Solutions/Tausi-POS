@@ -46,7 +46,7 @@ public class SellingStockTests : StockTestBase
     {
         var before = OnHand("Tusker Lager", "Bar");
         var ticket = await Printed("7", ("Tusker Lager", 2));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await Void(ticket.Id, LineOf(ticket, "Tusker Lager"), 1, poured: false);
@@ -64,7 +64,7 @@ public class SellingStockTests : StockTestBase
     {
         var before = OnHand("Viceroy 375ml", "Bar");
         var ticket = await Printed("7", ("Viceroy Tot", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await Void(ticket.Id, LineOf(ticket, "Viceroy Tot"), 1, poured: true);
@@ -81,7 +81,7 @@ public class SellingStockTests : StockTestBase
     {
         await F.SetSetting(SettingsRegistry.StockReturnOnVoidIfNotServed, false);
         var ticket = await Printed("7", ("Tusker Lager", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await Void(ticket.Id, LineOf(ticket, "Tusker Lager"), 1, poured: false);
@@ -93,12 +93,12 @@ public class SellingStockTests : StockTestBase
     [Fact]
     public async Task The_approvers_poured_answer_is_what_is_stored()
     {
-        var mau = await F.LoginOn("MAU", "Counter B");
+        var sam = await F.LoginOn("SAM", "Counter B");
         await F.LoginOn("edna", "Pillar 1");
         var ticket = await Printed("7", ("Tusker Lager", 2));
         var request = await Request(ApprovalKind.Void, ticket.Id, LineOf(ticket, "Tusker Lager"),
-            new VoidLineRequest(1, "Wrong item", WasPoured: true), mau.UserId);
-        F.ActAs(mau);
+            new VoidLineRequest(1, "Wrong item", WasPoured: true), sam.UserId);
+        F.ActAs(sam);
 
         await F.Get<ApproveRequest>().Execute(request.Id, None, new ApproveRequestDto(WasPoured: false));
 
@@ -111,7 +111,7 @@ public class SellingStockTests : StockTestBase
     {
         var ticket = await Printed("7", ("Tusker Lager", 2));
         var before = OnHand("Tusker Lager", "Bar");
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await Gift(ticket.Id, LineOf(ticket, "Tusker Lager"));
@@ -136,7 +136,7 @@ public class SellingStockTests : StockTestBase
     public async Task A_partial_void_after_a_split_returns_its_share()
     {
         var ticket = await Printed("7", ("Tusker Lager", 3));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Gift(ticket.Id, LineOf(ticket, "Tusker Lager"));
         var detail = await Detail(ticket.Id);

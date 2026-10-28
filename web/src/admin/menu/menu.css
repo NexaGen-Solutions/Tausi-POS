@@ -65,7 +65,7 @@
 }
 .menu-row--inactive td {
   color: var(--color-text-muted);
-  background: #f7f7f5;
+  background: var(--color-row-alt);
 }
 .menu-tag {
   display: inline-block;
@@ -119,7 +119,7 @@
   text-align: right;
 }
 .menu-panel__money input[readonly] {
-  background: #f0f0ed;
+  background: var(--color-readonly);
   color: var(--color-text-secondary);
 }
 .menu-panel__vat {
@@ -176,7 +176,7 @@
   display: grid;
   gap: var(--space-2);
   padding: var(--space-3);
-  border: 1px solid #e3e3df;
+  border: 1px solid var(--color-divider);
   border-radius: var(--radius);
 }
 .menu-option__move {
@@ -197,7 +197,7 @@
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid #e3e3df;
+  border: 1px solid var(--color-divider);
   border-radius: var(--radius);
 }
 .menu-list--ordered li[draggable='true'] {
@@ -205,7 +205,7 @@
 }
 .menu-list__inactive {
   color: var(--color-text-muted);
-  background: #f7f7f5;
+  background: var(--color-row-alt);
 }
 .menu-list__actions {
   display: flex;

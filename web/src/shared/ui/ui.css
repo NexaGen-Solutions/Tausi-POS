@@ -32,7 +32,7 @@
   font-weight: 600;
 }
 .nx-btn--danger {
-  border-color: var(--color-primary);
+  border-color: var(--color-warning);
   color: var(--color-warning-text);
   font-weight: 600;
 }
@@ -44,17 +44,23 @@
 }
 .nx-btn--ghost-dark {
   background: transparent;
-  border-color: #4a4a47;
+  border-color: var(--color-surface-dark-muted);
   color: var(--color-topbar-text);
 }
 .nx-btn:disabled {
-  background: #e3e3df;
-  border-color: #e3e3df;
+  background: var(--color-disabled);
+  border-color: var(--color-disabled);
   color: var(--color-text-muted);
   cursor: default;
 }
 .nx-btn:active:not(:disabled) {
   filter: brightness(0.92);
+}
+.nx-btn--primary:active:not(:disabled),
+.nx-keypad__key--enter:active:not(:disabled) {
+  background: var(--color-primary-pressed);
+  border-color: var(--color-primary-pressed);
+  filter: none;
 }
 
 /* Top bar */
@@ -94,11 +100,11 @@
 .nx-pindots__dot {
   width: 22px;
   height: 22px;
-  border: 2px solid var(--color-text);
+  border: 2px solid var(--color-surface-dark);
   border-radius: 50%;
 }
 .nx-pindots__dot--filled {
-  background: var(--color-text);
+  background: var(--color-surface-dark);
 }
 .nx-pindots--small .nx-pindots__dot {
   width: 16px;
@@ -133,7 +139,7 @@
 }
 .nx-keypad__key:disabled {
   color: var(--color-text-muted);
-  background: #ececea;
+  background: var(--color-key-disabled);
   cursor: default;
 }
 .nx-keypad__key--enter:disabled {
@@ -242,7 +248,7 @@
 .nx-toast--warning {
   background: var(--color-warning-tint);
   color: var(--color-warning-text);
-  border: 1px solid var(--color-primary);
+  border: 1px solid var(--color-warning);
 }
 .nx-toast__text {
   flex: 1;
@@ -255,7 +261,7 @@
   gap: var(--space-4);
   min-height: var(--touch-min);
   padding: var(--space-2) var(--space-5);
-  border-bottom: 1px solid var(--color-primary);
+  border-bottom: 1px solid var(--color-warning);
   background: var(--color-warning-tint);
   color: var(--color-warning-text);
   font-weight: 500;
@@ -293,7 +299,7 @@
 }
 .nx-table td {
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid #e3e3df;
+  border-bottom: 1px solid var(--color-divider);
 }
 .nx-table tr:last-child td {
   border-bottom: 0;
@@ -318,7 +324,7 @@
 .nx-field__input {
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border: 1px solid #8f8f8a;
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius);
   background: var(--color-panel);
 }
@@ -348,7 +354,7 @@
   height: 30px;
   border: 1px solid var(--color-border);
   border-radius: 15px;
-  background: #e3e3df;
+  background: var(--color-disabled);
 }
 .nx-toggle__thumb {
   position: absolute;
@@ -388,7 +394,7 @@
 .nx-field__select {
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border: 1px solid #8f8f8a;
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius);
   background: var(--color-panel);
 }

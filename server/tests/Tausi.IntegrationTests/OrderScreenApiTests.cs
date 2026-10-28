@@ -20,7 +20,7 @@ public class OrderScreenApiTests(TicketsApp app) : IAsyncLifetime
         {
             if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
             var supervisor = await app.PairTerminal();
-            await supervisor.LoginWithPin(app.Pins["MAU"]);
+            await supervisor.LoginWithPin(app.Pins["SAM"]);
             (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
         }
         finally
@@ -121,7 +121,7 @@ public class OrderScreenApiTests(TicketsApp app) : IAsyncLifetime
         asked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await asked.Json()).GetProperty("approvalRequired").GetBoolean().Should().BeTrue();
 
-        var approval = await Ok(await waiter.Http.PostAsJsonAsync("/api/auth/approve", new { pin = app.Pins["MAU"], permissionKey = "ticket.reprint" }));
+        var approval = await Ok(await waiter.Http.PostAsJsonAsync("/api/auth/approve", new { pin = app.Pins["SAM"], permissionKey = "ticket.reprint" }));
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/pos/tickets/{id}/reprint-bill");
         request.Headers.Add("X-Approval-Token", approval.GetProperty("approvalToken").GetString());
         (await Ok(await waiter.Http.SendAsync(request))).GetProperty("billNumber").GetInt32().Should().Be(2);

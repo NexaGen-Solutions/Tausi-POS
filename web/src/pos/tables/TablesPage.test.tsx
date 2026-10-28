@@ -107,7 +107,7 @@ describe('table map', () => {
       }
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'u-edna', name: 'edna', role: 'Waiter' }, permissions }),
         'GET /api/pos/tables': () => json(200, map),
@@ -219,7 +219,7 @@ describe('table map', () => {
         return json(200, { ...ticket('k1', 1042), total: 1910 });
       },
       'POST /api/auth/approve': () =>
-        json(200, { approvalToken: 'token-1', approvedByName: 'MAU' }),
+        json(200, { approvalToken: 'token-1', approvedByName: 'SAM' }),
     };
     await open();
 
@@ -317,7 +317,7 @@ describe('table map', () => {
       'POST /api/pos/tickets/k2/move': () =>
         json(403, { status: 403, approvalRequired: true, permission: 'ticket.move' }),
       'GET /api/pos/approvals/approvers': () =>
-        json(200, [{ userId: 'u-mau', name: 'MAU', role: 'Supervisor', terminal: 'Counter B' }]),
+        json(200, [{ userId: 'u-sam', name: 'SAM', role: 'Supervisor', terminal: 'Counter B' }]),
       'POST /api/pos/approvals': () =>
         json(200, { id: 'r1', kind: 'Move', summary: 'Move to Table 4', status: 'Pending' }),
     };
@@ -337,7 +337,7 @@ describe('table map', () => {
         ticketId: 'k2',
         lineId: null,
         payload: { toTableId: 't-4' },
-        preferredApproverId: 'u-mau',
+        preferredApproverId: 'u-sam',
       },
     );
     expect(screen.queryByText('Choose a table for #1047')).not.toBeInTheDocument();
@@ -454,7 +454,7 @@ describe('table map', () => {
           ? new Response(null, { status: 204 })
           : json(403, { status: 403, approvalRequired: true, permission: 'ticket.reprint' });
       },
-      'POST /api/auth/approve': () => json(200, { approvalToken: 'tok-1', approvedByName: 'MAU' }),
+      'POST /api/auth/approve': () => json(200, { approvalToken: 'tok-1', approvedByName: 'SAM' }),
     };
     await open();
 

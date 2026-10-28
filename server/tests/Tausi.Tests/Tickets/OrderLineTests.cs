@@ -186,7 +186,7 @@ public class OrderLineTests : IAsyncLifetime
             group.MinSelect.Should().Be(1);
             group.Options.Single(o => o.IsDefault).Name.Should().Be("Cold");
         }
-        foreach (var plain in new[] { "Sodas 300ml", "Mau's Water 1L", "Viceroy 375ml" })
+        foreach (var plain in new[] { "Sodas 300ml", "House Water 1L", "Viceroy 375ml" })
             items[plain].Groups.Should().BeEmpty();
     }
 

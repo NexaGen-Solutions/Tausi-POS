@@ -25,7 +25,7 @@ const backup = (over: Partial<BackupRecord> = {}): BackupRecord => ({
   size: 12 * 1024 * 1024,
   verified: true,
   encrypted: false,
-  business: "Mau's Village",
+  business: 'Demo Bar',
   version: '1.0.0',
   copiedTo: 'E:\\Backups',
   copyError: null,
@@ -53,8 +53,7 @@ describe('Settings → Backups and System', () => {
       });
       return fakeServer({
         'GET /api/auth/me': () => json(200, me),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/licence': () => json(200, { banner: null, status: 'Active' }),
         'GET /api/backups/status': () => json(200, status),
         'GET /api/admin/backups': () =>
@@ -79,7 +78,7 @@ describe('Settings → Backups and System', () => {
           json(200, {
             status: 'ok',
             version: '1.0.0',
-            server: 'POSSERVER2',
+            server: 'POS-SERVER',
             database: 'ok',
             diskFreeBytes: 50 * 1024 ** 3,
             lastBackupAt: '2026-10-25T02:00:00Z',
@@ -188,7 +187,7 @@ describe('Settings → Backups and System', () => {
     extra['POST /api/admin/backups/b2.tausibak/inspect'] = ({ body }) =>
       (body as { password: string }).password === 'right'
         ? json(200, {
-            business: "Mau's Village",
+            business: 'Demo Bar',
             createdAt: '2026-10-25T02:00:00Z',
             version: '1.0.0',
             schema: 's',
@@ -215,7 +214,7 @@ describe('Settings → Backups and System', () => {
     await userEvent.clear(within(dialog).getByLabelText('Backup password'));
     await userEvent.type(within(dialog).getByLabelText('Backup password'), 'right');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Open the backup' }));
-    expect(await within(dialog).findByText("Mau's Village")).toBeInTheDocument();
+    expect(await within(dialog).findByText('Demo Bar')).toBeInTheDocument();
   });
 
   it('shows a red banner when a backup failed or none worked for 48 hours', async () => {
@@ -248,7 +247,7 @@ describe('Settings → Backups and System', () => {
     extra['POST /api/admin/system/updates/apply'] = () => new Response(null, { status: 202 });
     renderRoutes(routes, '/admin/settings/system');
     const health = await screen.findByRole('region', { name: 'Health' });
-    expect(await within(health).findByText('POSSERVER2')).toBeInTheDocument();
+    expect(await within(health).findByText('POS-SERVER')).toBeInTheDocument();
     expect(within(health).getByText('50.0 GB')).toBeInTheDocument();
     expect(within(health).getByText('Connected')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Check for updates' }));

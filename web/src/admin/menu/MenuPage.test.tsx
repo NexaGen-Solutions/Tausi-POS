@@ -108,7 +108,7 @@ describe('Menu and prices', () => {
     const server = fakeServer({
       'GET /api/auth/me': () =>
         json(200, { user: { id: 'me', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-      'GET /api/brand': () => json(200, { name: "Mau's Village" }),
+      'GET /api/brand': () => json(200, { name: 'Demo Bar' }),
       'GET /api/admin/menu': () => json(200, data),
       'GET /api/admin/menu/price-log': () => json(200, []),
       'PUT /api/admin/menu/items/i-tusker': () => json(200, { id: 'i-tusker', rowVersion: 4 }),

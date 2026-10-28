@@ -45,7 +45,7 @@ nothing and prints no PINs. To start over, drop the database
 | User | Role | Signs in with |
 | --- | --- | --- |
 | Administrator | Admin | PIN, and the admin site as `admin` with `TAUSI_ADMIN_PASSWORD` |
-| MAU | Supervisor | PIN |
+| SAM | Supervisor | PIN |
 | CAROL | Cashier | PIN |
 | edna, CYNTHIA, Ruth, WAMBOO | Waiter | PIN |
 
@@ -106,7 +106,7 @@ README). Its private key is kept offline and is never in the repo:
 
 ```bash
 cd tools/Tausi.LicenseTool
-dotnet run -- issue /path/to/private.key --business "Mau's Village" --terminals 4 \
+dotnet run -- issue /path/to/private.key --business "Demo Bar" --terminals 4 \
   --edition Standard --expires never --support-until 2027-10-31
 ```
 
@@ -124,7 +124,7 @@ dotnet run -- issue /path/to/private.key --business "Mau's Village" --terminals 
 3. Within two seconds the browser shows "Paired as Counter A" and moves on to the PIN pad. Log in with a PIN
    from the seed (tap the keypad or type it; it submits by itself at 4 digits).
 4. After login the terminal shows the **table map**. If no day is open it says "The day isn't
-   open yet": MAU (Supervisor) or Administrator also get **Open day** there; waiters can look but
+   open yet": SAM (Supervisor) or Administrator also get **Open day** there; waiters can look but
    not start tickets. Other terminals' PIN screens show "Work period open since …" straight away.
 
 The device token is kept in the browser's `localStorage` (`tausi.device`). Clear it, or press
@@ -147,7 +147,7 @@ Sign in to <http://localhost:5173/admin> as `admin` and open **Staff and PINs**:
   first login (entered twice; 1234-style PINs and other people's PINs are refused).
 - **Reset PIN** (type one or press Generate): the person is logged out on every terminal at once.
 - **Deactivate / Reactivate**: nobody is ever deleted.
-- To sign in as a supervisor, edit MAU and set an admin-site password, then sign in as `mau`.
+- To sign in as a supervisor, edit SAM and set an admin-site password, then sign in as `sam`.
   Supervisors see and manage only waiters and cashiers.
 
 From the command line (development), a user can also be made to choose a new PIN at their next
@@ -175,7 +175,7 @@ Permissions, e.g. giving Supervisors `menu.edit`, are changed on the **Permissio
 
 ### Table map and tickets
 
-`seed --demo` adds Mau's layout (tables 1–16 in Main, Pool 1–2, Bar 1–2) and a few open tickets
+`seed --demo` adds the demo layout (tables 1–16 in Main, Pool 1–2, Bar 1–2) and a few open tickets
 (two on Table 7, one idle on Table 5 with no activity for 48 minutes, and others). A day can't
 close while tickets are open, so the demo tickets belong to the open day: the seed opens a demo
 day when none is open. Running it again adds only the tickets that are missing.
@@ -246,18 +246,18 @@ KSh 0.00".
 ### Voids, gifts, discounts and approvals
 
 Pair two browser terminals (say Pillar 1 and Counter B). Log in as **edna** (waiter) on Pillar 1
-and as **MAU** (supervisor) on Counter B. Open a table on Pillar 1, add 2 Tusker and press Print.
+and as **SAM** (supervisor) on Counter B. Open a table on Pillar 1, add 2 Tusker and press Print.
 
 - **Void with a request (Option 2):** select the printed Tusker, press **Void**, choose 1 and
-  "Wrong item", pick "MAU (Supervisor) · Counter B" and press **Send void request**. The line shows
+  "Wrong item", pick "SAM (Supervisor) · Counter B" and press **Send void request**. The line shows
   "Void pending". Counter B chimes (after its first tap), shows "edna asks: Void 1 × Tusker
   Lager · Table 7. Open" and its **Approvals** button counts 1. On **Approvals**, press
-  **Approve void**: Pillar 1 shows "MAU approved the void", one line Printed and one Voided, and
+  **Approve void**: Pillar 1 shows "SAM approved the void", one line Printed and one Voided, and
   the total drops by 250. `print-output/` gets a VOID slip on the printer that printed the
   Tusker, then a corrected bill on Pillar 1's receipt printer.
-- **Void with the PIN (Option 1):** in the same pop-up, type MAU's PIN and press **Approve**.
+- **Void with the PIN (Option 1):** in the same pop-up, type SAM's PIN and press **Approve**.
   edna's own PIN is refused.
-- **As a supervisor:** MAU opens any table and voids directly; the void log has MAU as both
+- **As a supervisor:** SAM opens any table and voids directly; the void log has SAM as both
   requester and approver.
 - **Gift** (cashiers ask, supervisors do it), **Discount** (next to Ticket note) and **Change price**
   (supervisors ask the Administrator, the "manager" of the demo) work the same way.
@@ -281,7 +281,7 @@ Log in as **edna** on one terminal, order on Table 7 and press **Print**. Log in
   **Open cash drawer on receipt** on (admin site → Terminals and printers → Edit printer) and
   cash was taken. The table is free on every map, and the sale is posted to the ledger.
 - Items not printed yet block settling; **Print, then settle** prints them first. A pending
-  void (or other) request blocks it too ("Waiting for MAU to approve a void on Guiness").
+  void (or other) request blocks it too ("Waiting for SAM to approve a void on Guiness").
 - Leave a ticket part paid: its tile says "Part paid · KSh 370 left", and `close-day` refuses.
 - The **Settled** tab (cashiers) lists today's receipts with **Reprint receipt** (prints COPY).
 - Totals round to the nearest shilling (`rounding` in the business settings: `NearestOne`, or
@@ -299,12 +299,12 @@ Log in as **edna** on one terminal, order on Table 7 and press **Print**. Log in
   drawer below 0, and each prints a small slip.
 - **Count:** type how many of each note and the coins, then **Submit count**. With
   `cashup.blind` on (the default) the expected cash and the difference show only now.
-- **Close shift · supervisor PIN to sign off:** MAU types their PIN on the approval pad (CAROL's own
+- **Close shift · supervisor PIN to sign off:** SAM types their PIN on the approval pad (CAROL's own
   is refused). The cash-up slip prints, the difference goes to Cash over/short and the drawer to
   the Safe account.
 - **My sales** (waiters): today's own figures, the money brought, open bills, and **Print my
   cash-up slip**.
-- **Close day** (MAU, in the top bar): lists open tickets (with Part paid), open shifts and waiting
+- **Close day** (SAM, in the top bar): lists open tickets (with Part paid), open shifts and waiting
   requests, each with a link. When nothing blocks, it shows the day's summary; **Close day** prints
   "DAY REPORT · Z", warns every terminal and logs everyone out 60 seconds later.
 - Settings (on the **Settings** page, Cash-up): usual opening float, the notes to count, and
@@ -366,7 +366,7 @@ from the Bar (**Terminals and printers → Edit → Sells from**).
   approves it; the counter can't.
 - **Needs approval:** with a supervisor's `stock.adjust` (or `stock.receive`, `stock.waste`) set
   to Needs approval, what they record waits under **Awaiting approval** at the top of the stock
-  page until someone allowed approves it. To try it as MAU on the admin site, give MAU an admin
+  page until someone allowed approves it. To try it as SAM on the admin site, give SAM an admin
   password under **Staff and PINs**.
 
 To check the ledger on PostgreSQL: `SELECT e."Memo", a."Code", l."Debit", l."Credit" FROM
@@ -391,8 +391,8 @@ back-fill of older entries), so nothing needs to be run by hand. Sign in to the 
   the daily summary. Going below 0 warns but saves. **More** also has Move money, Owner money,
   Other income and Manage categories.
 - **Reverse:** tap a line, then **Reverse** with a reason. Both lines stay in the book.
-- **Needs approval:** supervisors have `cash.book` set to Needs approval, so MAU's supplier
-  payment waits under **Awaiting approval** until the Administrator approves it (give MAU an
+- **Needs approval:** supervisors have `cash.book` set to Needs approval, so SAM's supplier
+  payment waits under **Awaiting approval** until the Administrator approves it (give SAM an
   admin password under **Staff and PINs** first). Expenses use `cash.expense`, which supervisors
   are allowed.
 - **Daily summary** (right): sales, VAT, net sales, cost of sales, gross profit, expenses (tap to
@@ -452,7 +452,7 @@ V=http://localhost:5080/api/pos/tickets/<ticket id>/lines/<line id>/void
 curl -X POST -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H 'content-type: application/json' \
   -d '{"quantity":1,"reason":"Wrong item"}' $V      # -> 403 with "approvalRequired": true
 A=$(curl -s -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H 'content-type: application/json' \
-  -d '{"pin":"<MAU PIN>","permissionKey":"order.void"}' http://localhost:5080/api/auth/approve | jq -r .approvalToken)
+  -d '{"pin":"<SAM PIN>","permissionKey":"order.void"}' http://localhost:5080/api/auth/approve | jq -r .approvalToken)
 curl -X POST -H "X-Device-Token: $D" -H "Authorization: Bearer $T" -H "X-Approval-Token: $A" \
   -H 'content-type: application/json' -d '{"quantity":1,"reason":"Wrong item"}' $V   # 200 once; reusing the token -> 403
 # The edit lock is needed too: open the ticket on that terminal first (POST .../lock).
@@ -501,6 +501,12 @@ The app only talks to the server it was paired with. To change the server addres
 **Change server address** on its setup screen and sign in with an admin-site login first.
 In development the window always loads the Vite dev server; the device token is kept in the
 app's store (`tausi.json` in the app data folder).
+
+The installed app opens on its own bundled pages: the setup screen until it is paired, then the
+**splash** (the Tausi logo on deep teal, "Connecting to [server]…"), which opens the server's POS
+screens as soon as `/api/health` answers and keeps trying while the server is down. To see the
+splash in a browser, open <http://localhost:5173/splash> on a paired browser. **About Tausi POS** is
+at `/admin/about` (the admin footer) and `/about` (the terminal's setup screen).
 
 ### Upgrading from the Nexagen POS names
 
@@ -581,6 +587,25 @@ The backup tests need `pg_dump` and `pg_restore` (PostgreSQL 16's). Without them
 them in the `postgres:16` Docker image. The terminal app: `cd terminal/src-tauri && cargo test`.
 The installers are tested in CI on Windows (`installer/windows/test-install.ps1`) and the Linux
 package on Ubuntu 24.04 (the `linux-package` job runs `install.sh --with-postgres` for real).
+
+Brand checks: `node --test tools/brand/icons.test.mjs` (icon sizes and references),
+`node scripts/check-customer-names.mjs` (no case-study customer names), and the colour contrast
+test in `npm test` (`web/src/shared/ui/tokens.test.ts`). docs/BRAND.md says how to rebuild the icons.
+
+**Screenshots.** The CI `screenshots` job captures the main screens (PIN, table map, order, settle,
+setup wizard, pairing, splash, admin pages, About) and uploads them as the `screenshots` artifact.
+They are for a person to look at, not compared. To take them locally, against a server whose
+database is new (not set up), with the web app built (`cd web && npm run build`):
+
+```bash
+cd tools/screenshots && npm ci && npx playwright install chromium
+WEB_URL=http://localhost:5080 SETUP_TOKEN_FILE=../../server/src/Tausi.Api/data/setup-token.txt node capture.mjs fresh
+# stop the server, run `seed --demo` (save its output), start the server again, then:
+WEB_URL=http://localhost:5080 SEED_OUTPUT=seed.txt TAUSI_ADMIN_PASSWORD=... node capture.mjs demo
+```
+
+The pictures land in `tools/screenshots/out/`. The demo run pairs the browser as Counter A,
+replacing any earlier pairing.
 
 ## 5. SQL Server
 

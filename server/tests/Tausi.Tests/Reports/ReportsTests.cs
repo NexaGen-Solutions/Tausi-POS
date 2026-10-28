@@ -46,7 +46,7 @@ public class ReportsTests : StockTestBase
 
         // edna's table 7: a poured void, a gift, a price change and a 10% discount (which makes rounding).
         var t1 = await Printed("7", ("Tusker Lager", 3), ("Guiness", 2), ("Pool Table", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(t1.Id);
         await Void(t1.Id, LineOf(t1, "Guiness"), 1, poured: true);
         await Gift(t1.Id, LineOf(t1, "Tusker Lager"));
@@ -68,7 +68,7 @@ public class ReportsTests : StockTestBase
         var t3 = await Printed("9", ("Tusker Lager", 2));
         var t4 = await Printed("9", ("Sodas 300ml", 1));
         await F.Get<MergeTickets>().Execute(new MergeTicketsRequest([t4.Id], t3.Id), None);
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(t3.Id);
         await Void(t3.Id, LineOf(await Detail(t3.Id), "Tusker Lager"), 1, poured: false);
 
@@ -100,7 +100,7 @@ public class ReportsTests : StockTestBase
         var reversed = await Deliver("D1");
         await F.Get<DeliveryCommands>().Reverse(reversed.Id, new ReverseDeliveryRequest("Wrong invoice"), None);
         await Deliver("D2");
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         var counts = F.Get<StockCountCommands>();
         var count = await counts.Start(new StartCountRequest(Location("Bar"), StockCountKind.Full, false, null), None);
         var entries = count.Lines.Select(l => new CountEntry(l.StockItemId,
@@ -256,7 +256,7 @@ public class ReportsTests : StockTestBase
         GrandTotal(variance).Should().Be(Cr(entry, LedgerAccountCodes.StockLoss) - Dr(entry, LedgerAccountCodes.StockLoss));
         GrandTotal(variance).Should().BeLessThan(0, "two Guiness short");
         variance.Tables[0].Footer.Should().Contain(f => f.StartsWith("Items short: 1"));
-        variance.Notes.Single().Should().Contain("counted by MAU").And.Contain("approved by Administrator");
+        variance.Notes.Single().Should().Contain("counted by SAM").And.Contain("approved by Administrator");
 
         var trend = await Run("stock-variance", new ReportFilters { StockItemId = Item("Guiness") });
         trend.Tables[0].Groups[0].Rows.Should().ContainSingle().Which.Cells[4].Should().Be(-2m);
@@ -314,13 +314,13 @@ public class ReportsTests : StockTestBase
         var result = await Run("voids");
         var events = result.Tables[0].Groups[0].Rows;
         var poured = events.Single(r => (string)r.Cells[1]! == "Void" && (string?)r.Cells[10] == "Poured");
-        poured.Cells[7].Should().Be("MAU");
+        poured.Cells[7].Should().Be("SAM");
         events.Should().Contain(r => (string)r.Cells[1]! == "Void" && (string?)r.Cells[10] == "Not poured");
         events.Single(r => (string)r.Cells[1]! == "Price change").Cells[8].Should().Be("Administrator");
         events.Should().Contain(r => (string)r.Cells[1]! == "Merge");
         result.Tables.Single(t => t.Title == "Totals by kind").Groups[0].Rows.Select(r => r.Cells[0]).Should()
             .Contain(["Void", "Gift", "Discount", "Price change", "Merge"]);
-        result.Tables.Single(t => t.Title == "Totals by approver").Groups[0].Rows.Select(r => r.Cells[0]).Should().Contain(["MAU", "Administrator"]);
+        result.Tables.Single(t => t.Title == "Totals by approver").Groups[0].Rows.Select(r => r.Cells[0]).Should().Contain(["SAM", "Administrator"]);
 
         var onlyAdmin = await Run("voids", new ReportFilters { ApproverId = F.User("Administrator").Id });
         onlyAdmin.Tables[0].Groups[0].Rows.Should().OnlyContain(r => (string?)r.Cells[8] == "Administrator");
@@ -366,8 +366,8 @@ public class ReportsTests : StockTestBase
         var edna = rows.Single(r => (string)r.Cells[0]! == "edna");
         ((string)edna.Cells[2]!).Should().Contain("Counter A");
         ((int)edna.Cells[5]!).Should().Be(4);
-        var mau = rows.Single(r => (string)r.Cells[0]! == "MAU");
-        ((int)mau.Cells[8]!).Should().Be(0, "MAU did the voids, gift and discount on their own say-so");
+        var sam = rows.Single(r => (string)r.Cells[0]! == "SAM");
+        ((int)sam.Cells[8]!).Should().Be(0, "SAM did the voids, gift and discount on their own say-so");
         ((int)rows.Single(r => (string)r.Cells[0]! == "Administrator").Cells[8]!).Should().Be(1, "the price change");
 
         var waiters = await Run("users", new ReportFilters { RoleId = F.Roles["Waiter"].Id });
@@ -409,7 +409,7 @@ public class ReportsTests : StockTestBase
         await FluentActions.Awaiting(() => Run("sales-by-user")).Should().ThrowAsync<PermissionDeniedException>();
         await FluentActions.Awaiting(() => F.Get<TicketDetailReport>().Execute(Guid.NewGuid(), None)).Should().ThrowAsync<PermissionDeniedException>();
 
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         var list = (await Reports.List(None)).Select(r => r.Key).ToList();
         list.Should().Contain("sales-by-user").And.NotContain("audit");
         await FluentActions.Awaiting(() => Run("audit")).Should().ThrowAsync<PermissionDeniedException>();
@@ -452,7 +452,7 @@ public class ReportsTests : StockTestBase
 
         var payments = await Run("payments", new ReportFilters { WaiterId = F.User("Ruth").Id });
         payments.Tables.Single(t => t.Title == "Per waiter").Groups[0].Rows.Should().ContainSingle().Which.Cells[0].Should().Be("Ruth");
-        (await Run("payments", new ReportFilters { CashierId = F.User("MAU").Id })).Tables.Single(t => t.Title == "Cashier shifts").Groups[0].Rows
+        (await Run("payments", new ReportFilters { CashierId = F.User("SAM").Id })).Tables.Single(t => t.Title == "Cashier shifts").Groups[0].Rows
             .Should().BeEmpty();
 
         Rows(await Run("voids", new ReportFilters { Kind = "Gift" })).Should().OnlyContain(r => (string)r.Cells[1]! == "Gift").And.ContainSingle();

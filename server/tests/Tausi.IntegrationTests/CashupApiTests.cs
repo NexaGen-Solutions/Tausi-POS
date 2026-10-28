@@ -21,7 +21,7 @@ public class CashupApiTests(TicketsApp app) : IAsyncLifetime
         {
             if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
             var supervisor = await app.PairTerminal();
-            await supervisor.LoginWithPin(app.Pins["MAU"]);
+            await supervisor.LoginWithPin(app.Pins["SAM"]);
             (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
         }
         finally
@@ -90,9 +90,9 @@ public class CashupApiTests(TicketsApp app) : IAsyncLifetime
         var own = await carol.Http.PostAsJsonAsync("/api/auth/approve", new { pin = app.Pins["CAROL"], permissionKey = "day.open_close" });
         own.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var closed = await Ok(await carol.Http.SendAsync(Close(shiftId, await Token(carol, "MAU"))));
+        var closed = await Ok(await carol.Http.SendAsync(Close(shiftId, await Token(carol, "SAM"))));
         closed.GetProperty("status").GetString().Should().Be("Closed");
-        closed.GetProperty("signedOffBy").GetString().Should().Be("MAU");
+        closed.GetProperty("signedOffBy").GetString().Should().Be("SAM");
         app.Db(db => db.JournalEntries.Where(e => e.ShiftId == shiftId).SelectMany(e => e.Lines).ToList())
             .Should().Match<List<Domain.Ledger.JournalLine>>(l => l.Sum(x => x.Debit) == l.Sum(x => x.Credit));
     }
@@ -102,7 +102,7 @@ public class CashupApiTests(TicketsApp app) : IAsyncLifetime
     {
         var (carol, shiftId) = await CarolWithShift(500m);
         await Ok(await carol.Http.PostAsJsonAsync($"/api/pos/shifts/{shiftId}/count", new { count = new { total = 500 } }));
-        var first = await Token(carol, "MAU");
+        var first = await Token(carol, "SAM");
         var second = await Token(carol, "Administrator");
 
         var results = await Task.WhenAll(carol.Http.SendAsync(Close(shiftId, first)), carol.Http.SendAsync(Close(shiftId, second)));

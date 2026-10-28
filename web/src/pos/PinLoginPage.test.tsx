@@ -24,7 +24,7 @@ function serve(
     fakeServer({
       'GET /api/device': () => json(200, deviceInfo(workPeriod)),
       'GET /api/auth/pin/max-length': () => json(200, maxLength),
-      'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+      'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
       'POST /api/auth/pin': login,
       'GET /api/auth/me': () =>
         json(200, { user: {}, permissions: { 'day.open_close': 'Allowed' } }),
@@ -54,9 +54,9 @@ describe('PIN login screen', () => {
     renderRoutes(routes, '/pos');
 
     expect(await screen.findByText('Counter A')).toBeInTheDocument();
-    expect(screen.getByText("Mau's Village")).toBeInTheDocument();
+    expect(screen.getByText('Demo Bar')).toBeInTheDocument();
     expect(screen.getByText('Day not open')).toBeInTheDocument();
-    expect(await screen.findByText('Connected to POSSERVER2')).toBeInTheDocument();
+    expect(await screen.findByText('Connected to POS-SERVER')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Enter your PIN' })).toBeInTheDocument();
     expect(
       screen.getByText(

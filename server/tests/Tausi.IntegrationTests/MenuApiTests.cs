@@ -84,10 +84,10 @@ public class MenuApiTests(MenuApp app)
         var admin = await app.AdminClient();
         var supervisorRole = app.Db(db => db.Roles.Single(r => r.Name == "Supervisor").Id);
         await admin.SetPermission(supervisorRole, "menu.edit", "Allowed");
-        var mau = await app.Db(db => Task.FromResult(db.Users.Single(u => u.Name == "MAU")));
-        (await admin.PutAsJsonAsync($"/api/admin/staff/{mau.Id}", new { name = "MAU", roleId = supervisorRole, adminPassword = "mau-password-1", rowVersion = mau.RowVersion }))
+        var sam = await app.Db(db => Task.FromResult(db.Users.Single(u => u.Name == "SAM")));
+        (await admin.PutAsJsonAsync($"/api/admin/staff/{sam.Id}", new { name = "SAM", roleId = supervisorRole, adminPassword = "sam-password-1", rowVersion = sam.RowVersion }))
             .EnsureSuccessStatusCode();
-        var supervisor = await app.AdminClient("mau", "mau-password-1");
+        var supervisor = await app.AdminClient("sam", "sam-password-1");
 
         var heineken = app.Db(db => db.MenuItems.Single(i => i.Name == "Heineken"));
         var rename = await supervisor.PutAsJsonAsync($"/api/admin/menu/items/{heineken.Id}", new

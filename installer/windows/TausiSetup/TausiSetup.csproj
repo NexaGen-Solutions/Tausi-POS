@@ -26,6 +26,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\..\LICENSE" LogicalName="LICENSE.txt" />
+    <!-- Made by tools/brand/build-icons.mjs. -->
+    <EmbeddedResource Include="banner.png" LogicalName="banner.png" />
+    <EmbeddedResource Include="dialog.png" LogicalName="dialog.png" />
   </ItemGroup>
 
 </Project>

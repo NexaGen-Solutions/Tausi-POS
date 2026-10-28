@@ -33,7 +33,7 @@ public class DayTests(DayApp app)
         (await waiter.Http.PostAsync("/api/day/open", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var supervisor = await app.PairTerminal();
-        await supervisor.LoginWithPin(app.Pins["MAU"]);
+        await supervisor.LoginWithPin(app.Pins["SAM"]);
         var open = await supervisor.Http.PostAsync("/api/day/open", null);
         open.StatusCode.Should().Be(HttpStatusCode.OK);
         var periodId = (await open.Json()).GetProperty("id").GetGuid();

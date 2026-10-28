@@ -57,7 +57,7 @@ public sealed class MenuFixture : IAsyncDisposable
         f.CounterA = await Builders.AddTerminal(f._db.Context, "Counter A");
         f.CounterB = await Builders.AddTerminal(f._db.Context, "Counter B");
         f.Users["Administrator"] = await Builders.AddUser(f._db.Context, f.Hasher, "Administrator", f.Roles["Admin"], "7031");
-        f.Users["MAU"] = await Builders.AddUser(f._db.Context, f.Hasher, "MAU", f.Roles["Supervisor"], "8014");
+        f.Users["SAM"] = await Builders.AddUser(f._db.Context, f.Hasher, "SAM", f.Roles["Supervisor"], "8014");
         f.ActAs("Administrator");
         return f;
     }

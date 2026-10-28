@@ -202,7 +202,7 @@ public class StockDocumentTests : StockTestBase
     public async Task With_needs_approval_a_document_waits_and_posts_only_when_someone_else_allowed_approves()
     {
         await F.SetPermission("Supervisor", PermissionKeys.StockReceive, PermissionValue.NeedsApproval);
-        var mau = await F.LoginOn("MAU", "Counter A");
+        var sam = await F.LoginOn("SAM", "Counter A");
         var store = OnHand("Tusker Lager", "Store");
 
         var delivery = await Deliver("55");
@@ -219,10 +219,10 @@ public class StockDocumentTests : StockTestBase
         approved.ApprovedBy.Should().Be("Administrator");
         OnHand("Tusker Lager", "Store").Should().Be(store + 100);
 
-        F.ActAs(mau);
+        F.ActAs(sam);
         var waste = await F.Get<WasteAndTransferCommands>().RecordWaste(
             new RecordWasteRequest(Location("Bar"), Item("Guiness"), 1, null, "Expired", null), None);
-        waste.Status.Should().Be("Posted", "MAU is allowed stock.waste");
+        waste.Status.Should().Be("Posted", "SAM is allowed stock.waste");
         await F.SetPermission("Supervisor", PermissionKeys.StockWaste, PermissionValue.NeedsApproval);
         var pending = await F.Get<WasteAndTransferCommands>().RecordWaste(
             new RecordWasteRequest(Location("Bar"), Item("Guiness"), 1, null, "Expired", null), None);
@@ -244,7 +244,7 @@ public class StockDocumentTests : StockTestBase
 
         var own = () => F.Get<DeliveryCommands>().Approve(delivery.Id, None);
         (await own.Should().ThrowAsync<ForbiddenException>()).Which.Code.Should().Be(StockCodes.OwnDocument);
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         (await F.Get<DeliveryCommands>().Approve(delivery.Id, None)).Status.Should().Be("Posted");
     }
 }

@@ -87,7 +87,7 @@ public static class LicenceKeys
         return (privateKey.GetEncoded(), privateKey.GeneratePublicKey().GetEncoded());
     }
 
-    /// <summary>The business names match ignoring case and spaces ("Mau's Village" = "MAU'S  village").</summary>
+    /// <summary>The business names match ignoring case and spaces ("Demo Bar" = "DEMO bar").</summary>
     public static bool SameBusiness(string a, string b) => Squash(a) == Squash(b);
 
     private static string Squash(string s) => new string((s ?? "").Where(c => !char.IsWhiteSpace(c)).ToArray()).ToUpperInvariant();

@@ -47,7 +47,8 @@
   font: inherit;
 }
 .stock-tab--on {
-  border-bottom-color: var(--color-text);
+  /* The gold accent: an active tab's underline (with bold text, so it never relies on colour alone). */
+  border-bottom-color: var(--color-accent);
   color: var(--color-text);
   font-weight: 600;
 }

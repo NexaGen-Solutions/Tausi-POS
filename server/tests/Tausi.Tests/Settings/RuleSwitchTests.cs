@@ -38,16 +38,16 @@ public class RuleSwitchTests : ApprovalsFixtureBase
     [Fact]
     public async Task With_requests_off_nobody_can_send_one_but_a_waiting_one_can_still_be_decided()
     {
-        var mau = await F.LoginOn("MAU", "Counter B");
+        var sam = await F.LoginOn("SAM", "Counter B");
         await F.LoginOn("edna", "Pillar 1");
         var ticket = await Printed("7", ("Tusker Lager", 2), ("Guiness", 1));
-        var waiting = await Request(ApprovalKind.Void, ticket.Id, LineOf(ticket, "Tusker Lager"), new VoidLineRequest(1, "Wrong item"), mau.UserId);
+        var waiting = await Request(ApprovalKind.Void, ticket.Id, LineOf(ticket, "Tusker Lager"), new VoidLineRequest(1, "Wrong item"), sam.UserId);
 
         await F.SetSetting(SettingsRegistry.PosApprovalsFromOwnCounter, false);
 
         var act = () => Request(ApprovalKind.Void, ticket.Id, LineOf(ticket, "Guiness"), new VoidLineRequest(1, "Wrong item"));
         (await act.Should().ThrowAsync<ForbiddenException>()).Which.Code.Should().Be(ApprovalCodes.RequestsOff);
-        F.ActAs(mau);
+        F.ActAs(sam);
         (await Approve(waiting.Id)).Status.Should().Be("Approved");
         (await F.Get<GetDeviceInfo>().Execute(None)).Rules!.ApprovalsFromOwnCounter.Should().BeFalse("terminals hide the request option");
     }
@@ -86,7 +86,7 @@ public class RuleSwitchTests : ApprovalsFixtureBase
     {
         await F.SetSetting(SettingsRegistry.PrintShowVoidsOnReceipt, true);
         var ticket = await Printed("7", ("Tusker Lager", 2), ("Guiness", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Void(ticket.Id, LineOf(ticket, "Guiness"));
         await F.LoginOn("CAROL", "Counter A");
@@ -106,7 +106,7 @@ public class RuleSwitchTests : ApprovalsFixtureBase
     private async Task<TicketDetailDto> FullyVoided()
     {
         var ticket = await Printed("7", ("Tusker Lager", 1), ("Guiness", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Void(ticket.Id, LineOf(ticket, "Tusker Lager"));
         await Void(ticket.Id, LineOf(ticket, "Guiness"));
@@ -191,7 +191,7 @@ public class RuleSwitchTests : ApprovalsFixtureBase
     {
         await F.SetSetting(SettingsRegistry.StockReturnOnVoidIfNotServed, false);
         var ticket = await Printed("7", ("Tusker Lager", 2));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await Void(ticket.Id, LineOf(ticket, "Tusker Lager"), poured: false);

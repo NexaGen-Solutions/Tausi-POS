@@ -99,7 +99,7 @@ public class StaffTests : IAsyncLifetime
     [Fact]
     public async Task A_supervisor_sees_and_offers_only_waiters_and_cashiers()
     {
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
         var list = await _f.Get<ListStaff>().Execute(CancellationToken.None);
 
         list.Members.Select(m => m.Name).Should().BeEquivalentTo(["CAROL", "edna", "Ruth"]);
@@ -109,7 +109,7 @@ public class StaffTests : IAsyncLifetime
     [Fact]
     public async Task A_supervisor_can_add_and_edit_waiters()
     {
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
         await Create("Grace");
         await Update("edna", "Edna", "Cashier");
         (await _f.Read().Users.SingleAsync(u => u.Name == "Edna")).RoleId.Should().Be(Role("Cashier"));
@@ -118,7 +118,7 @@ public class StaffTests : IAsyncLifetime
     [Fact]
     public async Task A_supervisor_cannot_promote_anyone()
     {
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
         (await CodeOf(() => Update("edna", "edna", "Supervisor"))).Should().Be(StaffCodes.RoleNotAssignable);
         (await CodeOf(() => Create("Grace", "Admin", password: "a-long-password"))).Should().Be(StaffCodes.RoleNotAssignable);
     }
@@ -126,12 +126,12 @@ public class StaffTests : IAsyncLifetime
     [Fact]
     public async Task A_supervisor_cannot_touch_admins_or_supervisors_including_themselves()
     {
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
         (await CodeOf(() => Update("Administrator", "Admin2", "Admin"))).Should().Be("not_found");
         (await CodeOf(() => Deactivate("Administrator"))).Should().Be("not_found");
         (await CodeOf(() => Reset("Administrator"))).Should().Be("not_found");
-        (await CodeOf(() => Update("MAU", "Mau", "Supervisor"))).Should().Be(StaffCodes.NotManageable);
-        (await CodeOf(() => Deactivate("MAU"))).Should().Be(StaffCodes.SelfDeactivate);
+        (await CodeOf(() => Update("SAM", "Sam", "Supervisor"))).Should().Be(StaffCodes.NotManageable);
+        (await CodeOf(() => Deactivate("SAM"))).Should().Be(StaffCodes.SelfDeactivate);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class StaffTests : IAsyncLifetime
     [Fact]
     public async Task An_admin_manages_everyone_but_not_their_own_role()
     {
-        await Update("MAU", "MAU", "Waiter");
+        await Update("SAM", "SAM", "Waiter");
         (await CodeOf(() => Update("Administrator", "Administrator", "Waiter"))).Should().Be(StaffCodes.OwnRole);
         await Update("Administrator", "Admin Person", "Admin");
     }
@@ -179,7 +179,7 @@ public class StaffTests : IAsyncLifetime
         _f.Db.Roles.AddRange(host, floor);
         await _f.Db.SaveChangesAsync();
 
-        _f.ActAs("MAU");
+        _f.ActAs("SAM");
         var roles = (await _f.Get<ListStaff>().Execute(CancellationToken.None)).AssignableRoles.Select(r => r.Name);
         roles.Should().Contain("Host").And.NotContain("Floor manager");
     }

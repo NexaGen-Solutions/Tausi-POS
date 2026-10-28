@@ -118,8 +118,7 @@ describe('Stock', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock': () =>
           json(
             200,
@@ -334,7 +333,7 @@ describe('Stock', () => {
         location: 'Store',
         value: 10000,
         status: 'Pending',
-        by: 'MAU',
+        by: 'SAM',
         approvedBy: null,
         note: 'Wrong invoice',
         approveKey: 'stock.adjust',
@@ -369,8 +368,7 @@ describe('Deliveries', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock': () => json(200, overview()),
         'GET /api/admin/awaiting': () => json(200, []),
         'GET /api/admin/deliveries': () => json(200, []),
@@ -466,7 +464,7 @@ describe('Deliveries', () => {
       status: 'Posted',
       reversalStatus: null,
       reversalReason: null,
-      recordedBy: 'MAU',
+      recordedBy: 'SAM',
       approvedBy: null,
       createdAt: '2026-10-24T10:00:00Z',
       rejectNote: null,
@@ -540,7 +538,7 @@ describe('Stock count', () => {
     isOpening: false,
     status: 'Draft',
     asAt: '2026-10-24T22:00:00Z',
-    countedBy: 'MAU',
+    countedBy: 'SAM',
     submittedAt: null,
     approvedBy: null,
     approvedAt: null,
@@ -571,8 +569,7 @@ describe('Stock count', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock-counts/c1': () => json(200, count),
         'PUT /api/admin/stock-counts/c1/lines': () => json(200, count),
         ...extra,

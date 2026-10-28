@@ -34,7 +34,7 @@
 }
 .staff-row--inactive td {
   color: var(--color-text-muted);
-  background: #f7f7f5;
+  background: var(--color-row-alt);
 }
 .staff__name {
   font-weight: 600;

@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 import pkg from './package.json' with { type: 'json' };
 
@@ -14,8 +15,29 @@ if (!process.env.TAUSI_SERVER_URL && process.env.NEXAGEN_SERVER_URL)
 const server =
   process.env.TAUSI_SERVER_URL ?? process.env.NEXAGEN_SERVER_URL ?? 'http://localhost:5080';
 
+/** The repo's THIRD-PARTY-NOTICES, served as /third-party-notices.txt (the About page links to it). */
+function thirdPartyNotices(): Plugin {
+  const file = new URL('../THIRD-PARTY-NOTICES', import.meta.url);
+  return {
+    name: 'tausi-third-party-notices',
+    configureServer(dev) {
+      dev.middlewares.use('/third-party-notices.txt', (_request, response) => {
+        response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        response.end(readFileSync(file));
+      });
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'third-party-notices.txt',
+        source: readFileSync(file),
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), thirdPartyNotices()],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   server: {
     port: 5173,
@@ -29,6 +51,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    css: false,
+    // Stylesheets are skipped in tests, except as text (tokens.test.ts reads them with ?raw).
+    css: { include: [/\?raw$/] },
   },
 });

@@ -1,4 +1,4 @@
-         Mau's Village
+            Demo Bar
             PAY OUT
 --------------------------------
 Amount                   KSh 200
@@ -6,7 +6,7 @@ For                    Transport
 Note: Taxi for ice
 By             CAROL · Counter A
 When           20 Oct 2026 19:42
-Approved by                  MAU
+Approved by                  SAM
 
 
 ______________________________
