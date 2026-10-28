@@ -1503,7 +1503,12 @@
       "usbHelp": "For a server without internet: choose the .tausiupdate file NexaGen gave you.",
       "package": "Update package",
       "install": "Install the package",
-      "updateStarted": "The update has started. The server stops, takes a backup, updates and starts again; this page comes back in a few minutes."
+      "updateStarted": "The update has started. The server stops, takes a backup, updates and starts again; this page comes back in a few minutes.",
+      "diagnostics": {
+        "title": "Support",
+        "help": "Download diagnostics makes a zip of this server's state (versions, terminals, printers, failed prints, backups) and the last 7 days of logs, with no passwords or sales in it. Send it to NexaGen Solutions when you ask for help.",
+        "download": "Download diagnostics"
+      }
     },
     "backups": {
       "title": "Backups",

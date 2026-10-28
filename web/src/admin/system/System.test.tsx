@@ -266,6 +266,30 @@ describe('Settings → Backups and System', () => {
     });
   });
 
+  it('downloads diagnostics for NexaGen support', async () => {
+    extra['GET /api/admin/system/diagnostics'] = () =>
+      new Response(new Blob(['zip']), {
+        status: 200,
+        headers: {
+          'content-type': 'application/zip',
+          'content-disposition': 'attachment; filename=tausi-diagnostics-20261028-1500.zip',
+        },
+      });
+    const created = vi.fn(() => 'blob:diagnostics');
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, { createObjectURL: created, revokeObjectURL: vi.fn() }),
+    );
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    renderRoutes(routes, '/admin/settings/system');
+    const support = await screen.findByRole('region', { name: 'Support' });
+    await userEvent.click(within(support).getByRole('button', { name: 'Download diagnostics' }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(calls.some((c) => c.path === '/api/admin/system/diagnostics')).toBe(true);
+    expect(created).toHaveBeenCalled();
+    click.mockRestore();
+  });
+
   it('says so over everything while the server restores a backup', async () => {
     renderRoutes(routes, '/admin/settings/system');
     await screen.findByRole('region', { name: 'Health' });

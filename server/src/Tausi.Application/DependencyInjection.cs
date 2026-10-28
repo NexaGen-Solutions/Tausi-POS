@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<Backups.BackupStatus>();
         services.AddScoped<Updates.ServerUpdates>();
         services.AddScoped<Setup.AdminRecovery>();
+        services.AddScoped<Support.Diagnostics>();
         services.AddScoped<Updates.TerminalUpdateFeed>();
         services.TryAddSingleton(new Setup.LicenceOptions(AcceptTestKey: false));
         services.TryAddSingleton(new Common.DevelopmentHost(IsDevelopment: false));

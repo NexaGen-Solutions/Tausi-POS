@@ -42,6 +42,18 @@ public static class SystemEndpoints
     {
         app.MapGet("/api/health", Get).WithTags("System").RequireCors(CorsSetup.TerminalApp);
         app.MapGet("/health", Get).WithTags("System");
+
+        // Settings → System → Download diagnostics: a zip for NexaGen support (settings.manage, audited).
+        app.MapGet("/api/admin/system/diagnostics", async (
+            Tausi.Application.Support.Diagnostics diagnostics, TausiDbContext db, IBackupEngine backups, LicenceService licences,
+            IOptions<TausiOptions> options, IConfiguration config, IHostEnvironment env, TimeProvider clock, CancellationToken ct) =>
+        {
+            var summary = await diagnostics.Collect(ct);
+            var health = await Get(db, backups, licences, options, env, clock, ct);
+            var logs = config["Tausi:LogDirectory"] is { Length: > 0 } folder ? Path.GetFullPath(folder, env.ContentRootPath) : null;
+            var zip = DiagnosticsZip.Build(health, summary, logs, clock.GetLocalNow(), config["Database:Provider"] ?? "");
+            return Results.File(zip, "application/zip", $"tausi-diagnostics-{clock.GetLocalNow():yyyyMMdd-HHmm}.zip");
+        }).WithTags("System").RequireAuthorization();
     }
 
     private static async Task<Health> Get(

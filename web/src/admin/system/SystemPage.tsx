@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ApiError, api } from '../../shared/api/client';
+import { ApiError, api, apiFile } from '../../shared/api/client';
 import { t } from '../../shared/i18n/i18n';
 import { Button, Field } from '../../shared/ui';
 import { size, when, type Health, type SystemInfo, type UpdateCheck } from './types';
@@ -9,7 +9,8 @@ import './system.css';
 /**
  * Settings → System: the installed version and health (database, disk, last backup, licence), Check
  * for updates (NexaGen's feed, when the server has internet), Apply (with the day closed, or by typing
- * UPDATE), and an update package from a USB drive for bars without internet.
+ * UPDATE), an update package from a USB drive for bars without internet, and Download diagnostics
+ * (a zip of the server's state and recent logs to send to NexaGen support).
  */
 export function SystemPage() {
   const health = useQuery({ queryKey: ['health'], queryFn: () => api<Health>('/health') });
@@ -186,6 +187,45 @@ export function SystemPage() {
           </p>
         )}
       </section>
+      <Diagnostics />
     </main>
+  );
+}
+
+/** Support: a zip for NexaGen (health, terminals, printers, failed prints, backups, the last 7 days of logs). */
+function Diagnostics() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const download = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const file = await apiFile('/api/admin/system/diagnostics');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(file.blob);
+      link.download = file.fileName;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="system__panel" aria-label={t('admin.system.diagnostics.title')}>
+      <h2 className="system__heading">{t('admin.system.diagnostics.title')}</h2>
+      <p>{t('admin.system.diagnostics.help')}</p>
+      <div>
+        <Button onClick={() => void download()} disabled={busy}>
+          {t('admin.system.diagnostics.download')}
+        </Button>
+      </div>
+      {error && (
+        <p className="nx-field__error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
