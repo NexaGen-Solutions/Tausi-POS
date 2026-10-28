@@ -1,0 +1,119 @@
+name: Load test (full)
+
+# The busy Friday of task 16 in full: 6 simulated hours at 3x (about 2 hours), on PostgreSQL and on
+# SQL Server Express. Nightly on main (04:00 in Nairobi), or by hand from the Actions tab. The numbers
+# go into docs/PERFORMANCE.md; the job fails on a missed target or any difference after the run.
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: Simulated hours
+        default: "6"
+      speed:
+        description: Speed (3 = 6 hours in 2)
+        default: "3"
+
+env:
+  DOTNET_NOLOGO: "1"
+  ASPNETCORE_ENVIRONMENT: Development
+  TAUSI_ADMIN_PASSWORD: ci-load-1
+  HOURS: ${{ inputs.hours || '6' }}
+  SPEED: ${{ inputs.speed || '3' }}
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tausi
+          POSTGRES_PASSWORD: tausi_ci
+          POSTGRES_DB: tausi_load
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tausi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ConnectionStrings__Tausi: "Host=localhost;Port=5432;Username=tausi;Password=tausi_ci;Database=tausi_load"
+      Urls: http://localhost:5080
+      Tausi__Printing__OutputDirectory: ${{ github.workspace }}/print-output
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"
+      - run: |
+          dotnet build server/src/Tausi.Api -c Release
+          dotnet build tools/Tausi.LoadTest -c Release
+      - name: The demo business, then the server
+        run: |
+          (cd server && dotnet run --no-build -c Release --project src/Tausi.Api -- seed --demo > "$RUNNER_TEMP/seed.txt")
+          (cd server && dotnet run --no-build -c Release --project src/Tausi.Api > "$RUNNER_TEMP/server.log" 2>&1 &)
+          for i in $(seq 1 90); do curl -s localhost:5080/api/health | grep -q '"database":"ok"' && break; sleep 1; done
+      - name: Load test
+        run: |
+          set -o pipefail
+          dotnet run --no-build -c Release --project tools/Tausi.LoadTest -- --server http://localhost:5080 \
+            --admin-password "$TAUSI_ADMIN_PASSWORD" --seed-output "$RUNNER_TEMP/seed.txt" --provider Postgres \
+            --db "$ConnectionStrings__Tausi" --print-output "$Tausi__Printing__OutputDirectory" \
+            --hours "$HOURS" --speed "$SPEED" --out load-postgres.json | tee load-postgres.md
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-postgres
+          path: |
+            load-postgres.*
+            ${{ runner.temp }}/server.log
+
+  sqlserver:
+    runs-on: windows-latest
+    timeout-minutes: 260
+    env:
+      ConnectionStrings__Tausi: "Server=.\\SQLEXPRESS;Database=TausiLoad;Integrated Security=True;TrustServerCertificate=True;Encrypt=Optional"
+      Database__Provider: SqlServer
+      Urls: http://localhost:5080
+      Tausi__Printing__OutputDirectory: ${{ github.workspace }}\print-output
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"
+      - name: SQL Server Express
+        run: choco install sql-server-express -y --no-progress
+      - run: |
+          dotnet build server/src/Tausi.Api -c Release
+          dotnet build tools/Tausi.LoadTest -c Release
+      - name: The demo business, then the server
+        shell: pwsh
+        run: |
+          Push-Location server
+          dotnet run --no-build -c Release --project src/Tausi.Api -- seed --demo > "$env:RUNNER_TEMP\seed.txt"
+          Start-Process dotnet -ArgumentList 'run','--no-build','-c','Release','--project','src/Tausi.Api' `
+            -RedirectStandardOutput "$env:RUNNER_TEMP\server.log" -RedirectStandardError "$env:RUNNER_TEMP\server-err.log"
+          Pop-Location
+          for ($i = 0; $i -lt 120; $i++) {
+            try { if ((Invoke-RestMethod http://localhost:5080/api/health).database -eq 'ok') { break } } catch { }
+            Start-Sleep 1
+          }
+      - name: Load test
+        shell: pwsh
+        run: |
+          dotnet run --no-build -c Release --project tools/Tausi.LoadTest -- --server http://localhost:5080 `
+            --admin-password $env:TAUSI_ADMIN_PASSWORD --seed-output "$env:RUNNER_TEMP\seed.txt" --provider SqlServer `
+            --db $env:ConnectionStrings__Tausi --print-output $env:Tausi__Printing__OutputDirectory `
+            --hours $env:HOURS --speed $env:SPEED --out load-sqlserver.json | Tee-Object load-sqlserver.md
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-sqlserver
+          path: |
+            load-sqlserver.*
+            ${{ runner.temp }}\server*.log

@@ -624,6 +624,23 @@ WEB_URL=http://localhost:5080 SEED_OUTPUT=seed.txt TAUSI_ADMIN_PASSWORD=... OUT=
 node guides-pdf.mjs     # docs/guides/pdf/*.pdf, A4
 ```
 
+**Load test** (`tools/Tausi.LoadTest`): a busy Friday at a four-counter bar against a running server
+in Development with the demo seed. It needs the seed's printed PINs, the database's connection string
+(to check, after the run, that nothing was lost or doubled) and the File printer's folder:
+
+```bash
+cd tools/Tausi.LoadTest
+dotnet run -- --server http://localhost:5080 --admin-password "$TAUSI_ADMIN_PASSWORD" --seed-output seed.txt \
+  --provider Postgres --db "Host=localhost;Port=5432;Username=tausi;Password=tausi_dev;Database=tausipos" \
+  --print-output ../../server/src/Tausi.Api/print-output --hours 6 --speed 3 --out result.json
+```
+
+`--hours 6 --speed 3` is the full run (2 real hours); `--hours 0.1 --speed 30` takes a minute. It adds
+staff and tickets, so run it on a database seeded for it. It prints the measures, the targets and any
+difference, and exits 1 if a target is missed or anything differs. CI runs a short one on every push and
+the full one nightly on PostgreSQL and SQL Server (`load-test.yml`, also by hand from the Actions tab);
+the numbers are in `docs/PERFORMANCE.md`.
+
 ## 5. SQL Server
 
 ```bash

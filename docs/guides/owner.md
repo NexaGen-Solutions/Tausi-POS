@@ -34,6 +34,10 @@ change is audited.
 shows). **Add printer** for a network printer (its IP), a printer shared from a Windows PC, or one plugged
 into a terminal; press **Test print**. Failed jobs can be sent to another printer.
 
+The counter app runs full screen and can't be closed from the taskbar, so staff can't leave it. To close
+it on a counter PC: **tap the top-left corner of the screen five times quickly**, then sign in with an
+admin user name and password. Tick *Also switch kiosk mode off on this PC* for a normal window there.
+
 ![Terminals and printers](images/owner-4-terminals.png)
 
 ## Stock

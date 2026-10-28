@@ -86,6 +86,61 @@ jobs:
       - name: Every shipped component is listed, with its licence text
         run: node tools/notices/build-notices.mjs --check
 
+  load:
+    # A short busy Friday (3 simulated hours at 18x, about 10 minutes): fails on a missed target or any
+    # difference after the run. The full 6-hour run on both databases is load-test.yml (nightly).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tausi
+          POSTGRES_PASSWORD: tausi_ci
+          POSTGRES_DB: tausi_load
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tausi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DOTNET_NOLOGO: "1"
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Tausi: "Host=localhost;Port=5432;Username=tausi;Password=tausi_ci;Database=tausi_load"
+      Urls: http://localhost:5080
+      TAUSI_ADMIN_PASSWORD: ci-load-1
+      Tausi__Printing__OutputDirectory: ${{ github.workspace }}/print-output
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"
+      - name: Build the server and the load test
+        run: |
+          dotnet build server/src/Tausi.Api -c Release
+          dotnet build tools/Tausi.LoadTest -c Release
+      - name: The demo business, then the server
+        run: |
+          (cd server && dotnet run --no-build -c Release --project src/Tausi.Api -- seed --demo > "$RUNNER_TEMP/seed.txt")
+          (cd server && dotnet run --no-build -c Release --project src/Tausi.Api > "$RUNNER_TEMP/server.log" 2>&1 &)
+          for i in $(seq 1 90); do curl -s localhost:5080/api/health | grep -q '"database":"ok"' && break; sleep 1; done
+      - name: Load test
+        run: |
+          set -o pipefail
+          dotnet run --no-build -c Release --project tools/Tausi.LoadTest -- --server http://localhost:5080 \
+            --admin-password "$TAUSI_ADMIN_PASSWORD" --seed-output "$RUNNER_TEMP/seed.txt" --provider Postgres \
+            --db "$ConnectionStrings__Tausi" --print-output "$Tausi__Printing__OutputDirectory" \
+            --hours 3 --speed 18 --out load-result.json | tee load-result.md
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-test
+          path: |
+            load-result.*
+            ${{ runner.temp }}/server.log
+          if-no-files-found: warn
+
   screenshots:
     # The main screens in the brand colours, for a person to look at (not compared pixel by pixel).
     runs-on: ubuntu-latest
