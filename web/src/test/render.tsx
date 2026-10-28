@@ -62,7 +62,7 @@ export const sessionFor = (
 export const deviceInfo = (workPeriod: { openedAt: string } | null = null) => ({
   terminalId: 't1',
   terminalName: 'Counter A',
-  businessName: "Demo Bar",
+  businessName: 'Demo Bar',
   logoFileId: null,
   workPeriod: workPeriod && { id: 'wp1', openedByUserId: 'u', ...workPeriod },
 });

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { ApiError, OfflineError, api, apiUrl } from '../shared/api/client';
 import type { DeviceInfo } from '../shared/api/types';
+import { TausiMark } from '../shared/brand';
 import { isOffline } from '../shared/connection/status';
 import { useConnection } from '../shared/connection/useConnection';
 import { deviceToken, saveDevice, serverUrl } from '../shared/device/device';
@@ -122,7 +123,10 @@ export function PinLoginPage() {
                 alt=""
               />
             )}
-            <p className="pin-login__label">{t('common.appName')}</p>
+            <p className="pin-login__label pin-login__tausi">
+              <TausiMark size={36} label={null} />
+              {t('common.appName')}
+            </p>
             <p className="pin-login__business">{device.data?.businessName ?? ''}</p>
             {device.data && (
               <p className="pin-login__day">

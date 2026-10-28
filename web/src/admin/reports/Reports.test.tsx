@@ -311,8 +311,7 @@ describe('Reports', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/reports': () => json(200, reports),
         'GET /api/admin/reports/options': () => json(200, options),
         'POST /api/admin/reports/sales-by-user/run': () => json(200, salesByUser()),

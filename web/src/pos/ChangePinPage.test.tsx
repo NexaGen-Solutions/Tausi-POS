@@ -24,7 +24,7 @@ describe('first login: change PIN', () => {
       fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
         'GET /api/auth/pin/max-length': () => json(200, 4),
-        'GET /api/brand': () => json(200, { name: "Demo Bar" }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar' }),
         'POST /api/auth/pin': () =>
           json(200, sessionFor('edna', 'Waiter', { mustChangePin: true })),
         'POST /api/auth/pin/change': ({ body }) => {

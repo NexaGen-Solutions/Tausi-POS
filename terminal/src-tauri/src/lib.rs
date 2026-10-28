@@ -18,6 +18,7 @@ use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::ipc::CapabilityBuilder;
+use tauri::window::Color;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
@@ -183,21 +184,23 @@ pub fn navigation_allowed(url: &Url, server_origin: Option<&str>, dev: bool) -> 
     server_origin.is_some_and(|s| s == origin)
 }
 
-/// The address the window should show: the server's POS screens once paired, else the setup screen.
+/// The bundled page the window opens: the splash once paired (it shows the logo while it reaches the
+/// server, then opens the server's POS screens), else the setup screen.
+pub fn start_page(config: &DeviceConfig) -> &'static str {
+    match (&config.server_url, &config.device_token) {
+        (Some(_), Some(_)) => "splash",
+        _ => "connect",
+    }
+}
+
+/// The address the window should show. Bundled pages are the web build's routes (Tauri serves
+/// index.html for them).
 fn start_url(config: &DeviceConfig) -> Result<WebviewUrl, String> {
     // In development the window always loads the Vite dev server, which proxies to the server.
     if cfg!(debug_assertions) {
         return Ok(WebviewUrl::App("index.html".into()));
     }
-    match (&config.server_url, &config.device_token) {
-        (Some(server), Some(_)) => {
-            let url = Url::parse(server)
-                .and_then(|base| base.join("/pos"))
-                .map_err(|e| e.to_string())?;
-            Ok(WebviewUrl::External(url))
-        }
-        _ => Ok(WebviewUrl::App("index.html".into())),
-    }
+    Ok(WebviewUrl::App(start_page(config).into()))
 }
 
 #[tauri::command]
@@ -463,6 +466,8 @@ pub fn run() {
             let window = WebviewWindowBuilder::new(app, MAIN_WINDOW, start_url(&config)?)
                 .title(MAIN_WINDOW_TITLE)
                 .inner_size(1280.0, 800.0)
+                // Deep teal (the splash) from the first frame, never a white flash.
+                .background_color(Color(0x0A, 0x4A, 0x52, 0xFF))
                 .fullscreen(full_screen)
                 .decorations(!full_screen)
                 .focused(true)
@@ -626,6 +631,19 @@ mod tests {
         assert!(!copy_old_store(&data_dir).unwrap());
         assert!(!data_dir.join(STORE_FILE).exists());
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_paired_terminal_starts_on_the_splash_and_any_other_on_setup() {
+        let paired = DeviceConfig {
+            server_url: Some("http://pos-server:5080".into()),
+            device_token: Some("token".into()),
+            ..Default::default()
+        };
+        assert_eq!(start_page(&paired), "splash");
+        let unpaired = DeviceConfig { device_token: None, ..paired.clone() };
+        assert_eq!(start_page(&unpaired), "connect");
+        assert_eq!(start_page(&DeviceConfig::default()), "connect");
     }
 
     #[test]

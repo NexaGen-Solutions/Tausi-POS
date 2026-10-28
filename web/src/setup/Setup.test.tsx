@@ -25,7 +25,7 @@ function status(
     steps,
     current: steps.find((s) => s.status === 'Todo')?.key ?? null,
     businessType: 'Bar',
-    businessName: "Demo Bar",
+    businessName: 'Demo Bar',
     ...extra,
   };
 }
@@ -34,7 +34,7 @@ const trial: LicenceStatus = {
   status: 'Trial',
   isTrial: true,
   edition: 'Trial',
-  business: "Demo Bar",
+  business: 'Demo Bar',
   licenceId: null,
   terminalLimit: 2,
   terminalsUsed: 0,
@@ -148,14 +148,14 @@ describe('Setup wizard', () => {
     renderRoutes(routes, '/setup');
     expect(await screen.findByRole('heading', { name: 'Your business' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Skip for now' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Business name')).toHaveValue("Demo Bar");
+    expect(screen.getByLabelText('Business name')).toHaveValue('Demo Bar');
     expect(screen.getByLabelText('VAT rate (prices include VAT)')).toHaveValue('16');
     await userEvent.click(screen.getByRole('button', { name: 'Next: first admin' }));
     expect(await screen.findByText('Choose a time zone from the list.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Next: first admin' }));
     expect(await screen.findByRole('heading', { name: 'First admin and PIN' })).toBeInTheDocument();
     expect(calls.filter((c) => c.method === 'PUT')[1].body).toMatchObject({
-      name: "Demo Bar",
+      name: 'Demo Bar',
       type: 'Bar',
       vatRate: 16,
       currency: 'KES',
@@ -396,7 +396,7 @@ describe('Setup wizard', () => {
           {
             step: 'business',
             title: 'Your business',
-            text: "Demo Bar",
+            text: 'Demo Bar',
             skipped: false,
             laterLink: null,
           },
@@ -449,8 +449,7 @@ describe('Licence', () => {
             user: { id: 'a', name: 'Administrator', role: 'Admin' },
             permissions: { 'settings.manage': 'Allowed' },
           }),
-        'GET /api/brand': () =>
-          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/licence': () => json(200, licence),
         'POST /api/admin/licence': () =>
           json(400, {

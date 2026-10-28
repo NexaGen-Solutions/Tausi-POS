@@ -77,10 +77,18 @@
   font-size: 15px;
 }
 .admin__about {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
   margin: var(--space-3) 0 0;
   padding: 0 var(--space-2);
   color: var(--color-text-muted);
   font-size: 13px;
+  text-decoration: none;
+}
+.admin__about:hover {
+  text-decoration: underline;
 }
 .admin__main {
   min-width: 0;
@@ -93,10 +101,29 @@
 }
 .admin__login {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: var(--space-5);
+}
+.admin__login-business {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.admin__login-business img {
+  max-width: 56px;
+  max-height: 56px;
+}
+.admin__login-tausi {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
 }
 .admin__login-panel {
   display: grid;
@@ -126,4 +153,61 @@
   .admin__content {
     padding: var(--space-5);
   }
+}
+
+/* About Tausi POS: the full logo sits on its own deep teal, as docs/BRAND.md requires. */
+.about-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-5);
+  background: var(--color-ground-brand);
+}
+.about {
+  display: grid;
+  width: min(100%, 640px);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-panel);
+}
+.about__logo {
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--color-surface-dark);
+}
+.about__body {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-6);
+}
+.about__body p {
+  margin: 0;
+}
+.about__body a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--color-selected);
+}
+.about__title {
+  margin: 0;
+  font-size: 28px;
+}
+.about__subtitle {
+  margin: var(--space-3) 0 0;
+  font-size: 18px;
+}
+.about__notices {
+  max-height: 360px;
+  margin: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-ground);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
 }

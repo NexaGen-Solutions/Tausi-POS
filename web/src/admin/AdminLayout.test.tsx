@@ -27,20 +27,22 @@ describe('admin layout', () => {
           permissions: {},
         });
       if (path.endsWith('/api/brand'))
-        return json(200, { name: "Demo Bar", logoFileId: 'logo-1', currency: 'KES' });
+        return json(200, { name: 'Demo Bar', logoFileId: 'logo-1', currency: 'KES' });
       return json(200, { server: 'POS-SERVER' });
     });
 
     renderRoutes(routes, '/admin/erp');
 
-    expect(await screen.findByText("Demo Bar")).toBeInTheDocument();
+    expect(await screen.findByText('Demo Bar')).toBeInTheDocument();
     expect(screen.getByText('Tausi POS admin')).toBeInTheDocument();
     expect(
-      screen.getByText(/^Tausi POS · by NexaGen Solutions · version \d+\.\d+\.\d+$/),
-    ).toBeInTheDocument();
+      screen.getByRole('link', {
+        name: /^Tausi POS · by NexaGen Solutions · version \d+\.\d+\.\d+$/,
+      }),
+    ).toHaveAttribute('href', '/admin/about');
     expect(screen.getByRole('img', { name: 'Logo' })).toHaveAttribute('src', '/files/logo-1');
     const nav = screen.getByRole('navigation', { name: 'Admin' });
-    const links = within(nav)
+    const links = within(within(nav).getByRole('list'))
       .getAllByRole('link')
       .map((a) => a.textContent);
     expect(links).toEqual([

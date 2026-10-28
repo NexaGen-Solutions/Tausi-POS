@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ApiError, api, apiUrl, setApiBase } from '../shared/api/client';
 import {
   isBundledTerminalPage,
@@ -11,8 +11,9 @@ import {
   suggestedServerUrl,
   setServerUrl,
 } from '../shared/device/device';
+import { TausiMark } from '../shared/brand';
 import { t } from '../shared/i18n/i18n';
-import { Button, Field, TopBar } from '../shared/ui';
+import { Button, Field } from '../shared/ui';
 import './pos.css';
 
 interface PairingStarted {
@@ -44,8 +45,17 @@ export function SetupPage() {
   );
 
   return (
-    <div className="pos-screen">
-      <TopBar title={t('setup.title')} subtitle={t('common.appName')} />
+    <div className="pairing">
+      <aside className="pairing__side">
+        <p className="pairing__brand">
+          <TausiMark size={48} label={null} />
+          {t('common.appName')}
+        </p>
+        <h1 className="pairing__heading">{t('setup.title')}</h1>
+        <Link className="pairing__about" to="/about">
+          {t('setup.about')}
+        </Link>
+      </aside>
       <main className="setup">
         {step === 'server' && (
           <ServerStep bundled={bundled} onConnected={() => setStep('pairing')} />
@@ -231,6 +241,9 @@ function PairingStep({ bundled }: { bundled: boolean }) {
 
   return (
     <section className="setup__panel" aria-live="polite">
+      <p className="setup__server">
+        {t('setup.serverIs', { server: serverUrl() ?? window.location.origin })}
+      </p>
       <h2>{t('setup.pairingTitle')}</h2>
       <p className="setup__code" aria-label={pairing?.code}>
         {code}

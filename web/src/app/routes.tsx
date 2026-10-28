@@ -1,4 +1,5 @@
 import { Navigate, type RouteObject } from 'react-router';
+import { AboutPage } from '../admin/AboutPage';
 import { AdminLayout } from '../admin/AdminLayout';
 import { AdminLoginPage } from '../admin/AdminLoginPage';
 import { ComingSoonPage } from '../admin/ComingSoonPage';
@@ -26,6 +27,7 @@ import { PinLoginPage } from '../pos/PinLoginPage';
 import { PosLayout } from '../pos/PosLayout';
 import { RequireSession } from '../pos/RequireSession';
 import { SetupPage } from '../pos/SetupPage';
+import { SplashPage } from '../pos/SplashPage';
 import { SetupWizard } from '../setup/SetupWizard';
 import { MySalesPage } from '../pos/MySalesPage';
 import { TablesPage } from '../pos/tables/TablesPage';
@@ -42,6 +44,8 @@ export const routes: RouteObject[] = [
   { path: '/', element: <RootRedirect /> },
   // The terminal's own screen: the server address and pairing (it was /setup before the wizard).
   { path: '/connect', element: <SetupPage /> },
+  { path: '/splash', element: <SplashPage /> },
+  { path: '/about', element: <AboutPage standalone /> },
   { path: '/setup', element: <SetupWizard /> },
   { path: '/setup/recover', element: <RecoverPage /> },
   {
@@ -124,6 +128,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="menu" replace /> },
       { path: 'menu', element: <MenuPage /> },
+      { path: 'about', element: <AboutPage /> },
       { path: 'terminals', element: <DevicesPage /> },
       { path: 'staff', element: <StaffPage /> },
       { path: 'tables', element: <TablesAdminPage /> },

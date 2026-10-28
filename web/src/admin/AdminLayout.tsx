@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { NavLink, Navigate, Outlet, useNavigate } from 'react-router';
+import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router';
 import { ApiError, api, apiUrl } from '../shared/api/client';
 import type { Brand, Me } from '../shared/api/types';
+import { TausiMark } from '../shared/brand';
 import { LiveUpdates } from '../shared/connection/LiveUpdates';
 import { BackupBanner } from '../shared/connection/BackupBanner';
 import { LicenceBanner } from '../shared/connection/LicenceBanner';
@@ -58,7 +59,10 @@ export function AdminLayout() {
             <Button onClick={() => void signOut()}>{t('common.signOut')}</Button>
           </div>
         )}
-        <p className="admin__about">{t('admin.about', { version: __APP_VERSION__ })}</p>
+        <Link className="admin__about" to="/admin/about">
+          <TausiMark size={20} label={null} />
+          {t('admin.about', { version: __APP_VERSION__ })}
+        </Link>
       </nav>
       <div className="admin__main">
         <OfflineBanner />
