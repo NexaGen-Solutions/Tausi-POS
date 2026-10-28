@@ -27,6 +27,10 @@ The server can also run on Linux (Ubuntu 22.04 or 24.04): see [Linux server](#9-
 "DHCP reservation" in the router for the server PC (ask whoever manages the router), or set it in
 Windows: Settings → Network → Ethernet → IP assignment → Edit → Manual.
 
+**Keep its network card awake**: Device Manager → Network adapters → the Ethernet card → Properties →
+Power Management → untick *Allow the computer to turn off this device to save power*. Do the same on
+the counter PCs. Also set the server PC never to sleep (Settings → System → Power → Sleep: Never).
+
 ## 2. Install the server
 
 1. Copy `TausiPOS-Server-Setup-<version>.exe` to the server PC and double-click it. Windows asks for
