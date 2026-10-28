@@ -1,6 +1,6 @@
 /* Wireframes 8 and 9: my sales, the cash-up, and closing the day */
 .cash-screen {
-  height: 100vh;
+  height: calc(100vh - var(--training-band, 0px));
   min-height: 0;
 }
 .cash-body {

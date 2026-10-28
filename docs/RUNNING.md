@@ -433,6 +433,15 @@ Every report needs `reports.all`.
 Printed slip text is kept for `print.keepSlipTextDays` (Settings → Printing, default 365) and
 cleared once a day after that; the print itself stays listed.
 
+### Training mode
+
+Settings → **Training mode** (needs `settings.manage`) switches training on for chosen terminals. A
+training terminal shows an orange "TRAINING · not real sales" band, opens its own training day when
+someone signs in, and prints TRAINING - NOT A RECEIPT at the top and bottom of every slip. Its tickets,
+payments and shifts never reach reports, the books, stock or cash-ups. **Clear training data** on the
+same page deletes them (audited). To try it: switch Counter A to training, sign in on it, open a table,
+print and settle, then check that Reports and the Cash book don't show it.
+
 ### Admin site
 
 <http://localhost:5173/admin>: sign in as `admin`. All sidebar items are present; the pages

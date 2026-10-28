@@ -407,6 +407,9 @@
       "password": "Password",
       "turnOff": "Also switch kiosk mode off on this PC",
       "exit": "Leave"
+    },
+    "training": {
+      "band": "TRAINING · not real sales"
     }
   },
   "approval": {
@@ -1557,7 +1560,23 @@
       "restoring": "Restoring… this can take a few minutes.",
       "restoreNow": "Restore"
     },
-    "signInPowered": "Tausi POS"
+    "signInPowered": "Tausi POS",
+    "training": {
+      "title": "Training mode",
+      "help": "Staff practise on a training terminal without touching real sales. Its tickets, payments and shifts are kept apart: they never reach reports, the books, stock or cash-ups, and every slip it prints says TRAINING - NOT A RECEIPT.",
+      "terminals": "Terminals",
+      "terminal": "Terminal",
+      "on": "Training",
+      "switch": "Training mode on {terminal}",
+      "data": "Training data",
+      "count": "{tickets} training tickets ({open} still open).",
+      "none": "There is no training data.",
+      "clear": "Clear training data",
+      "clearTitle": "Clear training data?",
+      "clearText": "This deletes every training ticket, payment and shift. Real sales are not touched. It can't be undone.",
+      "cleared": "Training data cleared: {tickets} tickets.",
+      "link": "Training mode"
+    }
   },
   "permissions": {
     "order.add": "Add orders",

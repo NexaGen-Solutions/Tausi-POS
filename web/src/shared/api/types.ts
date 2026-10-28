@@ -18,6 +18,8 @@ export interface DeviceInfo {
   workPeriod: WorkPeriod | null;
   printing?: DevicePrinting | null;
   rules?: PosRules | null;
+  /** Training mode is on for this terminal: practice, kept out of the real figures. */
+  training?: boolean;
 }
 
 /** Settings that change what the terminal screens offer (the server enforces them too). */

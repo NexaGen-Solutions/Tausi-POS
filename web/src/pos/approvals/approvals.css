@@ -1,6 +1,6 @@
 /* Wireframe 6: supervisor approvals */
 .approvals-screen {
-  height: 100vh;
+  height: calc(100vh - var(--training-band, 0px));
   min-height: 0;
 }
 .approvals-title {

@@ -1,6 +1,6 @@
 /* Wireframe 2: table map */
 .map-screen {
-  height: 100vh;
+  height: calc(100vh - var(--training-band, 0px));
   min-height: 0;
 }
 .map-body {

@@ -1,6 +1,6 @@
 /* Wireframe 7: settle (cashier only) */
 .settle-screen {
-  height: 100vh;
+  height: calc(100vh - var(--training-band, 0px));
   min-height: 0;
 }
 .settle-body {

@@ -12,6 +12,7 @@ import { ApprovalsWatcher } from './approvals/ApprovalsWatcher';
 import { IdleWatcher } from './IdleWatcher';
 import { KioskExit } from './KioskExit';
 import { TerminalUpdater } from './TerminalUpdater';
+import { TrainingBand } from './TrainingBand';
 import { usePinSession } from './usePinSession';
 import './pos.css';
 
@@ -70,6 +71,7 @@ export function PosLayout() {
       <TerminalUpdater />
       <KioskExit />
       <ServerStateOverlay />
+      <TrainingBand />
       {session && <ApprovalsWatcher />}
       {session && <LicenceBanner admin={false} />}
       <Outlet />

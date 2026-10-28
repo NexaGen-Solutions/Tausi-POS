@@ -2,7 +2,7 @@
 .pos-screen {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--training-band, 0px));
 }
 
 /* Wireframe 1: PIN login */
@@ -124,7 +124,7 @@
 .pairing {
   display: grid;
   grid-template-columns: 380px minmax(0, 1fr);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--training-band, 0px));
   background: var(--color-ground-brand);
 }
 .pairing__side {
@@ -249,7 +249,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-6);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--training-band, 0px));
   padding: var(--space-5);
   background: var(--color-surface-dark);
   color: var(--color-surface-dark-text);
@@ -263,4 +263,16 @@
 .splash__status {
   margin: 0;
   font-size: 20px;
+}
+
+/* Training mode: a striped orange band on every terminal screen (TrainingBand). */
+.training-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-warning) var(--pattern-training);
+  color: var(--color-warning-on);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
