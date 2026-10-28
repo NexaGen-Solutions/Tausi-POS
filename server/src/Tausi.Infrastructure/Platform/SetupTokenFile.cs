@@ -20,8 +20,20 @@ public sealed class SetupTokenFile(IOptions<TausiOptions> options, IHostEnvironm
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(Path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
 
+    /// <summary>
+    /// Best effort: the token that counts is in the database (cleared before this runs), the file is only
+    /// for the person at the server. `reset-admin` writes it from an administrator's Command Prompt, so the
+    /// service's own account may not be allowed to delete it; that must never fail the reset.
+    /// </summary>
     public void Delete()
     {
-        if (File.Exists(Path)) File.Delete(Path);
+        try
+        {
+            if (File.Exists(Path)) File.Delete(Path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Left behind: the token in it no longer works.
+        }
     }
 }
