@@ -79,6 +79,33 @@ Check ($null -ne (Get-NetFirewallRule -DisplayName 'Tausi POS Server' -ErrorActi
 Check (Test-Path "$home_\setup-token.txt") 'the setup token is written'
 Check (Test-Path "$home_\config\appsettings.Production.json") 'the settings file is written'
 Check (-not ((Get-Acl "$home_\data").Access | Where-Object { $_.IdentityReference -match 'Users' })) 'ordinary users can''t read the data folder'
+# "Back up now" runs as the service's account: it must be able to make AND check (RESTORE VERIFYONLY,
+# which needs CREATE ANY DATABASE) a backup, in backups\work, where SQL Server's own account writes.
+$bak = "$home_\backups\work\ci-check.bak"
+$sql = "EXECUTE AS LOGIN = N'NT SERVICE\TausiPOSServer'; " +
+  "BACKUP DATABASE [TausiPOS] TO DISK = N'$bak' WITH CHECKSUM, INIT, FORMAT, COPY_ONLY; " +
+  "RESTORE VERIFYONLY FROM DISK = N'$bak' WITH CHECKSUM; REVERT;"
+$probe = Join-Path $env:RUNNER_TEMP 'backup-as-service.ps1'
+@"
+`$c = New-Object System.Data.SqlClient.SqlConnection('Server=.\SQLEXPRESS;Database=master;Integrated Security=True')
+`$c.Open()
+`$cmd = `$c.CreateCommand(); `$cmd.CommandTimeout = 300
+`$cmd.CommandText = @'
+$sql
+'@
+`$cmd.ExecuteNonQuery() | Out-Null
+'BACKUP-AS-SERVICE-OK'
+"@ | Set-Content $probe -Encoding utf8
+$verified = (powershell.exe -NoProfile -File $probe 2>&1 | Out-String)
+Check ($verified -match 'BACKUP-AS-SERVICE-OK') "the service's account can back up and verify the database $(if ($verified -notmatch 'BACKUP-AS-SERVICE-OK') { $verified.Trim() })"
+Remove-Item $bak -ErrorAction SilentlyContinue
+$adminLink = 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Tausi POS\Tausi POS Admin.lnk'
+Check (Test-Path $adminLink) 'the Tausi POS Admin shortcut is in the Start menu'
+if (Test-Path $adminLink) {
+  $link = (New-Object -ComObject WScript.Shell).CreateShortcut($adminLink)
+  Check ($link.TargetPath -like '*msedge.exe' -and $link.Arguments -eq '--app=http://localhost:5080/admin') "it opens the admin site in Edge's app window ($($link.TargetPath) $($link.Arguments))"
+}
+Check (Test-Path 'C:\Users\Public\Desktop\Tausi POS Admin.lnk') 'and on the desktop'
 try { Get-EventLog -LogName Application -Source 'Tausi POS' -Newest 1 -ErrorAction Stop | Out-Null; $source = $true } catch { $source = -not ($_.Exception.Message -match 'source') }
 Check $source 'the Event Log source exists'
 
