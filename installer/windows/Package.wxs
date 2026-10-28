@@ -58,6 +58,12 @@
     <Property Id="PORT" Secure="yes" Value="5080">
       <RegistrySearch Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server" Name="Port" Type="raw" Bitness="always64" />
     </Property>
+    <!-- Microsoft Edge (part of Windows 10 and 11), for the admin site's own window. -->
+    <Property Id="EDGEEXE">
+      <RegistrySearch Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Id="EDGEEXE" Action="SetEdgeDefault" Value="[ProgramFilesFolder]Microsoft\Edge\Application\msedge.exe"
+                 Sequence="both" Before="CostFinalize" Condition="NOT EDGEEXE" />
     <Property Id="FIREWALL" Secure="yes" Value="1">
       <RegistrySearch Root="HKLM" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server" Name="Firewall" Type="raw" Bitness="always64" />
     </Property>
@@ -73,6 +79,7 @@
       <ComponentRef Id="ServerExe" />
       <ComponentRef Id="Remembered" />
       <ComponentRef Id="Firewall" />
+      <ComponentRef Id="AdminShortcuts" />
     </Feature>
 
     <ComponentGroup Id="ServerFiles" Directory="INSTALLFOLDER">
@@ -103,6 +110,20 @@
         <RegistryValue Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" />
         <RegistryValue Name="Version" Type="string" Value="$(Version)" />
       </RegistryKey>
+    </Component>
+
+    <!-- "Tausi POS Admin": the admin site in its own window (Edge app mode: no tabs, no address bar). -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="TausiMenuFolder" Name="Tausi POS" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+    <Component Id="AdminShortcuts" Directory="TausiMenuFolder">
+      <Shortcut Id="AdminMenuShortcut" Name="Tausi POS Admin" Description="The Tausi POS admin site on this server"
+                Target="[EDGEEXE]" Arguments="--app=http://localhost:[PORT]/admin" Icon="tausi.ico" WorkingDirectory="INSTALLFOLDER" />
+      <Shortcut Id="AdminDesktopShortcut" Directory="DesktopFolder" Name="Tausi POS Admin" Description="The Tausi POS admin site on this server"
+                Target="[EDGEEXE]" Arguments="--app=http://localhost:[PORT]/admin" Icon="tausi.ico" WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveTausiMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="SOFTWARE\NexaGen Solutions\Tausi POS Server" Name="AdminShortcuts" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
     <!-- The private (home or work) network only, for the server's port. -->

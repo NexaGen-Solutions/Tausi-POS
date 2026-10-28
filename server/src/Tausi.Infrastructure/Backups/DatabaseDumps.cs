@@ -95,6 +95,9 @@ public sealed class SqlServerDump(string connectionString, BackupOptions options
     public string Provider => "SqlServer";
     public string FileName => "tausi.bak";
 
+    /// <summary>SQL Server's "permission denied" (here: CREATE DATABASE, which RESTORE VERIFYONLY needs).</summary>
+    private const int PermissionDenied = 262;
+
     private string FolderForSql => options.SqlServerFolder ?? defaultFolder;
     private string FolderHere => options.SqlServerFolderHere ?? options.SqlServerFolder ?? defaultFolder;
 
@@ -112,7 +115,18 @@ public sealed class SqlServerDump(string connectionString, BackupOptions options
             var edition = Convert.ToInt32(await Scalar(conn, "SELECT CAST(SERVERPROPERTY('EngineEdition') AS int)", ct), System.Globalization.CultureInfo.InvariantCulture);
             var compress = edition != 4 ? ", COMPRESSION" : "";
             await Execute(conn, $"BACKUP DATABASE {Quote(database)} TO DISK = @path WITH CHECKSUM, INIT, FORMAT, COPY_ONLY{compress}", sqlPath, ct);
-            await Execute(conn, "RESTORE VERIFYONLY FROM DISK = @path WITH CHECKSUM", sqlPath, ct);
+            try
+            {
+                await Execute(conn, "RESTORE VERIFYONLY FROM DISK = @path WITH CHECKSUM", sqlPath, ct);
+            }
+            catch (SqlException e) when (e.Errors.Cast<SqlError>().Any(x => x.Number == PermissionDenied))
+            {
+                throw new InvalidOperationException(
+                    "SQL Server made the backup but won't let Tausi POS check it: the server's account needs the " +
+                    "CREATE ANY DATABASE permission. Run the Tausi POS Server installer again (it grants it), or ask " +
+                    "whoever looks after this SQL Server to grant it to NT SERVICE\\TausiPOSServer. (SQL Server: " +
+                    e.Errors.Cast<SqlError>().First(x => x.Number == PermissionDenied).Message + ")");
+            }
             var here = Path.Combine(FolderHere, name);
             if (Readable(here)) File.Move(here, file);
             else await CopyOut(conn, sqlPath, file, ct);
