@@ -96,6 +96,15 @@ in as you, so you must be one (the Windows user who installed SQL Server usually
 `SQLGRANTSYSTEM=1`. Prefer not to? Install with a SQL login (`SQLUSER`, `SQLPASSWORD`) that may create
 databases.
 
+The server's own account, `NT SERVICE\TausiPOSServer`, gets a SQL Server login that **owns** the
+`TausiPOS` database and has **CREATE ANY DATABASE**: SQL Server needs that to check each backup
+(`RESTORE VERIFYONLY`) and to restore one. Nothing else on that SQL Server is touched. Whoever looks
+after a shared SQL Server can grant it by hand:
+`GRANT CREATE ANY DATABASE TO [NT SERVICE\TausiPOSServer]`.
+
+The installer adds a **Tausi POS Admin** shortcut (Start menu and desktop) on the server PC. It opens the
+admin site in its own window (Microsoft Edge, without tabs or an address bar).
+
 ## 3. Install the terminals
 
 1. Copy `TausiPOS-Setup-<version>.exe` to the counter PC and run it (choose **Yes** when Windows asks).

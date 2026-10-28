@@ -262,8 +262,12 @@ public static class InstallCommands
                             ALTER AUTHORIZATION ON DATABASE::' + QUOTENAME(@db) + N' TO ' + QUOTENAME(@login) + N';';
                         EXEC(@sql);
                     END
+                    -- Checking a backup (RESTORE VERIFYONLY) and restoring one need CREATE ANY DATABASE,
+                    -- which owning the database doesn't give.
+                    DECLARE @grant nvarchar(max) = N'GRANT CREATE ANY DATABASE TO ' + QUOTENAME(@login);
+                    EXEC(@grant);
                     """, database, account);
-                Console.WriteLine($"{account} owns the database {database}.");
+                Console.WriteLine($"{account} owns the database {database} and may check and restore its backups.");
             }
         }
         if (OperatingSystem.IsWindows())
