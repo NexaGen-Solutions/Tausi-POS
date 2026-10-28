@@ -233,6 +233,24 @@ public class PrintTicketTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_printer_that_fails_never_undoes_the_print_round_or_the_ticket()
+    {
+        // AGENTS.md rule 9: printing is queued after the action is saved; a failure only marks the job.
+        var ticket = await Table4();
+        var before = await _f.Get<GetTicket>().Execute(ticket.Id, CancellationToken.None);
+        await Print(ticket.Id);
+        await _f.Db.PrintJobs.Where(j => j.TicketId == ticket.Id).ExecuteUpdateAsync(u => u
+            .SetProperty(j => j.Status, PrintJobStatus.Failed).SetProperty(j => j.LastError, "Out of paper"));
+
+        var after = await _f.Get<GetTicket>().Execute(ticket.Id, CancellationToken.None);
+        after.NewLines.Should().Be(0, "the round stays printed: the counter isn't asked to pour again");
+        after.BillNumber.Should().Be(1);
+        after.Total.Should().Be(before.Total);
+        after.Lines.Should().HaveCount(before.Lines.Count);
+        after.FailedJobs.Should().HaveCount(2, "both slips show as Not printed · Retry");
+    }
+
+    [Fact]
     public async Task A_failed_job_can_be_retried_from_the_order_screen()
     {
         var ticket = await Table4();

@@ -81,6 +81,29 @@ public class OrderScreenApiTests(TicketsApp app) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Who_added_a_line_and_on_which_terminal_come_from_the_session_never_from_the_request()
+    {
+        // AGENTS.md rule 3. The request names another user and terminal; the server ignores both.
+        var waiter = await Waiter();
+        var someoneElse = app.Db(db => db.Users.Single(u => u.Name == "SAM").Id);
+        var otherTerminal = (await app.PairTerminal()).TerminalId;
+        var ticket = await Ok(await waiter.Http.PostAsJsonAsync("/api/pos/tickets", new
+        {
+            tableId = Table("11"),
+            addedByUserId = someoneElse,
+            terminalId = otherTerminal,
+            lines = new[] { new { menuItemId = Item("Pineapple Punch"), quantity = 1, optionIds = Array.Empty<Guid>(), addedByUserId = someoneElse, addedTerminalId = otherTerminal } },
+        }));
+        var id = ticket.GetProperty("id").GetGuid();
+        await Ok(await waiter.Http.PostAsJsonAsync($"/api/pos/tickets/{id}/lines",
+            new { menuItemId = Item("Pineapple Punch"), optionIds = Array.Empty<Guid>(), quantity = 1, addedByUserId = someoneElse, addedTerminalId = otherTerminal }));
+
+        var edna = app.Db(db => db.Users.Single(u => u.Name == "edna").Id);
+        var lines = app.Db(db => db.OrderLines.Where(l => l.TicketId == id).Select(l => new { l.AddedByUserId, l.AddedTerminalId }).ToList());
+        lines.Should().NotBeEmpty().And.OnlyContain(l => l.AddedByUserId == edna && l.AddedTerminalId == waiter.TerminalId);
+    }
+
+    [Fact]
     public async Task Two_presses_at_once_print_one_round_and_another_terminal_can_not_print()
     {
         var waiter = await Waiter();

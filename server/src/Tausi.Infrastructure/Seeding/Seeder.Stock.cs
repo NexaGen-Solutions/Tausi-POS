@@ -3,6 +3,7 @@ using Tausi.Domain.Ledger;
 using Tausi.Domain.Menu;
 using Tausi.Domain.Money;
 using Tausi.Domain.Stock;
+using Tausi.Infrastructure.Ledger;
 
 namespace Tausi.Infrastructure.Seeding;
 
@@ -107,7 +108,6 @@ public sealed partial class Seeder
         var sam = await db.Users.Where(u => u.Name == "SAM").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         var admin = await db.Users.Where(u => u.Name == "Administrator").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         var now = (clock ?? TimeProvider.System).GetUtcNow();
-        var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Code, a => a.Id, ct);
         foreach (var location in new[] { store, bar })
         {
             var count = new StockCount
@@ -134,17 +134,12 @@ public sealed partial class Seeder
             }
             db.StockCounts.Add(count);
             var amount = MoneyMath.Round(value);
-            db.JournalEntries.Add(new JournalEntry
-            {
-                Date = now, Memo = $"Opening stock · {location.Name}", SourceType = "StockCount", SourceId = count.Id.ToString(),
-                BusinessDate = Application.Money.BusinessDates.Of(now, await Application.Money.BusinessDates.Zone(db, ct)),
-                CreatedAt = now, CreatedByUserId = admin,
-                Lines =
-                [
-                    new JournalLine { AccountId = accounts[LedgerAccountCodes.Stock], Debit = amount, SourceType = "StockCount", SourceId = count.Id.ToString() },
-                    new JournalLine { AccountId = accounts[LedgerAccountCodes.OpeningBalances], Credit = amount, SourceType = "StockCount", SourceId = count.Id.ToString() },
-                ],
-            });
+            // Through the posting service, like every other entry (AGENTS.md rule 6).
+            var entry = await new LedgerPostingService(db, new NoSession(), clock ?? TimeProvider.System).Post(new JournalEntryDraft(
+                now, $"Opening stock · {location.Name}", "StockCount", count.Id.ToString(),
+                [JournalLineDraft.Dr(LedgerAccountCodes.Stock, amount), JournalLineDraft.Cr(LedgerAccountCodes.OpeningBalances, amount)],
+                BusinessDate: Application.Money.BusinessDates.Of(now, await Application.Money.BusinessDates.Zone(db, ct))), ct);
+            entry.CreatedByUserId = admin;
         }
         await db.SaveChangesAsync(ct);
         return true;
@@ -166,4 +161,11 @@ public sealed partial class Seeder
         }
         await db.SaveChangesAsync(ct);
     }
+}
+
+/// <summary>Seeding runs from the command line: nobody is signed in.</summary>
+file sealed class NoSession : Application.Security.ICurrentSession
+{
+    public Application.Security.SessionUser? User => null;
+    public Application.Security.DeviceTerminal? Terminal => null;
 }
