@@ -372,6 +372,24 @@ Each entry: date, decision, reason.
 | 2026-10-28 | Idempotency keys come from `newRequestId()` (`web/src/shared/api/requestId.ts`): `crypto.randomUUID` when the browser has it, else a v4 UUID from `crypto.getRandomValues`. The CI screenshots job opens the app by the runner's network address, not localhost. | Browsers give `crypto.randomUUID` only to secure pages (HTTPS or localhost). Opened as http://<server>:5080 on the LAN, every save failed with "Something went wrong" before anything was sent; testing on localhost never showed it. |
 | 2026-10-28 | The server's SQL Server login gets `CREATE ANY DATABASE` at install, and a backup that can't be checked says so in plain words. The server installer adds a **Tausi POS Admin** shortcut (Start menu and desktop): Edge in app mode on `http://localhost:<port>/admin`. The Windows installer test makes and verifies a backup as `NT SERVICE\TausiPOSServer`. | Owning the database lets the service back it up, but `RESTORE VERIFYONLY` needs CREATE DATABASE: on a real PC "Back up now" ended in "VERIFY DATABASE is terminating abnormally". CI only backed up as SYSTEM (a sysadmin there), so it didn't show. The shortcut was asked for in the owner's Windows test notes. |
 
+## Release hardening and v1.0.0 (task 16)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-28 | Development-only commands (`seed --demo`, `seed --demo-menu`, `require-pin-change`, `close-day`, `reset`) go through one gate, `Commands.RefusedOutsideDevelopment`; the File printer is refused outside Development and the admin form offers it only to a printer that already has it. `Tausi:Test:FailMigration` stays: the installer's rollback test needs it in Production, and only the test build's settings file sets it. | Task 16, Part A.4: nothing made for development may reach an installed server. |
+| 2026-10-28 | "Send diagnostics" (design.md, Product setup) is **Download diagnostics** on Settings → System → Support: a zip the owner sends to NexaGen (health, versions, terminals, printers, failed prints, backups, 7 days of logs, no secrets). The "opt-in support mode" is listed for the owner's decision in V1-CHECKLIST.md. | No internet is needed, and nothing leaves the bar without the owner. |
+| 2026-10-28 | The demo seeder's opening-stock entry goes through `LedgerPostingService`, and a test fails if any other source file adds journal entries. | AGENTS.md rule 6 had one exception, in demo data. |
+| 2026-10-28 | Prompt 16 names `prompts/v1.1-erpnext-sync.md` for the ERPNext prompt. That file isn't in the repo (the old `16-erpnext-sync.md` was deleted when the brand prompts came in), so nothing links to it; "After v1" records the sync instead. | `docs/prompts/` is history and isn't edited here. |
+
+## After v1
+
+Owner's decisions and larger items for a later version. Not in 1.0.0.
+
+- **ERPNext sync** (design.md, "Optional: ERPNext integration"; wireframe 20): moved to a later version by the owner. Menu items keep their ERPNext item code. The admin menu shows "Coming in a later version".
+- **Opt-in support mode** (design.md, Product setup): needs the owner's definition; see V1-CHECKLIST.md.
+- **Approvals on the admin site**: see V1-CHECKLIST.md.
+- **KRA eTIMS, M-Pesa STK, phone ordering, kitchen display, payroll, balance sheet, multiple warehouses**: "Not in this version" in design.md.
+
 ## Follow-ups
 
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.

@@ -64,7 +64,7 @@ describe('admin layout', () => {
       'page',
     );
     expect(screen.getByRole('heading', { name: 'ERPNext sync' })).toBeInTheDocument();
-    expect(screen.getByText('Coming in a later task.')).toBeInTheDocument();
+    expect(screen.getByText('Coming in a later version.')).toBeInTheDocument();
     expect(await screen.findByText('Signed in: Administrator')).toBeInTheDocument();
   });
 

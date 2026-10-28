@@ -467,7 +467,7 @@
     "about": "Tausi POS · by NexaGen Solutions · version {version}",
     "logo": "Logo",
     "signedIn": "Signed in: {name}",
-    "comingSoon": "Coming in a later task.",
+    "comingSoon": "Coming in a later version.",
     "loginTitle": "Admin sign in",
     "userName": "User name",
     "password": "Password",
