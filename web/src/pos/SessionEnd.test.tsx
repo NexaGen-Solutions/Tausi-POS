@@ -62,6 +62,32 @@ describe('end of a session', () => {
     expect(sessionStorage.getItem('tausi.session')).toBeNull();
   });
 
+  it("someone else signing in never sees the previous person's permissions", async () => {
+    // As after a reload with CAROL still signed in, and SAM typing his PIN.
+    const permissions: Record<string, Record<string, string>> = {
+      CAROL: { 'ticket.settle': 'Allowed', 'day.open_close': 'NotAllowed' },
+      SAM: { 'ticket.settle': 'Allowed', 'day.open_close': 'Allowed' },
+    };
+    fetchMock.mockImplementation(
+      fakeServer({
+        'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
+        'GET /api/pos/tables': () => json(200, { areas: [], tables: [], takeaway: [], version: 1 }),
+        'GET /api/auth/me': () => {
+          const name = pinSession()!.user.name;
+          return json(200, { user: { id: name, name, role: 'x' }, permissions: permissions[name] });
+        },
+      }),
+    );
+    setPinSession(sessionFor('CAROL', 'Cashier'));
+    renderRoutes(routes, '/pos/tables');
+    expect(await screen.findByRole('button', { name: 'My shift' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close day' })).not.toBeInTheDocument();
+
+    act(() => setPinSession(sessionFor('SAM', 'Supervisor')));
+
+    expect(await screen.findByRole('button', { name: 'Close day' })).toBeInTheDocument();
+  });
+
   it('logs out by itself after the idle time and says why for 5 seconds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     setPinSession(sessionFor('edna', 'Waiter', { idleLogoutMinutes: 10 }));
