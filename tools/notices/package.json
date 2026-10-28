@@ -1,0 +1,13 @@
+{
+  "name": "tausi-notices",
+  "private": true,
+  "type": "module",
+  "description": "Builds THIRD-PARTY-LICENSES.txt (the full licence texts of what ships) and checks THIRD-PARTY-NOTICES is complete.",
+  "scripts": {
+    "build": "node build-notices.mjs",
+    "check": "node build-notices.mjs --check"
+  },
+  "devDependencies": {
+    "spdx-license-list": "6.12.0"
+  }
+}

@@ -64,6 +64,28 @@ jobs:
         working-directory: .
         run: node --test tools/brand/icons.test.mjs
 
+  notices:
+    # THIRD-PARTY-NOTICES and THIRD-PARTY-LICENSES.txt list every shipped component with its licence text.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            tools/notices/package-lock.json
+      - name: Install what the lists are read from
+        run: |
+          (cd web && npm ci)
+          (cd tools/notices && npm ci)
+      - name: Every shipped component is listed, with its licence text
+        run: node tools/notices/build-notices.mjs --check
+
   screenshots:
     # The main screens in the brand colours, for a person to look at (not compared pixel by pixel).
     runs-on: ubuntu-latest
