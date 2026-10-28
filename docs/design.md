@@ -2,7 +2,7 @@
 
 Last updated: 19 Oct 2026
 
-Tausi POS is a restaurant and bar POS **product** by **NexaGen Solutions**, built on .NET, React and Tauri. It runs on each customer's own server and terminals. Mau's Village is the first customer.
+Tausi POS is a restaurant and bar POS **product** by **NexaGen Solutions**, built on .NET, React and Tauri. It runs on each customer's own server and terminals. The examples below use a typical Kenyan bar with four counters (Counter A, Counter B, Pillar 1, Pillar 2).
 
 - **Coding rules:** `AGENTS.md` in the repo root.
 - **Screens:** `docs/wireframes/` (PDF).
@@ -134,12 +134,12 @@ This one-button mode is the default. A setting switches a business to separate *
 ## Printing
 
 - **The server prints directly** by default, so printing never depends on a terminal app being open.
-- **Each Print prints the bill first, then the dispense slip.** When one printer does both, as at Mau's, a paper cut separates them.
+- **Each Print prints the bill first, then the dispense slip.** When one printer does both, a paper cut separates them.
 - **Connection mode,** set per printer in Settings:
     - **Network:** ESC/POS over TCP port 9100.
     - **Windows share:** a printer shared from a counter PC, when the server runs on Windows.
     - **Via terminal:** the server sends the job to that counter's terminal app, which prints to its USB printer. This is the fallback.
-- **Routing is per terminal:** at Mau's, Counter A and Pillar 1 → Dispense A; Counter B and Pillar 2 → Dispense B.
+- **Routing is per terminal:** for example, Counter A and Pillar 1 → Dispense A; Counter B and Pillar 2 → Dispense B.
 - **Slips:**
     - **Customer bill:** all items, numbered ("Bill 2 · replaces earlier bills"), "Total includes VAT"
     - **Dispense slip:** only items not yet printed
@@ -176,7 +176,7 @@ Approvals happen on the same screen with a supervisor PIN, or as a request that 
 
 ## Cash flow and cash-up
 
-How money moves at Mau's Village:
+How money moves in a typical bar:
 
 1. The waiter takes the bill to the table. The customer pays by **M-Pesa** to the till, or in **cash** to the waiter.
 2. The waiter brings the cash or the M-Pesa message to the cashier. **Only the cashier settles.**
@@ -253,7 +253,7 @@ How it works:
 
 ## Installation, backups and updates
 
-**Server** (POSSERVER2 at Mau's Village)
+**Server** (the business's server PC)
 
 - One installer sets up the Tausi Server as a Windows service (or a systemd service on Linux), and creates the `TausiPOS` database on SQL Server Express or PostgreSQL.
 - Give the server a fixed IP and allow the service's port in the firewall. Turn off power saving on its network adapter.
@@ -262,7 +262,7 @@ How it works:
 
 - Use one installer per terminal. On first start, an admin pairs it with the server and picks which terminal it is.
 - The app starts with Windows, full screen.
-- Terminals need **Windows 10 or 11**. At Mau's, Pillar 2 (Windows 7) must be upgraded or replaced.
+- Terminals need **Windows 10 or 11**. Older Windows 7 PCs must be upgraded or replaced.
 
 **Backups**
 

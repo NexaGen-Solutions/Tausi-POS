@@ -12,7 +12,7 @@ A touch POS **product** for bars and restaurants. Each business runs its own ins
 - **Tausi Terminal**: a full-screen Tauri app on each counter PC (Windows 10/11) that shows the POS screens.
 - **Admin site**: the same web UI, opened in a browser on the LAN, for back-office work.
 
-The first customer is **Mau's Village**, a bar in Kenya. Nothing in the code may hard-code that name. The business name, logo, address, VAT rate and receipt footer come from `BusinessSettings`.
+Tausi POS is sold to many bars and restaurants. **Never hard-code a customer's name**, staff names or menu in code, UI text, docs or tests: use `[BUSINESS NAME]`-style placeholders, or the generic demo business **"Demo Bar"** in seed data and examples. The business name, logo, address, VAT rate and receipt footer come from `BusinessSettings`.
 
 The design doc is in `docs/design.md` and the screen wireframes are in `docs/wireframes/`. When a task names a screen, match its wireframe's layout and behaviour.
 
@@ -79,12 +79,15 @@ The hub is `/hubs/pos`, and clients join the group `business`. Events are named 
 
 - **Fonts:** IBM Plex Sans; IBM Plex Mono for money, quantities, PINs and codes. Self-host the font files, since there's no internet dependency at runtime.
 - **Colours** (design tokens in `web/src/shared/ui/tokens.css`):
-    - Ground `#F4F4F2`, panel `#FFFFFF`, border `#C9C9C4`
+    - **Brand (from the Tausi POS logo):** teal `#0E6670`, deep teal `#0A4A52`, cream `#F6F1E4`, gold `#C9A227`
+    - Ground `#F4F4F2` (admin and POS work screens), cream `#F6F1E4` (PIN screen, setup wizard, splash), panel `#FFFFFF`, border `#C9C9C4`
     - Text `#1C1C1C`, secondary text `#3D3D3A` / `#5C5C58`
-    - Top bar `#1C1C1C`
-    - Primary action `#B34A0C` with white text
+    - Top bar and dark panels: deep teal `#0A4A52` with cream or white text
+    - **Primary action: teal `#0E6670`** with white text (pressed `#0A4A52`)
+    - Gold `#C9A227` for small accents only (active tab underline, focus ring, badges), never for text on light grounds
     - Selected / occupied blue `#1F5FA8`, tint `#E6EEF8`
-    - Warning tint `#FBE7DA`, text `#8A3708`
+    - **Warning / needs attention: orange `#B34A0C`**, tint `#FBE7DA`, text `#8A3708` (idle tables, "Not printed", failed, differences, Void button). Orange is never a primary button colour.
+- **Brand assets** live in `web/src/shared/brand/` and `brand/` (logo, mark, icons). The Tausi logo shows only on Tausi's own surfaces (splash, pairing, setup wizard, installer, About line, admin footer). The **customer's** name and logo stay on the POS screens, bills and receipts. "Powered by Tausi POS" on receipts is text only, behind `print.poweredByFooter` (off by default).
 - **Terminal screens** are designed for 1280×800 touch. Touch targets are at least 44 px; primary buttons at least 56 px. No hover-only actions.
 - **Admin pages** use a left sidebar nav, must work at 1280 wide and down to tablet width, and wide tables scroll inside their box.
 - Use real `<button>`, `<a>`, and `<input>` with `<label>`, so screens work with a keyboard too.

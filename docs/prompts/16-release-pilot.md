@@ -1,6 +1,6 @@
-# Task 17 — Release hardening, v1.0 and the pilot at Mau's Village
+# Task 16 — Release hardening, v1.0 and the pilot plan
 
-Read `AGENTS.md` first. Work on a new branch `release/17-v1-hardening` from `main` (the latest tag).
+Read `AGENTS.md` first. Work on a new branch `release/16-v1-hardening` from `main` (the latest tag).
 
 Do not merge into `main` and do not create tags. Push your branch and stop.
 
@@ -8,22 +8,27 @@ Every feature for v1 is built. This task makes v1 **safe to run a real bar on**:
 - load and failure testing on real-life numbers
 - the last missing pieces found by a full review
 - a training mode for staff
-- the pilot plan for running Tausi POS **next to SambaPOS** at Mau's Village before switching over
+- a reusable pilot plan for running Tausi POS **next to a customer's old POS** (for example SambaPOS) before switching over
 
 **No new features** beyond what's listed here. Anything else goes into `docs/DECISIONS.md` under "After v1".
+
+**ERPNext sync isn't in v1.** The owner has moved it to a later version, and its prompt is kept as `prompts/v1.1-erpnext-sync.md`.
+- Add it to "After v1".
+- In the checklist, mark the ERPNext section of `docs/design.md` and wireframe 20 as "Later version (owner's decision)", not Missing.
+- The ERPNext item code field on menu items stays.
 
 ---
 
 ## Part A — Full review against the design
 
-1. **Go through `docs/design.md` section by section,** and every wireframe in `docs/wireframes/`. For each requirement, mark it **Done**, **Done differently** (with the reason, linking DECISIONS.md) or **Missing**, in a new file, `docs/V1-CHECKLIST.md`.
+1. **Go through `docs/design.md` section by section,** and every wireframe in `docs/wireframes/`. For each requirement, mark it **Done**, **Done differently** (with the reason, linking DECISIONS.md), **Later version**, or **Missing**, in a new file, `docs/V1-CHECKLIST.md`.
 2. **Fix every Missing item** that's small (under about half a day of work). List the bigger ones at the top of the checklist for the owner to decide on. **Don't build them.**
 3. **Check `AGENTS.md`'s 12 business rules** one by one, and **name the test that proves each one** in the checklist. Add a test where one is missing.
 4. **Remove every temporary or dev-only path** that could reach production: dev endpoints, `close-day`, seeding commands, the File printer, the test licence key. Each one must be refused outside Development, with a test per path.
 
 ## Part B — Load and endurance testing
 
-Build a **load test** (a .NET console tool, `tools/Tausi.LoadTest`) that simulates a **busy Friday at Mau's**:
+Build a **load test** (a .NET console tool, `tools/Tausi.LoadTest`) that simulates a **busy Friday at a four-counter bar**:
 - 4 terminals and 12 waiters
 - **3 tickets opened per minute per terminal**, each with **3 rounds** of 2–5 items and a Print each round
 - voids in 3% of tickets, approvals by request
@@ -55,7 +60,6 @@ Write an automated test, or a written manual test where automation isn't practic
 6. **Power cut on the server.** After a restart, the database is consistent and every settled ticket has its journal entry. There's a UPS recommendation in INSTALL.md.
 7. **The clock is wrong** on a terminal. Server time is used everywhere, and the terminal's clock doesn't matter.
 8. **Two cashiers settle the same ticket,** or **two supervisors approve the same request** (already tested; link the tests here).
-9. **ERPNext is down for a whole day.** The queue grows, nothing else is affected, and everything is sent once it's back.
 
 ## Part D — Training mode
 
@@ -65,16 +69,16 @@ Staff need to practise without touching real sales.
 - **On a training terminal:**
   - A **striped orange band** across the top reads "TRAINING · not real sales".
   - Every slip prints "TRAINING · NOT A RECEIPT" at the top and the bottom.
-- **Where the data goes:** tickets from training terminals go to a **separate training work period**. They're excluded from every report, the ledger, stock, cash-ups and ERPNext. Store them with `IsTraining = true`. Tests prove they never reach those places.
+- **Where the data goes:** tickets from training terminals go to a **separate training work period**. They're excluded from every report, the ledger, stock and cash-ups. Store them with `IsTraining = true`, so any future integration (such as ERPNext sync) can skip them too. Tests prove they never reach those places.
 - **Clearing:** **Clear training data** deletes them, and is audited.
 - **For new hires:** they can use training mode before going live, with **demo-style practice tables**.
 
-## Part E — Pilot plan at Mau's Village (docs)
+## Part E — Pilot plan (docs)
 
-Write `docs/PILOT-MAUS.md` for the owner and NexaGen. It describes, step by step:
+Write `docs/PILOT.md` for NexaGen and each new customer. It's a template, with no customer names: blanks such as `[BUSINESS NAME]` and `[SERVER PC]` are filled in per site. It describes, step by step:
 
 1. **Week 0, setup:**
-    - Install the server on **POSSERVER2**, using the existing SQL Server Express instance with a **separate `TausiPOS` database**. Nothing in SambaPOS is touched.
+    - Install the server on the customer's server PC. If it already runs SQL Server Express for the old POS, use that instance with a **separate `TausiPOS` database**. Nothing in SambaPOS is touched.
     - Import the menu, tables and staff from SambaPOS (Task 14).
     - Set a fixed IP, and check the backups and the second copy.
     - Install terminals **alongside** SambaPOS on Counter A first.
@@ -100,7 +104,7 @@ The doc also includes:
   - **Sev 2:** a workaround exists.
   - **Sev 3:** cosmetic.
 - **Response times** for NexaGen.
-- **A daily check:** backup OK, no failed prints, the ERPNext queue empty (if it's on).
+- **A daily check:** backup OK, and no failed prints.
 
 ## Part F — User guides (short, printable)
 
@@ -115,7 +119,7 @@ In `docs/guides/`, each guide is **one or two A4 pages**, in plain words, with s
 
 - **Version numbers:** set the version to **1.0.0** everywhere (server, terminal, installers, `/health`, the About line).
 - **`CHANGELOG.md`:** a 1.0.0 entry summarising v1's features in plain words.
-- **Release notes draft:** `docs/RELEASE-1.0.0.md`, with what's in v1, the system requirements, the known limits (from the "After v1" list), and how to upgrade from pilot builds.
+- **Release notes draft:** `docs/RELEASE-1.0.0.md`, with what's in v1, the system requirements, the known limits (from the "After v1" list, including ERPNext sync), and how to upgrade from pilot builds.
 - **THIRD-PARTY-NOTICES:** make it complete for every shipped dependency, and add the **full licence texts** to the installers, from the follow-up in R1.
 - **LICENSE:** confirm the wording matches what the owner approved.
 - **Tags:** **Don't tag or publish.** The owner tags `v1.0.0`, which triggers the release workflow (Task 15).
@@ -125,7 +129,7 @@ In `docs/guides/`, each guide is **one or two A4 pages**, in plain words, with s
 - **Load test:** it runs in CI (shortened) and fails on a missed target or any consistency error.
 - **Failure tests:** the automated Part C tests pass.
 - **Dev paths:** each one is refused outside Development.
-- **Training mode:** training data never appears in reports, the ledger, stock, cash-ups or ERPNext, and Clear works.
+- **Training mode:** training data never appears in reports, the ledger, stock or cash-ups, and Clear works.
 - **Business rules:** every rule in `AGENTS.md` is linked to a test in `V1-CHECKLIST.md`.
 - **Screenshots:** the script runs in CI and produces the guide images.
 
@@ -134,9 +138,9 @@ In `docs/guides/`, each guide is **one or two A4 pages**, in plain words, with s
 - [ ] `docs/V1-CHECKLIST.md` covers every design section and wireframe, the small Missing items are fixed, and the larger ones are listed for my decision.
 - [ ] The load test meets every target on SQL Server Express and PostgreSQL, the after-run checker finds 0 differences, and `docs/PERFORMANCE.md` has the numbers.
 - [ ] Every Part C scenario has a passing test, or a written manual test I can follow.
-- [ ] Training mode on Counter A shows the orange band and prints TRAINING, and none of it reaches reports, stock, the ledger or ERPNext.
-- [ ] `docs/PILOT-MAUS.md` and the four guides (with PDFs and screenshots) are ready to print.
+- [ ] Training mode on Counter A shows the orange band and prints TRAINING, and none of it reaches reports, stock, the ledger or cash-ups.
+- [ ] `docs/PILOT.md` and the four guides (with PDFs and screenshots) are ready to print.
 - [ ] The version is 1.0.0 everywhere, and the CHANGELOG, release notes and THIRD-PARTY-NOTICES are complete.
-- [ ] All tests, audits and CI pass. Push `release/17-v1-hardening` and stop.
+- [ ] All tests, audits and CI pass. Push `release/16-v1-hardening` and stop.
 
 When done, report as `AGENTS.md` describes, with the list of larger Missing items needing my decision, the performance numbers, and anything you decided differently from this prompt.
