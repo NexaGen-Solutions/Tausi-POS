@@ -361,6 +361,15 @@ Each entry: date, decision, reason.
 | 2026-10-25 | `cargo audit` ignores RUSTSEC-2026-0367/0368/0369 (zip 4.x, through tauri-plugin-updater 2.14.0, the newest stable, which requires zip ^4): our terminal updates are signed NSIS .exe installers, never .zip, so that extraction never runs (terminal/src-tauri/.cargo/audit.toml). | No fixed updater exists yet; remove the ignores when it moves to zip 9. |
 | 2026-10-25 | Dependency audits in CI: `dotnet list package --vulnerable` (fails on High or Critical), `npm audit --omit=dev --audit-level=high`, `cargo audit` (fails on any advisory: it has no severity filter). | Part H. |
 
+## Brand (task B1)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-10-28 | Product made customer-neutral; demo business is 'Demo Bar'. The demo menu's house water is "House Water 1L", the demo supervisor is SAM (admin-site user `sam`), and examples name the server POS-SERVER. Existing databases keep their business name. `scripts/check-customer-names.mjs` (run in CI, with a self-test) fails on the case-study names anywhere but `docs/prompts/` and this file's history. | Tausi POS is sold to many bars; the first site was a case study. |
+| 2026-10-28 | The terminal app opens a bundled splash (`/splash`: the logo on deep teal, "Connecting to [server]…") once paired, which goes on to the server's `/pos` when `/api/health` answers, and the bundled setup screen at `/connect` otherwise. The window's background is deep teal from the first frame. | The task's splash shows while the app starts and connects. Before, a paired terminal opened the server's page straight away and showed the webview's error page while the server was down; the setup screen opened at `/index.html`, which the router sent to the admin site. |
+| 2026-10-28 | Neutral greys that were written into component CSS (dividers, striped and read-only rows, disabled controls, input edges) became tokens, and a test fails on any colour value outside `tokens.css`. Active map tabs and menu categories are deep teal, as in the wireframes; underline tabs use the gold accent. | "Never use colour names in components": a colour change is one file. |
+| 2026-10-28 | The About page shows the third-party notices in the page (the web build serves `THIRD-PARTY-NOTICES` as `/third-party-notices.txt`), and is reachable at `/admin/about` and, on an unpaired terminal, `/about`. Without a session it says where to see the licence. | The terminal app in kiosk mode has no tabs or back button, and `/api/licence` needs a session. |
+
 ## Follow-ups
 
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.

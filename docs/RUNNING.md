@@ -502,6 +502,12 @@ The app only talks to the server it was paired with. To change the server addres
 In development the window always loads the Vite dev server; the device token is kept in the
 app's store (`tausi.json` in the app data folder).
 
+The installed app opens on its own bundled pages: the setup screen until it is paired, then the
+**splash** (the Tausi logo on deep teal, "Connecting to [server]…"), which opens the server's POS
+screens as soon as `/api/health` answers and keeps trying while the server is down. To see the
+splash in a browser, open <http://localhost:5173/splash> on a paired browser. **About Tausi POS** is
+at `/admin/about` (the admin footer) and `/about` (the terminal's setup screen).
+
 ### Upgrading from the Nexagen POS names
 
 The product was renamed from Nexagen POS to Tausi POS. Installs set up with the old names keep
@@ -581,6 +587,25 @@ The backup tests need `pg_dump` and `pg_restore` (PostgreSQL 16's). Without them
 them in the `postgres:16` Docker image. The terminal app: `cd terminal/src-tauri && cargo test`.
 The installers are tested in CI on Windows (`installer/windows/test-install.ps1`) and the Linux
 package on Ubuntu 24.04 (the `linux-package` job runs `install.sh --with-postgres` for real).
+
+Brand checks: `node --test tools/brand/icons.test.mjs` (icon sizes and references),
+`node scripts/check-customer-names.mjs` (no case-study customer names), and the colour contrast
+test in `npm test` (`web/src/shared/ui/tokens.test.ts`). docs/BRAND.md says how to rebuild the icons.
+
+**Screenshots.** The CI `screenshots` job captures the main screens (PIN, table map, order, settle,
+setup wizard, pairing, splash, admin pages, About) and uploads them as the `screenshots` artifact.
+They are for a person to look at, not compared. To take them locally, against a server whose
+database is new (not set up), with the web app built (`cd web && npm run build`):
+
+```bash
+cd tools/screenshots && npm ci && npx playwright install chromium
+WEB_URL=http://localhost:5080 SETUP_TOKEN_FILE=../../server/src/Tausi.Api/data/setup-token.txt node capture.mjs fresh
+# stop the server, run `seed --demo` (save its output), start the server again, then:
+WEB_URL=http://localhost:5080 SEED_OUTPUT=seed.txt TAUSI_ADMIN_PASSWORD=... node capture.mjs demo
+```
+
+The pictures land in `tools/screenshots/out/`. The demo run pairs the browser as Counter A,
+replacing any earlier pairing.
 
 ## 5. SQL Server
 
