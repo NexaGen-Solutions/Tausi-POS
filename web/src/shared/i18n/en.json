@@ -197,7 +197,8 @@
       "giftBadge": "Gift",
       "voided": "Voided",
       "priceChanged": "Price changed",
-      "subtotal": "Subtotal"
+      "subtotal": "Subtotal",
+      "notSent": "Not connected: {item} was not added. Add it again when the connection is back."
     },
     "actions": {
       "quantity": "Quantity",
@@ -1576,7 +1577,8 @@
       "clearText": "This deletes every training ticket, payment and shift. Real sales are not touched. It can't be undone.",
       "cleared": "Training data cleared: {tickets} tickets.",
       "link": "Training mode"
-    }
+    },
+    "diskLow": "The server's disk is nearly full ({free} free). Free some space on the server PC soon: when it is full, nothing can be saved and backups fail."
   },
   "permissions": {
     "order.add": "Add orders",
@@ -1830,7 +1832,9 @@
     "restoring": "Server is restoring a backup",
     "restoringHelp": "This screen comes back by itself when it is done.",
     "updating": "Updating, please wait",
-    "updatingHelp": "This terminal is getting the version that matches the server. It restarts by itself."
+    "updatingHelp": "This terminal is getting the version that matches the server. It restarts by itself.",
+    "busy": "Server busy, retrying…",
+    "busyHelp": "The server can't reach its database for the moment. Nothing you did is lost; this goes away by itself."
   },
   "recover": {
     "title": "Reset an admin password",

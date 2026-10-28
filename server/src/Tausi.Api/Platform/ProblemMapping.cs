@@ -36,6 +36,7 @@ public sealed class ProblemMapping(IProblemDetailsService problems, ILogger<Prob
             DomainException { Code: { } code } e => Problem(400, "Invalid request", e.Message, ("code", code)),
             DomainException e => Problem(400, "Invalid request", e.Message),
             BadHttpRequestException e => Problem(400, "Invalid request", e.Message),
+            _ when Unavailable.Reason(exception) is { } reason => Busy(http, reason),
             _ => null,
         };
         if (problem is null)
@@ -46,6 +47,16 @@ public sealed class ProblemMapping(IProblemDetailsService problems, ILogger<Prob
 
         http.Response.StatusCode = problem.Status!.Value;
         return await problems.TryWriteAsync(new ProblemDetailsContext { HttpContext = http, ProblemDetails = problem, Exception = exception });
+    }
+
+    /// <summary>503: the database can't be reached, or the disk is full. Nothing was half-saved (each write is one transaction).</summary>
+    private ProblemDetails Busy(HttpContext http, string reason)
+    {
+        http.Response.Headers.RetryAfter = Unavailable.RetryAfter.ToString();
+        log.LogWarning("{Method} {Path} answered 503: {Reason}", http.Request.Method, http.Request.Path, reason);
+        return reason == Unavailable.DiskFull
+            ? Problem(503, "Disk full", "The server's disk is full, so nothing can be saved. Free some space on the server PC, or call NexaGen.", ("code", reason))
+            : Problem(503, "Server busy", "The server can't reach its database. Retrying…", ("code", reason));
     }
 
     private static ProblemDetails Locked(HttpContext http, LoginLockedException e)

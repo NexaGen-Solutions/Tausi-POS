@@ -25,6 +25,7 @@ public class DevelopmentOnlyCommandsTests
     [InlineData("backup")]
     [InlineData("reset-admin")]
     [InlineData("configure")]
+    [InlineData("check")]
     public void Commands_an_installed_server_needs_are_never_refused(string command)
     {
         Commands.RefusedOutsideDevelopment(command.Split(' '), development: false).Should().BeNull();

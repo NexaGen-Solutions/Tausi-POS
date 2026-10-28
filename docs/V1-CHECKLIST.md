@@ -203,3 +203,9 @@ Each is refused on an installed server (anything but Development), with a test:
 | `Tausi:Test:FailMigration` | **Done differently:** the installer's rollback test needs it in Production. It is off unless written into the settings file by hand, and only the test build's settings file has it. |
 
 `seed` without `--demo` (roles, permissions, ledger accounts) stays: it changes nothing an install hasn't already got.
+
+## Failure tests
+
+Each "what if" in task 16, Part C, with its automated tests and a manual test, is in
+[FAILURE-TESTS.md](FAILURE-TESTS.md). After any of them, `TausiServer check` must say "Everything agrees".
+

@@ -43,6 +43,10 @@ public static class SystemEndpoints
         app.MapGet("/api/health", Get).WithTags("System").RequireCors(CorsSetup.TerminalApp);
         app.MapGet("/health", Get).WithTags("System");
 
+        // Settings → System → Check the data: the books, settled tickets and stock agree (settings.manage).
+        app.MapGet("/api/admin/system/check", (Tausi.Application.Support.ConsistencyCheck check, CancellationToken ct) => check.RunAsAdmin(ct))
+            .WithTags("System").RequireAuthorization();
+
         // Settings → System → Download diagnostics: a zip for NexaGen support (settings.manage, audited).
         app.MapGet("/api/admin/system/diagnostics", async (
             Tausi.Application.Support.Diagnostics diagnostics, TausiDbContext db, IBackupEngine backups, LicenceService licences,

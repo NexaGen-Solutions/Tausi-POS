@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<Updates.ServerUpdates>();
         services.AddScoped<Setup.AdminRecovery>();
         services.AddScoped<Support.Diagnostics>();
+        services.AddScoped<Support.ConsistencyCheck>();
         services.AddScoped<Settings.TrainingAdmin>();
         services.AddScoped<Updates.TerminalUpdateFeed>();
         services.TryAddSingleton(new Setup.LicenceOptions(AcceptTestKey: false));

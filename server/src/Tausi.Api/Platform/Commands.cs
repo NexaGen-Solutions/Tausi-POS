@@ -13,6 +13,7 @@ namespace Tausi.Api.Platform;
 /// when they are empty, the demo menu, tables and a few open tickets; <c>seed --demo-menu</c> adds
 /// only the demo menu; <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their
 /// next login; <c>close-day</c> closes the open day without a cash-up, for testing;
+/// <c>check</c> checks the books, settled tickets and stock agree;
 /// <c>reset --confirm</c> (Development only) empties the database so the next start is a new install.
 /// </summary>
 public static class Commands
@@ -72,6 +73,9 @@ public static class Commands
                 return true;
             case "require-pin-change":
                 await RequirePinChange(app, args.Skip(1).FirstOrDefault());
+                return true;
+            case "check":
+                Environment.ExitCode = await Check(app) ? 0 : 1;
                 return true;
             case "close-day":
                 await CloseDay(app);
@@ -140,6 +144,21 @@ public static class Commands
             Console.WriteLine($"Set {Seeder.AdminPasswordVariable} and run the seed again to give Administrator (user name: admin) an admin-site password.");
         else
             Console.WriteLine("Admin site: user name 'admin' with the password from " + Seeder.AdminPasswordVariable + ".");
+    }
+
+    /// <summary>
+    /// <c>check</c>: the books balance, settled tickets are paid with one sale entry each, stock matches its
+    /// movements (after a power cut, or for support). Reads only; exit code 1 when something is off.
+    /// </summary>
+    private static async Task<bool> Check(WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var report = await scope.ServiceProvider.GetRequiredService<Tausi.Application.Support.ConsistencyCheck>().Run(CancellationToken.None);
+        Console.WriteLine($"Checked {report.SettledTickets} settled tickets and {report.JournalEntries} journal entries " +
+                          $"(debit {report.TotalDebit:0.00}, credit {report.TotalCredit:0.00}).");
+        foreach (var problem in report.Problems) Console.WriteLine($"  {problem.Area}: {problem.Detail}");
+        Console.WriteLine(report.Ok ? "Everything agrees." : $"{report.Problems.Count} problem(s) found.");
+        return report.Ok;
     }
 
     /// <summary>Demo tickets need an open day; say so when none is open.</summary>

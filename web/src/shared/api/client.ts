@@ -1,6 +1,11 @@
 import { deviceToken } from '../device/device';
 import { updateConnection } from '../connection/status';
-import { clientVersion, setServerMode, setServerVersion } from '../connection/serverState';
+import {
+  clientVersion,
+  serverMode,
+  setServerMode,
+  setServerVersion,
+} from '../connection/serverState';
 import { endPinSession, pinSession, touchSession } from '../session/session';
 import { newRequestId } from './requestId';
 
@@ -150,12 +155,15 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       location.assign('/setup');
     // A backup is being restored, or this terminal app is too old for the server: say so over everything.
     if (problem.status === 503 && problem.code === 'server_restoring') setServerMode('restoring');
+    // The database is unreachable for a while: "Server busy, retrying" until it answers again.
+    if (problem.status === 503 && problem.code === 'server_busy') setServerMode('busy');
     if (problem.status === 426 && problem.code === 'terminal_update_required')
       setServerMode('updating');
     // The server ended this PIN session (idle, logged out elsewhere, too old): back to the PIN pad.
     if (problem.status === 401 && problem.code === 'session_expired') endPinSession('expired');
     throw new ApiError(problem);
   }
+  if (serverMode() === 'busy') setServerMode('normal');
   if (response.status === 204) return undefined as T;
   const type = response.headers.get('content-type') ?? '';
   return (type.includes('json') ? await response.json() : await response.text()) as T;
