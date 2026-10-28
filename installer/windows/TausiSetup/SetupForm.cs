@@ -15,16 +15,17 @@ namespace Tausi.Setup
     /// </summary>
     public sealed class SetupForm : Form
     {
-        private static readonly Color Ground = ColorTranslator.FromHtml("#F4F4F2");
-        private static readonly Color Primary = ColorTranslator.FromHtml("#B34A0C");
-        private static readonly Color Dark = ColorTranslator.FromHtml("#1C1C1C");
+        private static readonly Color Ground = ColorTranslator.FromHtml("#F6F1E4");
+        private static readonly Color Primary = ColorTranslator.FromHtml("#0E6670");
+        private static readonly Color Dark = ColorTranslator.FromHtml("#0A4A52");
         private static readonly Color Muted = ColorTranslator.FromHtml("#5C5C58");
         private static readonly Color WarningTint = ColorTranslator.FromHtml("#FBE7DA");
         private static readonly Color WarningText = ColorTranslator.FromHtml("#8A3708");
 
         private readonly TausiBootstrapper _ba;
         private readonly Panel _body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24, 16, 24, 8), BackColor = Ground };
-        private readonly Label _title = new Label { Dock = DockStyle.Top, Height = 56, Font = new Font("Segoe UI Semibold", 15f), ForeColor = Color.White, BackColor = Dark, Padding = new Padding(24, 0, 0, 0), TextAlign = ContentAlignment.MiddleLeft };
+        private readonly Panel _header = new Panel { Dock = DockStyle.Top, Height = 58, BackColor = Dark };
+        private readonly Label _title = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI Semibold", 14f), ForeColor = ColorTranslator.FromHtml("#F6F1E4"), BackColor = Dark, Padding = new Padding(0, 0, 24, 0), TextAlign = ContentAlignment.MiddleRight };
         private readonly FlowLayoutPanel _buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 64, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(16, 12, 16, 12), BackColor = Ground };
         private readonly Button _next = Primary_("Next");
         private readonly Button _back = Secondary("Back");
@@ -66,9 +67,13 @@ namespace Tausi.Setup
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch (ArgumentException) { }
 
             _buttons.Controls.AddRange(new Control[] { _next, _back, _cancel });
+            // The banner (made by tools/brand/build-icons.mjs): the Tausi mark and name on deep teal.
+            var banner = Picture("banner.png");
+            _header.Controls.Add(_title);
+            if (banner != null) _header.Controls.Add(new PictureBox { Image = banner, Dock = DockStyle.Left, Width = 260, SizeMode = PictureBoxSizeMode.Normal, BackColor = Dark });
             Controls.Add(_body);
             Controls.Add(_buttons);
-            Controls.Add(_title);
+            Controls.Add(_header);
             _next.Click += (s, e) => _onNext?.Invoke();
             _back.Click += (s, e) => _onBack?.Invoke();
             _cancel.Click += (s, e) => Close();
@@ -113,6 +118,9 @@ namespace Tausi.Setup
             var accept = new CheckBox { Text = "I accept the licence agreement", Dock = DockStyle.Bottom, Height = 36 };
             accept.CheckedChanged += (s, e) => _next.Enabled = accept.Checked;
             Page(_ba.UpgradingFrom != null ? "Upgrade Tausi POS Server" : "Welcome", Text_(intro, 72), licence, accept);
+            // The full logo on its deep teal panel, beside the welcome (the left part of dialog.png).
+            var dialog = Picture("dialog.png");
+            if (dialog != null) _body.Controls.Add(new PictureBox { Image = dialog, Dock = DockStyle.Left, Width = 200, SizeMode = PictureBoxSizeMode.Normal, BackColor = Dark, Margin = new Padding(0, 0, 16, 0) });
             _back.Visible = false;
             _next.Text = _ba.UpgradingFrom != null ? "Upgrade" : "Next";
             _next.Enabled = false;
@@ -444,6 +452,12 @@ namespace Tausi.Setup
 
         private static Button Secondary(string text) =>
             new Button { Text = text, AutoSize = true, MinimumSize = new Size(100, 40), BackColor = Color.White, FlatStyle = FlatStyle.Flat, Margin = new Padding(8, 0, 0, 0) };
+
+        private static Image Picture(string name)
+        {
+            var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(name);
+            return stream == null ? null : Image.FromStream(stream);
+        }
 
         private static string Licence()
         {
