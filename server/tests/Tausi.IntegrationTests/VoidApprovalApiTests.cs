@@ -22,7 +22,7 @@ public class VoidApprovalApiTests(TicketsApp app) : IAsyncLifetime
         {
             if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
             var supervisor = await app.PairTerminal();
-            await supervisor.LoginWithPin(app.Pins["MAU"]);
+            await supervisor.LoginWithPin(app.Pins["SAM"]);
             (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
         }
         finally
@@ -95,7 +95,7 @@ public class VoidApprovalApiTests(TicketsApp app) : IAsyncLifetime
         (await own.Json()).GetProperty("code").GetString().Should().Be("own_request");
 
         var token = (await Ok(await edna.Http.PostAsJsonAsync("/api/auth/approve",
-            new { pin = app.Pins["MAU"], permissionKey = "order.void" }))).GetProperty("approvalToken").GetString();
+            new { pin = app.Pins["SAM"], permissionKey = "order.void" }))).GetProperty("approvalToken").GetString();
         // The failed try wasn't stored, so the same key runs again with the token.
         var voided = await Ok(await edna.Http.SendAsync(VoidRequest(ticket, line, key, token)));
         voided.GetProperty("total").GetDecimal().Should().Be(250m);
@@ -109,7 +109,7 @@ public class VoidApprovalApiTests(TicketsApp app) : IAsyncLifetime
 
         var log = app.Db(db => db.VoidLogs.Single(v => v.TicketId == ticket));
         log.RequestedByUserId.Should().Be(app.Db(db => db.Users.Single(u => u.Name == "edna").Id));
-        log.ApprovedByUserId.Should().Be(app.Db(db => db.Users.Single(u => u.Name == "MAU").Id));
+        log.ApprovedByUserId.Should().Be(app.Db(db => db.Users.Single(u => u.Name == "SAM").Id));
         app.Db(db => db.AuditEntries.Count(a => a.Action == AuditActions.LineVoided && a.EntityId == ticket.ToString())).Should().Be(1);
         app.Db(db => db.PrintJobs.Count(j => j.TicketId == ticket && j.Kind == Domain.Printing.PrintJobKind.Void)).Should().Be(1);
     }
@@ -117,43 +117,43 @@ public class VoidApprovalApiTests(TicketsApp app) : IAsyncLifetime
     [Fact]
     public async Task A_request_is_listed_for_approvers_and_two_supervisors_approving_at_once_make_one_void()
     {
-        var mau = await On("MAU");
+        var sam = await On("SAM");
         var admin = await On("Administrator");
         var edna = await On("edna");
         var (ticket, line) = await PrintedTusker(edna, "4");
 
         var approvers = await Ok(await edna.Http.GetAsync("/api/pos/approvals/approvers?kind=Void"));
-        approvers.EnumerateArray().Select(a => a.GetProperty("name").GetString()).Should().Contain(["MAU", "Administrator"]).And.NotContain("edna");
+        approvers.EnumerateArray().Select(a => a.GetProperty("name").GetString()).Should().Contain(["SAM", "Administrator"]).And.NotContain("edna");
 
         var request = await Ok(await edna.Http.PostAsJsonAsync("/api/pos/approvals", new
         {
             kind = "Void", ticketId = ticket, lineId = line,
             payload = new { quantity = 1, reason = "Wrong item" },
-            preferredApproverId = app.Db(db => db.Users.Single(u => u.Name == "MAU").Id),
+            preferredApproverId = app.Db(db => db.Users.Single(u => u.Name == "SAM").Id),
         }));
         var id = request.GetProperty("id").GetGuid();
         request.GetProperty("status").GetString().Should().Be("Pending");
 
-        var forMau = await Ok(await mau.Http.GetAsync("/api/pos/approvals?status=pending"));
-        forMau.EnumerateArray().Single(r => r.GetProperty("id").GetGuid() == id).GetProperty("sentToMe").GetBoolean().Should().BeTrue();
+        var forSam = await Ok(await sam.Http.GetAsync("/api/pos/approvals?status=pending"));
+        forSam.EnumerateArray().Single(r => r.GetProperty("id").GetGuid() == id).GetProperty("sentToMe").GetBoolean().Should().BeTrue();
         var detail = await Ok(await edna.Http.GetAsync($"/api/pos/tickets/{ticket}"));
         detail.GetProperty("lines")[0].GetProperty("pending").GetProperty("kind").GetString().Should().Be("Void");
 
         var results = await Task.WhenAll(
-            mau.Http.PostAsync($"/api/pos/approvals/{id}/approve", null),
+            sam.Http.PostAsync($"/api/pos/approvals/{id}/approve", null),
             admin.Http.PostAsync($"/api/pos/approvals/{id}/approve", null));
 
         results.Select(r => r.StatusCode).Should().BeEquivalentTo([HttpStatusCode.OK, HttpStatusCode.Conflict]);
         app.Db(db => db.VoidLogs.Count(v => v.TicketId == ticket)).Should().Be(1);
         app.Db(db => db.OrderLines.Count(l => l.TicketId == ticket && l.Status == OrderLineStatus.Voided)).Should().Be(1);
-        var decided = await Ok(await mau.Http.GetAsync("/api/pos/approvals?status=decided"));
+        var decided = await Ok(await sam.Http.GetAsync("/api/pos/approvals?status=decided"));
         decided.EnumerateArray().Should().Contain(r => r.GetProperty("id").GetGuid() == id && r.GetProperty("status").GetString() == "Approved");
     }
 
     [Fact]
     public async Task Reject_and_cancel_over_http()
     {
-        var mau = await On("MAU");
+        var sam = await On("SAM");
         var edna = await On("edna");
         var (ticket, line) = await PrintedTusker(edna, "6");
         async Task<Guid> Ask() => (await Ok(await edna.Http.PostAsJsonAsync("/api/pos/approvals", new
@@ -162,12 +162,12 @@ public class VoidApprovalApiTests(TicketsApp app) : IAsyncLifetime
         }))).GetProperty("id").GetGuid();
 
         var first = await Ask();
-        var rejected = await Ok(await mau.Http.PostAsJsonAsync($"/api/pos/approvals/{first}/reject", new { note = "Already poured" }));
+        var rejected = await Ok(await sam.Http.PostAsJsonAsync($"/api/pos/approvals/{first}/reject", new { note = "Already poured" }));
         rejected.GetProperty("status").GetString().Should().Be("Rejected");
         rejected.GetProperty("decisionNote").GetString().Should().Be("Already poured");
 
         var second = await Ask();
-        (await mau.Http.PostAsync($"/api/pos/approvals/{second}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await sam.Http.PostAsync($"/api/pos/approvals/{second}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await Ok(await edna.Http.PostAsync($"/api/pos/approvals/{second}/cancel", null))).GetProperty("status").GetString().Should().Be("Cancelled");
 
         (await Ok(await edna.Http.GetAsync($"/api/pos/tickets/{ticket}"))).GetProperty("total").GetDecimal().Should().Be(500m);

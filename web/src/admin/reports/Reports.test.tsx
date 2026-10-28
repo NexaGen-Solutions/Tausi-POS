@@ -75,7 +75,7 @@ const options: ReportOptions = {
   ],
   users: [
     { id: 'u-edna', name: 'edna', detail: 'Waiter' },
-    { id: 'u-mau', name: 'MAU', detail: 'Supervisor' },
+    { id: 'u-sam', name: 'SAM', detail: 'Supervisor' },
   ],
   terminals: [{ id: 't-a', name: 'Counter A', detail: null }],
   locations: [],
@@ -131,7 +131,7 @@ function salesByUser(): ReportResult {
             footer: ['Tickets 54 · Gifts 0 (KSh 0)'],
           },
           {
-            title: 'MAU',
+            title: 'SAM',
             subtitle: 'Supervisor',
             total: 550,
             rows: [row(2001, 'Heineken', 300), row(2002, 'GK Smooth', 250)],
@@ -210,7 +210,7 @@ const ticket: TicketReport = {
       addedAt: '2026-10-24T19:00:00Z',
       printRound: 1,
       printedAt: '2026-10-24T19:01:00Z',
-      voidedBy: 'MAU',
+      voidedBy: 'SAM',
       voidedAt: '2026-10-24T19:30:00Z',
       voidReason: 'Wrong item',
       cancelledBy: null,
@@ -226,7 +226,7 @@ const ticket: TicketReport = {
       printer: 'Bar printer',
       at: '2026-10-24T19:30:00Z',
       sentAt: '2026-10-24T19:30:01Z',
-      by: 'MAU',
+      by: 'SAM',
       status: 'Sent',
       reprint: false,
       text: '*** VOID ***\n1 x Guiness\nWrong item',
@@ -239,7 +239,7 @@ const ticket: TicketReport = {
       printer: 'Counter printer',
       at: '2026-10-24T19:31:00Z',
       sentAt: null,
-      by: 'MAU',
+      by: 'SAM',
       status: 'Sent',
       reprint: false,
       text: null,
@@ -273,7 +273,7 @@ const ticket: TicketReport = {
       at: '2026-10-24T19:30:00Z',
       kind: 'Void',
       text: '1 × Guiness voided, KSh 270 · Wrong item · poured',
-      by: 'edna, approved by MAU',
+      by: 'edna, approved by SAM',
       ref: 'l1',
     },
     {
@@ -312,7 +312,7 @@ describe('Reports', () => {
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
         'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
         'GET /api/admin/reports': () => json(200, reports),
         'GET /api/admin/reports/options': () => json(200, options),
         'POST /api/admin/reports/sales-by-user/run': () => json(200, salesByUser()),
@@ -492,7 +492,7 @@ describe('Reports', () => {
     ]);
     const lines = screen.getByRole('table', { name: 'Lines' });
     expect(within(lines).getByText('Voided')).toBeInTheDocument();
-    expect(within(lines).getByText('Voided: Wrong item (MAU)')).toBeInTheDocument();
+    expect(within(lines).getByText('Voided: Wrong item (SAM)')).toBeInTheDocument();
 
     const prints = screen.getByRole('table', { name: 'Prints' });
     expect(within(prints).getByText('Slip text no longer kept')).toBeInTheDocument();

@@ -37,7 +37,7 @@ Windows: Settings → Network → Ethernet → IP assignment → Edit → Manual
      Express and sets it up for Tausi POS (instance `TAUSI`). No internet on the server? You'll be asked
      for the SQL Server Express installer file (`SQLEXPR_x64_ENU.exe`) from a USB drive.
    - **Use an existing SQL Server**: for PCs that already have one (for example the SQL Server Express
-     that SambaPOS installed on POSSERVER2). Enter the server or instance (`.\SQLEXPRESS`), choose Windows
+     that SambaPOS installed on POS-SERVER). Enter the server or instance (`.\SQLEXPRESS`), choose Windows
      sign-in or a SQL login, and press **Test connection**. Tausi POS creates its **own** database,
      `TausiPOS`, and never touches the others (SambaPOS's stays as it is).
    - **Use PostgreSQL**: for technicians who prefer it. Host, port, user and password.
@@ -190,7 +190,7 @@ left off. Tick **Also delete all data** and type the business name to delete eve
 undone: download a backup first).
 
 Silent: `TausiPOS-Server-Setup.exe /uninstall /quiet` (keeps the data;
-add `DELETEDATA=1 BUSINESSNAME="Mau's Village"` to delete it).
+add `DELETEDATA=1 BUSINESSNAME="Demo Bar"` to delete it).
 
 The terminal: Settings → Apps → **Tausi POS** → Uninstall, or `"C:\Program Files\Tausi POS\Terminal\uninstall.exe" /S`.
 

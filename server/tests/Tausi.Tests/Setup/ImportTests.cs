@@ -151,7 +151,7 @@ public class ImportTests : ApprovalsFixtureBase
         [],
         ["OrderTagMaps: no TerminalId column, skipped."]);
 
-    private static readonly SambaImportRequest Everything = new(new SambaPosConnection("POSSERVER2\\SQLEXPRESS", "SambaPOS5", true, null, null), null);
+    private static readonly SambaImportRequest Everything = new(new SambaPosConnection("POS-SERVER\\SQLEXPRESS", "SambaPOS5", true, null, null), null);
 
     [Fact]
     public async Task SambaPos_items_portions_price_tags_order_tags_tables_and_users_come_across_once()

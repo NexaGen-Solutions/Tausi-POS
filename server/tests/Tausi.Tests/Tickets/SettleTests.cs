@@ -24,9 +24,9 @@ public class SettleTests : ApprovalsFixtureBase
     /// </summary>
     private async Task<TicketDetailDto> Table7ForCarol(string table = "7")
     {
-        await F.Db.MenuItems.Where(i => i.Name == "Mau's Water 1L")
+        await F.Db.MenuItems.Where(i => i.Name == "House Water 1L")
             .ExecuteUpdateAsync(u => u.SetProperty(i => i.VatExempt, true).SetProperty(i => i.VatRate, 0m));
-        var ticket = await Printed(table, ("Tusker Lager", 2), ("Guiness", 1), ("Mau's Water 1L", 1), ("Sodas 300ml", 2), ("Pineapple Punch", 1));
+        var ticket = await Printed(table, ("Tusker Lager", 2), ("Guiness", 1), ("House Water 1L", 1), ("Sodas 300ml", 2), ("Pineapple Punch", 1));
         ticket.Total.Should().Be(1370m);
         await F.LoginOn("CAROL", "Counter A");
         await TakeLock(ticket.Id);
@@ -177,14 +177,14 @@ public class SettleTests : ApprovalsFixtureBase
             .Where(e => e.Code == SettleCodes.Unprinted && e.Message == "2 items haven't been printed.");
         await F.Get<PrintTicket>().Print(ticket.Id, None);
 
-        // edna asks MAU for a void: the ticket waits for it.
-        var mau = await F.LoginOn("MAU", "Counter B");
+        // edna asks SAM for a void: the ticket waits for it.
+        var sam = await F.LoginOn("SAM", "Counter B");
         await F.LoginOn("edna", "Pillar 1");
-        await Request(ApprovalKind.Void, ticket.Id, LineOf(await Detail(ticket.Id), "Guiness"), new VoidLineRequest(1, "Wrong item"), mau.UserId);
+        await Request(ApprovalKind.Void, ticket.Id, LineOf(await Detail(ticket.Id), "Guiness"), new VoidLineRequest(1, "Wrong item"), sam.UserId);
         await F.LoginOn("CAROL", "Counter A");
         await TakeLock(ticket.Id);
         await FluentActions.Awaiting(() => Settle(ticket.Id)).Should().ThrowAsync<ConflictException>()
-            .Where(e => e.Code == ApprovalCodes.RequestsPending && e.Message == "Waiting for MAU to approve a void on Guiness.");
+            .Where(e => e.Code == ApprovalCodes.RequestsPending && e.Message == "Waiting for SAM to approve a void on Guiness.");
         F.Ticket(ticket.Number).Status.Should().Be(TicketStatus.Open);
     }
 
@@ -219,7 +219,7 @@ public class SettleTests : ApprovalsFixtureBase
     public async Task Nearest_shilling_rounding_is_stored_and_posted_to_the_rounding_account()
     {
         var ticket = await Table7ForCarol();
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Discount(ticket.Id, DiscountKind.Percent, 7m, "Promotion"); // 1,370 - 95.90 = 1,274.10
         await F.LoginOn("CAROL", "Counter A");
@@ -243,7 +243,7 @@ public class SettleTests : ApprovalsFixtureBase
     {
         await F.Db.BusinessSettings.ExecuteUpdateAsync(u => u.SetProperty(b => b.Rounding, RoundingRule.None));
         var ticket = await Table7ForCarol();
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Discount(ticket.Id, DiscountKind.Percent, 7m, "Promotion");
         await F.LoginOn("CAROL", "Counter A");
@@ -267,7 +267,7 @@ public class SettleTests : ApprovalsFixtureBase
         var ticket = await Table7ForCarol();
         if (kind is "discount" or "gift" or "void")
         {
-            await F.LoginOn("MAU", "Counter A");
+            await F.LoginOn("SAM", "Counter A");
             await TakeLock(ticket.Id);
             var tusker = LineOf(ticket, "Tusker Lager");
             if (kind == "discount") await Discount(ticket.Id, DiscountKind.Amount, 137m, "Regular customer");
@@ -364,7 +364,7 @@ public class SettleTests : ApprovalsFixtureBase
         await F.SetPermission("Waiter", PermissionKeys.TicketSettle, PermissionValue.NeedsApproval);
         (await F.Get<IPermissionService>().Check(F.Session.User!, PermissionKeys.TicketSettle, None)).Should().Be(PermissionValue.NotAllowed);
 
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.TicketSettle, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.TicketSettle, "SAM");
         await FluentActions.Awaiting(() => Pay(ticket.Id, PaymentType.Card, 300m)).Should().ThrowAsync<PermissionDeniedException>();
         await FluentActions.Awaiting(() => Settle(ticket.Id)).Should().ThrowAsync<PermissionDeniedException>();
     }
@@ -391,7 +391,7 @@ public class SettleTests : ApprovalsFixtureBase
     {
         var ticket = await Table7ForCarol();
         await Pay(ticket.Id, PaymentType.Cash, tendered: 1000m);
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
 
         var refused = await FluentActions.Awaiting(() => F.Get<CloseWorkPeriod>().Execute(None)).Should().ThrowAsync<OpenTicketsException>();
         refused.Which.Tickets.Single().Should().Be(new OpenTicketDto(ticket.Id, ticket.Number, "Table 7", "edna", 1370m, 1000m));
@@ -404,13 +404,13 @@ public class SettleTests : ApprovalsFixtureBase
         await TakeLock(ticket.Id);
         await Pay(ticket.Id, PaymentType.Cash, tendered: 370m);
         await Settle(ticket.Id);
-        // CAROL counts her drawer and MAU signs her shift off.
+        // CAROL counts her drawer and SAM signs her shift off.
         var shift = (await F.Get<Tausi.Application.Cash.ShiftQueries>().Current(None)).Shift!;
         await F.Get<Tausi.Application.Cash.CountShift>().Execute(shift.Id,
             new Tausi.Application.Cash.CountShiftRequest(new Tausi.Application.Cash.CashCount(Total: 1370m)), None);
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.DayOpenClose, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.DayOpenClose, "SAM");
         await F.Get<Tausi.Application.Cash.CloseShift>().Execute(shift.Id, None);
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         (await F.Get<CloseWorkPeriod>().Execute(None)).Should().NotBeNull();
         F.Read().WorkPeriods.Should().OnlyContain(w => !w.IsOpen);
     }
@@ -421,7 +421,7 @@ public class SettleTests : ApprovalsFixtureBase
         var ticket = await Printed("7", ("Guiness", 1));
         await FluentActions.Awaiting(() => F.Get<CloseEmptyTicket>().Execute(ticket.Id, None)).Should().ThrowAsync<PermissionDeniedException>();
 
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await FluentActions.Awaiting(() => F.Get<CloseEmptyTicket>().Execute(ticket.Id, None)).Should().ThrowAsync<DomainException>()
             .WithMessage("*still has items*");
         await TakeLock(ticket.Id);

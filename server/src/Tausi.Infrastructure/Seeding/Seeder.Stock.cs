@@ -26,7 +26,7 @@ public sealed partial class Seeder
         string Name, StockCategory Category, StockUnit Unit, (string Name, decimal Factor)[] Packs, string CostPack, decimal PackCost,
         decimal Store, decimal Bar, decimal? BarReorder);
 
-    /// <summary>Mau's stock, in base units, with the cost of one pack (or one base unit when the pack is "").</summary>
+    /// <summary>The demo stock, in base units, with the cost of one pack (or one base unit when the pack is "").</summary>
     private static readonly DemoStock[] DemoItems =
     [
         new("Tusker Lager", StockCategory.Beer, StockUnit.Bottle, [("crate", 25)], "crate", 2500, 250, 50, 24),
@@ -38,7 +38,7 @@ public sealed partial class Seeder
         new("Viceroy 375ml", StockCategory.Spirits, StockUnit.Ml, [("bottle", 375), ("carton", 9000)], "bottle", 600, 9000, 1125, 750),
         new("Gilbeys 350ml", StockCategory.Spirits, StockUnit.Ml, [("bottle", 350), ("carton", 8400)], "bottle", 550, 8400, 700, 1050),
         new("Sodas 300ml", StockCategory.SoftDrinks, StockUnit.Bottle, [("crate", 24)], "crate", 1200, 120, 24, 24),
-        new("Mau's Water 1L", StockCategory.SoftDrinks, StockUnit.Bottle, [("pack", 12)], "pack", 480, 48, 12, 12),
+        new("House Water 1L", StockCategory.SoftDrinks, StockUnit.Bottle, [("pack", 12)], "pack", 480, 48, 12, 12),
         new("Pineapple Punch mix", StockCategory.SoftDrinks, StockUnit.Ml, [("litre", 1000), ("jerrycan", 5000)], "litre", 200, 20000, 5000, 3000),
         new("Delmonte", StockCategory.SoftDrinks, StockUnit.Piece, [("pack", 12)], "pack", 2400, 24, 6, 6),
     ];
@@ -50,7 +50,7 @@ public sealed partial class Seeder
         ("Balozi Lager", "Balozi Lager", 1, "bottle"), ("Heineken", "Heineken", 1, "bottle"), ("Faxe Can", "Faxe Can", 1, "can"),
         ("Viceroy 375ml", "Viceroy 375ml", 1, "bottle"), ("Viceroy Tot", "Viceroy 375ml", 25, "ml"),
         ("Gilbeys 350ml", "Gilbeys 350ml", 1, "bottle"), ("Gilbeys Tot", "Gilbeys 350ml", 25, "ml"),
-        ("Sodas 300ml", "Sodas 300ml", 1, "bottle"), ("Mau's Water 1L", "Mau's Water 1L", 1, "bottle"),
+        ("Sodas 300ml", "Sodas 300ml", 1, "bottle"), ("House Water 1L", "House Water 1L", 1, "bottle"),
         ("Pineapple Punch", "Pineapple Punch mix", 300, "ml"), ("Delmonte", "Delmonte", 1, "piece"),
     ];
 
@@ -103,8 +103,8 @@ public sealed partial class Seeder
         if (!await db.Suppliers.AnyAsync(ct))
             db.Suppliers.Add(new Supplier { Name = "KBL", Phone = "0711 000 000", Notes = "Kenya Breweries: beers." });
 
-        // The opening counts, approved by the Administrator after MAU counted.
-        var mau = await db.Users.Where(u => u.Name == "MAU").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
+        // The opening counts, approved by the Administrator after SAM counted.
+        var sam = await db.Users.Where(u => u.Name == "SAM").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         var admin = await db.Users.Where(u => u.Name == "Administrator").Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         var now = (clock ?? TimeProvider.System).GetUtcNow();
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Code, a => a.Id, ct);
@@ -113,7 +113,7 @@ public sealed partial class Seeder
             var count = new StockCount
             {
                 LocationId = location.Id, Kind = StockCountKind.Full, IsOpening = true, Status = StockCountStatus.Approved, AsAt = now,
-                CountedByUserId = mau ?? admin ?? Guid.Empty, SubmittedAt = now, ApprovedByUserId = admin, ApprovedAt = now,
+                CountedByUserId = sam ?? admin ?? Guid.Empty, SubmittedAt = now, ApprovedByUserId = admin, ApprovedAt = now,
             };
             var value = 0m;
             foreach (var d in DemoItems)

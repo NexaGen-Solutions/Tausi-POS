@@ -15,7 +15,7 @@ public class LicenceApiTests(TausiApp app) : IAsyncLifetime
     {
         if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
         var supervisor = await app.PairTerminal();
-        await supervisor.LoginWithPin(app.Pins["MAU"]);
+        await supervisor.LoginWithPin(app.Pins["SAM"]);
         (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
     }
 
@@ -33,7 +33,7 @@ public class LicenceApiTests(TausiApp app) : IAsyncLifetime
         {
             db.Licences.Add(new Licence
             {
-                Key = "TAUSI-TEST", BusinessName = "Mau's Village", Edition = "Standard", TerminalLimit = 20,
+                Key = "TAUSI-TEST", BusinessName = "Demo Bar", Edition = "Standard", TerminalLimit = 20,
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(-40), LastSeenAt = DateTimeOffset.UtcNow,
             });
             return db.SaveChanges();

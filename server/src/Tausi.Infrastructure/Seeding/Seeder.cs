@@ -103,7 +103,7 @@ public sealed partial class Seeder(
     /// Development: demo printers use the File connection, so prints land in print-output/.
     /// Otherwise they are Windows-share placeholders to be set on site.
     /// </param>
-    /// <summary>Mau's Village is in Kenya.</summary>
+    /// <summary>Demo Bar is in Kenya.</summary>
     public const string DemoTimeZone = "Africa/Nairobi";
 
     public async Task<IReadOnlyList<SeededUser>> SeedDemo(string? adminPassword, CancellationToken ct, bool filePrinters = false, bool openDemoDay = false)
@@ -115,7 +115,7 @@ public sealed partial class Seeder(
         {
             db.BusinessSettings.Add(new BusinessSettings
             {
-                Name = "Mau's Village",
+                Name = "Demo Bar",
                 VatRate = 16m,
                 Currency = "KES",
                 Rounding = RoundingRule.NearestOne,
@@ -137,7 +137,7 @@ public sealed partial class Seeder(
         var people = new (string Name, string Role, string? UserName)[]
         {
             ("Administrator", DefaultPermissions.Admin, "admin"),
-            ("MAU", DefaultPermissions.Supervisor, null),
+            ("SAM", DefaultPermissions.Supervisor, null),
             ("CAROL", DefaultPermissions.Cashier, null),
             ("edna", DefaultPermissions.Waiter, null),
             ("CYNTHIA", DefaultPermissions.Waiter, null),
@@ -188,7 +188,7 @@ public sealed partial class Seeder(
         return created;
     }
 
-    /// <summary>Mau's layout: tables 1–16 in Main, Pool 1–2 in Pool, Bar 1–2 in Bar. Only into an empty layout.</summary>
+    /// <summary>The demo layout: tables 1–16 in Main, Pool 1–2 in Pool, Bar 1–2 in Bar. Only into an empty layout.</summary>
     public async Task<bool> SeedDemoTables(CancellationToken ct)
     {
         if (await db.Areas.AnyAsync(ct) || await db.Tables.AnyAsync(ct)) return false;
@@ -228,7 +228,7 @@ public sealed partial class Seeder(
         if (day is null && !openDayIfNeeded) return false;
         if (day is null)
         {
-            var opener = users.GetValueOrDefault("MAU") ?? users.GetValueOrDefault("Administrator");
+            var opener = users.GetValueOrDefault("SAM") ?? users.GetValueOrDefault("Administrator");
             if (opener is null) return false;
             day = new WorkPeriod
             {
@@ -244,14 +244,14 @@ public sealed partial class Seeder(
 
         var demo = new (string Table, string Waiter, string Terminal, int MinutesAgo, int IdleMinutes, (string Item, int Qty)[] Lines)[]
         {
-            ("1", "WAMBOO", "Counter A", 70, 4, [("Tusker Lager", 4), ("Guiness", 2), ("Mau's Water 1L", 2)]),
+            ("1", "WAMBOO", "Counter A", 70, 4, [("Tusker Lager", 4), ("Guiness", 2), ("House Water 1L", 2)]),
             ("3", "CYNTHIA", "Pillar 1", 40, 9, [("Gilbeys 350ml", 1)]),
             ("5", "Ruth", "Counter B", 95, 48, [("Heineken", 2), ("Pineapple Punch", 2), ("Sodas 300ml", 1)]),
             ("7", "edna", "Counter A", 60, 6, [("Tusker Lager", 3), ("Pineapple Punch", 1), ("Sodas 300ml", 3)]),
-            ("7", "edna", "Pillar 1", 25, 3, [("White Cap Lager", 1), ("Mau's Water 1L", 1), ("Faxe Can", 1)]),
+            ("7", "edna", "Pillar 1", 25, 3, [("White Cap Lager", 1), ("House Water 1L", 1), ("Faxe Can", 1)]),
             ("8", "WAMBOO", "Counter A", 30, 12, [("Guiness", 2)]),
             ("11", "CYNTHIA", "Pillar 1", 50, 15, [("Viceroy 375ml", 1), ("Sodas 300ml", 3)]),
-            ("Pool 1", "MAU", "Counter B", 35, 2, [("Pool Table", 6)]),
+            ("Pool 1", "SAM", "Counter B", 35, 2, [("Pool Table", 6)]),
             ("Bar 1", "Ruth", "Counter B", 20, 5, [("Tusker Lager", 1), ("Delmonte", 1)]),
         };
         var beersId = await db.Categories.Where(c => c.Name == "Beers").Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
@@ -367,7 +367,7 @@ public sealed partial class Seeder(
         await db.SaveChangesAsync(ct);
 
         // Each terminal prints dispense slips on its own printer. Receipts print at the counter, as at
-        // Mau's: Counter A and Pillar 1 on Ticket Printer 1, Counter B and Pillar 2 on Ticket Printer 2.
+        // The demo: Counter A and Pillar 1 on Ticket Printer 1, Counter B and Pillar 2 on Ticket Printer 2.
         // Only demo routes still as an earlier seed left them move (the two-printer setup shared the
         // counter's printer for dispensing; the next one put pillar receipts on the pillar printer);
         // anything set by hand stays.
@@ -407,7 +407,7 @@ public sealed partial class Seeder(
     }
 
     /// <summary>
-    /// The demo menu (Mau's Village items and Standard prices), only when the menu is empty.
+    /// The demo menu (Demo Bar items and Standard prices), only when the menu is empty.
     /// Returns false when there was already a menu.
     /// </summary>
     public async Task<bool> SeedDemoMenu(CancellationToken ct)
@@ -431,7 +431,7 @@ public sealed partial class Seeder(
             ("Balozi Lager", "Beers", 250), ("Heineken", "Beers", 300), ("Faxe Can", "Beers", 175),
             ("Viceroy 375ml", "Spirits", 900), ("Gilbeys 350ml", "Spirits", 900),
             ("Sodas 300ml", "Soft drinks", 100),
-            ("Mau's Water 1L", "Water & juice", 100), ("Pineapple Punch", "Water & juice", 270), ("Delmonte", "Water & juice", 400),
+            ("House Water 1L", "Water & juice", 100), ("Pineapple Punch", "Water & juice", 270), ("Delmonte", "Water & juice", 400),
             ("Pool Table", "Pool", 40),
         };
         var sort = new Dictionary<string, int>();

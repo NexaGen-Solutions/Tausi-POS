@@ -30,7 +30,7 @@
   "setup": {
     "title": "Set up this terminal",
     "serverLabel": "Server address",
-    "serverHint": "For example http://POSSERVER2:5080",
+    "serverHint": "For example http://POS-SERVER:5080",
     "connect": "Connect",
     "serverUnreachable": "Cannot reach a Tausi Server at that address.",
     "pairingTitle": "Pairing code",
@@ -1626,7 +1626,7 @@
     },
     "business": {
       "name": "Business name",
-      "namePlaceholder": "e.g. Mau's Village",
+      "namePlaceholder": "e.g. Demo Bar",
       "type": "Type",
       "types": {
         "Bar": "Bar",

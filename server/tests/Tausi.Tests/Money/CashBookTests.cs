@@ -80,7 +80,7 @@ public class CashBookTests : StockTestBase
         F.Db.WorkPeriods.Add(new WorkPeriod
         {
             OpenedAt = F.Clock.GetUtcNow().AddDays(-2), BusinessDate = Today.AddDays(-2), IsOpen = false, ClosedAt = F.Clock.GetUtcNow().AddDays(-2).AddHours(8),
-            OpenedByUserId = F.User("MAU").Id,
+            OpenedByUserId = F.User("SAM").Id,
         });
         await F.Db.SaveChangesAsync();
 
@@ -209,7 +209,7 @@ public class CashBookTests : StockTestBase
         tiles.Bank.Should().Be(150_000);
         tiles.OwedToSuppliers.Should().Be(30_000);
 
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await FluentActions.Awaiting(() => Actions.OpeningBalances(new OpeningBalancesRequest(1, null, null, null, null), None))
             .Should().ThrowAsync<PermissionDeniedException>("only settings.manage");
     }
@@ -246,7 +246,7 @@ public class CashBookTests : StockTestBase
         await F.SetPermission("Supervisor", PermissionKeys.StockReceive, PermissionValue.NeedsApproval);
         await AsAdmin();
         await Deliver("1");
-        var mau = await F.LoginOn("MAU", "Counter A");
+        var sam = await F.LoginOn("SAM", "Counter A");
 
         var payment = await Actions.PaySupplier(new SupplierPaymentRequest(Supplier(), 4000, MoneyAccount.Bank, null, null, null), None);
         var delivery = await Deliver("2");
@@ -269,7 +269,7 @@ public class CashBookTests : StockTestBase
         await F.SetPermission("Admin", PermissionKeys.CashBook, PermissionValue.Allowed);
         var self = () => Actions.Approve(own.Id, None);
         (await self.Should().ThrowAsync<ForbiddenException>()).Which.Code.Should().Be(StockCodes.OwnDocument);
-        F.ActAs(mau);
+        F.ActAs(sam);
         (await Actions.Reject(own.Id, new RejectMoneyRequest("Not needed"), None)).Status.Should().Be("Rejected");
         Entries(MoneyActions.LedgerSource).Should().HaveCount(1, "only the approved payment posted");
     }
@@ -284,7 +284,7 @@ public class CashBookTests : StockTestBase
     {
         await Nairobi();
         var t1 = await Printed("7", ("Tusker Lager", 3), ("Guiness", 2), ("Pool Table", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(t1.Id);
         await Void(t1.Id, LineOf(t1, "Guiness"), 1, poured: true);
         await Gift(t1.Id, LineOf(t1, "Tusker Lager"));

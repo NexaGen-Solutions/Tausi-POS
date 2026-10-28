@@ -17,7 +17,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
     public async Task A_supervisor_voids_directly_and_is_logged_as_requester_and_approver()
     {
         var ticket = await Printed("7", ("Tusker Lager", 2), ("Pineapple Punch", 1));
-        var mau = await F.LoginOn("MAU", "Counter A");
+        var sam = await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         Later();
 
@@ -29,7 +29,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
         tuskers.Single(l => l.Status == "Printed").Quantity.Should().Be(1);
         tuskers.Single(l => l.Status == "Voided").Should().Match<OrderLineDto>(l => l.Voided && l.Quantity == 1 && l.VoidReason == "Wrong item");
         var log = F.Read().VoidLogs.Single();
-        log.Should().Match<VoidLog>(v => v.RequestedByUserId == mau.UserId && v.ApprovedByUserId == mau.UserId
+        log.Should().Match<VoidLog>(v => v.RequestedByUserId == sam.UserId && v.ApprovedByUserId == sam.UserId
             && v.Quantity == 1 && v.Amount == 250m && v.Reason == "Wrong item" && !v.WasPoured && v.UnitPrice == 250m);
     }
 
@@ -38,7 +38,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
     {
         var ticket = await Printed("7", ("Tusker Lager", 3));
         var original = F.Ticket(ticket.Number).Lines.Single();
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         await TakeLock(ticket.Id);
 
         await Void(ticket.Id, original.Id, 2, "Customer changed mind", poured: true);
@@ -56,7 +56,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
     public async Task Spilled_or_broken_is_always_poured_and_other_needs_a_note()
     {
         var ticket = await Printed("7", ("Tusker Lager", 2));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         var line = LineOf(ticket, "Tusker Lager");
 
@@ -76,7 +76,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
     {
         var ticket = await Printed("7", ("Tusker Lager", 1));
         var withNew = await F.Add(ticket.Id, "Pineapple Punch");
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await FluentActions.Awaiting(() => Void(ticket.Id, LineOf(withNew, "Pineapple Punch", "New")))
@@ -92,7 +92,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
         // Printed on Counter A (its dispense printer: Ticket Printer 1)...
         var ticket = await Printed("7", ("Guiness", 2));
         // ...voided on Pillar 1, whose own dispense printer is Pillar 1.
-        await F.LoginOn("MAU", "Pillar 1");
+        await F.LoginOn("SAM", "Pillar 1");
         await TakeLock(ticket.Id);
         Later();
 
@@ -101,7 +101,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
         var slip = Jobs(ticket.Id).Single(j => j.Kind == PrintJobKind.Void);
         slip.Printer!.Name.Should().Be("Ticket Printer 1");
         slip.TextPreview.Should().Contain("VOID").And.Contain("1 x Guiness").And.Contain("COLD")
-            .And.Contain("Reason: Wrong item").And.Contain("By: MAU · Approved: MAU").And.Contain("Table 7 · #1001");
+            .And.Contain("Reason: Wrong item").And.Contain("By: SAM · Approved: SAM").And.Contain("Table 7 · #1001");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
         var unbilled = await F.NewTicket("8", ("Tusker Lager", 2));
         var sent = await F.Get<PrintTicket>().Send(unbilled.Id, None);
         var billed = await Printed("7", ("Tusker Lager", 2));
-        await F.LoginOn("MAU", "Pillar 1");
+        await F.LoginOn("SAM", "Pillar 1");
         await TakeLock(sent.Id);
         await Void(sent.Id, LineOf(sent, "Tusker Lager"));
         await TakeLock(billed.Id);
@@ -127,8 +127,8 @@ public class VoidGiftTests : ApprovalsFixtureBase
     [Fact]
     public async Task Totals_and_vat_are_right_after_a_void()
     {
-        var ticket = await Printed("7", ("Tusker Lager", 2), ("Mau's Water 1L", 2));
-        await F.LoginOn("MAU", "Counter A");
+        var ticket = await Printed("7", ("Tusker Lager", 2), ("House Water 1L", 2));
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await Void(ticket.Id, LineOf(ticket, "Tusker Lager"), 2);
@@ -155,18 +155,18 @@ public class VoidGiftTests : ApprovalsFixtureBase
         await FluentActions.Awaiting(() => Void(ticket.Id, line)).Should().ThrowAsync<ApprovalRequiredException>(
             "a cashier only has NeedsApproval, so can't approve");
 
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderVoid, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderVoid, "SAM");
         await Void(ticket.Id, line);
         var log = F.Read().VoidLogs.Single();
         log.RequestedByUserId.Should().Be(F.User("edna").Id);
-        log.ApprovedByUserId.Should().Be(F.User("MAU").Id);
+        log.ApprovedByUserId.Should().Be(F.User("SAM").Id);
     }
 
     [Fact]
     public async Task A_gift_is_free_keeps_its_price_and_shows_gift_on_the_bill()
     {
         var ticket = await Printed("7", ("Guiness", 2), ("Pineapple Punch", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         Later();
 
@@ -186,7 +186,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
     public async Task New_lines_can_be_gifted_and_print_on_the_dispense_slip()
     {
         var ticket = await F.NewTicket("7", ("Guiness", 1));
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         var after = await Gift(ticket.Id, LineOf(ticket, "Guiness", "New"));

@@ -93,7 +93,7 @@ describe('settle screen', () => {
     lines = [
       line('l1', 'Tusker Lager', 2, 250, { options: 'Cold' }),
       line('l2', 'Guiness', 1, 300),
-      line('l3', "Mau's Water 1L", 1, 100),
+      line('l3', "House Water 1L", 1, 100),
       line('l4', 'Sodas 300ml', 2, 100, { options: 'Cold' }),
       line('l5', 'Pineapple Punch', 1, 270),
     ];
@@ -107,7 +107,7 @@ describe('settle screen', () => {
       calls.push({ method, path: url.pathname, body });
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Mau's Village", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: "Demo Bar", currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, {
             user: { id: 'id-CAROL', name: 'CAROL', role: 'Cashier' },

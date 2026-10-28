@@ -26,15 +26,15 @@ public class SetupFlowTests : IAsyncLifetime
 
     private SetupFlow Flow => F.Get<SetupFlow>();
 
-    private static SetupBusinessRequest Mau(string type = BusinessTypes.Bar) =>
-        new("Mau's Village", type, "Ruiru Road", "0700 000 000", 16, "KES", "Africa/Nairobi");
+    private static SetupBusinessRequest Demo(string type = BusinessTypes.Bar) =>
+        new("Demo Bar", type, "Ruiru Road", "0700 000 000", 16, "KES", "Africa/Nairobi");
 
     private static SetupAdminRequest Owner(string pin = "4826", string? again = null, string password = "a long password") =>
-        new("Wanjiku Mau", "wanjiku", password, pin, again ?? pin);
+        new("Wanjiku Njeri", "wanjiku", password, pin, again ?? pin);
 
     private async Task<SessionUser> Through(int step)
     {
-        await F.Get<SetupBusiness>().Save(Mau(), None);
+        await F.Get<SetupBusiness>().Save(Demo(), None);
         if (step < 2) return null!;
         var owner = await F.Get<SetupPeople>().Admin(Owner(), None);
         F.Session.User = owner;
@@ -75,10 +75,10 @@ public class SetupFlowTests : IAsyncLifetime
     [Fact]
     public async Task Step_one_saves_the_business_as_audited_setting_changes_by_setup_with_the_type_defaults()
     {
-        await F.Get<SetupBusiness>().Save(Mau(), None);
+        await F.Get<SetupBusiness>().Save(Demo(), None);
 
         var settings = await SettingsRegistry.Load(F.Read(), None);
-        settings.String(SettingsRegistry.BusinessName).Should().Be("Mau's Village");
+        settings.String(SettingsRegistry.BusinessName).Should().Be("Demo Bar");
         settings.String(SettingsRegistry.BusinessTimeZoneKey).Should().Be("Africa/Nairobi");
         settings.String(SettingsRegistry.PrintModeKey).Should().Be("OneButton");
         var audits = F.Read().AuditEntries.Where(a => a.Action == AuditActions.SettingsChanged).ToList();
@@ -88,14 +88,14 @@ public class SetupFlowTests : IAsyncLifetime
         temperature.Options.Single(o => o.IsDefault).Name.Should().Be("Cold");
         F.Read().SetupProgress.Single().Step.Should().Be(SetupSteps.Business);
 
-        await FluentActions.Awaiting(() => F.Get<SetupBusiness>().Save(Mau() with { Name = " " }, None)).Should().ThrowAsync<FieldErrorsException>();
-        await FluentActions.Awaiting(() => F.Get<SetupBusiness>().Save(Mau() with { TimeZone = "Mars/Base" }, None)).Should().ThrowAsync<FieldErrorsException>();
+        await FluentActions.Awaiting(() => F.Get<SetupBusiness>().Save(Demo() with { Name = " " }, None)).Should().ThrowAsync<FieldErrorsException>();
+        await FluentActions.Awaiting(() => F.Get<SetupBusiness>().Save(Demo() with { TimeZone = "Mars/Base" }, None)).Should().ThrowAsync<FieldErrorsException>();
     }
 
     [Fact]
     public async Task A_restaurant_gets_no_temperature_options()
     {
-        await F.Get<SetupBusiness>().Save(Mau(BusinessTypes.Restaurant), None);
+        await F.Get<SetupBusiness>().Save(Demo(BusinessTypes.Restaurant), None);
         F.Read().ModifierGroups.Should().BeEmpty();
         (await Flow.State(None)).BusinessType.Should().Be(BusinessTypes.Restaurant);
     }
@@ -103,7 +103,7 @@ public class SetupFlowTests : IAsyncLifetime
     [Fact]
     public async Task Step_two_makes_the_owner_with_the_password_and_pin_rules_and_no_bootstrap_admin()
     {
-        await F.Get<SetupBusiness>().Save(Mau(), None);
+        await F.Get<SetupBusiness>().Save(Demo(), None);
         var people = F.Get<SetupPeople>();
         (await FluentActions.Awaiting(() => people.Admin(Owner(password: "short"), None)).Should().ThrowAsync<FieldErrorsException>())
             .Which.Errors.Keys.Should().Contain("password");
@@ -134,12 +134,12 @@ public class SetupFlowTests : IAsyncLifetime
         await Through(2);
         var result = await F.Get<SetupPeople>().Staff(new SetupStaffRequest(
         [
-            new StaffToAdd("edna", "Waiter"), new StaffToAdd("CAROL", "cashier"), new StaffToAdd("MAU", "Supervisor"), new StaffToAdd("Ruth", "waiter"),
+            new StaffToAdd("edna", "Waiter"), new StaffToAdd("CAROL", "cashier"), new StaffToAdd("SAM", "Supervisor"), new StaffToAdd("Ruth", "waiter"),
         ]), None);
 
         result.People.Should().HaveCount(4);
         result.People.Select(p => p.Pin).Should().OnlyHaveUniqueItems().And.OnlyContain(p => p.Length == 4 && !Pin.IsTooSimple(p));
-        var saved = F.Read().Users.Include(u => u.Role).Where(u => u.Name != "Wanjiku Mau").ToList();
+        var saved = F.Read().Users.Include(u => u.Role).Where(u => u.Name != "Wanjiku Njeri").ToList();
         saved.Should().HaveCount(4).And.OnlyContain(u => u.MustChangePin && u.PasswordHash == null);
         foreach (var person in result.People) F.Hasher.Verify(person.Pin, saved.Single(u => u.Id == person.Id).PinHash).Should().BeTrue();
         saved.Single(u => u.Name == "CAROL").Role!.Name.Should().Be("Cashier");
@@ -161,7 +161,7 @@ public class SetupFlowTests : IAsyncLifetime
         var status = await Flow.Status(session, None);
         status.Current.Should().Be(SetupSteps.Menu);
         status.Steps.Select(s => s.Status).Should().Equal("Done", "Done", "Skipped", "Todo", "Todo", "Todo");
-        status.BusinessName.Should().Be("Mau's Village");
+        status.BusinessName.Should().Be("Demo Bar");
         await FluentActions.Awaiting(() => Flow.Mark(SetupSteps.Licence, SetupStepStatus.Skipped, null, None)).Should().ThrowAsync<DomainException>();
         await FluentActions.Awaiting(() => Flow.Mark(SetupSteps.Admin, SetupStepStatus.Skipped, null, None)).Should().ThrowAsync<DomainException>();
     }
@@ -195,7 +195,7 @@ public class SetupFlowTests : IAsyncLifetime
     public async Task A_licence_key_is_checked_against_the_business_from_step_one()
     {
         await Through(1);
-        var key = LicenceKeys.Issue(new LicencePayload("TL-1", "MAU'S VILLAGE", "Standard", 4, F.Clock.GetUtcNow(), null, null), LicenceTests.TestPrivateKey);
+        var key = LicenceKeys.Issue(new LicencePayload("TL-1", "DEMO BAR", "Standard", 4, F.Clock.GetUtcNow(), null, null), LicenceTests.TestPrivateKey);
         (await F.Get<LicenceService>().Enter(new EnterLicenceRequest(key), asSetup: true, None)).TerminalLimit.Should().Be(4);
         F.Read().AuditEntries.Should().Contain(a => a.Action == AuditActions.LicenceEntered && a.Actor == SetupFlow.SetupActor);
     }

@@ -46,7 +46,7 @@ public class SettingsTests(TausiApp app)
 
             var response = await admin.PutAsJsonAsync("/api/admin/settings", new
             {
-                values = new Dictionary<string, object> { ["business.name"] = "Mau's Village Bar", ["pos.tableIdleMinutes"] = 45, ["pos.logoutAfterSettle"] = false },
+                values = new Dictionary<string, object> { ["business.name"] = "Demo Bar Two", ["pos.tableIdleMinutes"] = 45, ["pos.logoutAfterSettle"] = false },
                 version,
             });
             response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
@@ -56,11 +56,11 @@ public class SettingsTests(TausiApp app)
             payload.GetProperty("keys").EnumerateArray().Select(k => k.GetString())
                 .Should().BeEquivalentTo("business.name", "pos.tableIdleMinutes"); // logoutAfterSettle was already off
             app.Db(db => db.AuditEntries.Count(a => a.Action == AuditActions.SettingsChanged)).Should().Be(audits + 2);
-            (await (await app.CreateClient().GetAsync("/api/brand")).Json()).GetProperty("name").GetString().Should().Be("Mau's Village Bar");
+            (await (await app.CreateClient().GetAsync("/api/brand")).Json()).GetProperty("name").GetString().Should().Be("Demo Bar Two");
 
             var history = await (await admin.GetAsync("/api/admin/settings/history")).Json();
             var latest = history.EnumerateArray().First(h => h.GetProperty("key").GetString() == "business.name");
-            latest.GetProperty("new").GetString().Should().Be("Mau's Village Bar");
+            latest.GetProperty("new").GetString().Should().Be("Demo Bar Two");
             latest.GetProperty("who").GetString().Should().Be("Administrator");
 
             var stale = await admin.PutAsJsonAsync("/api/admin/settings", new { values = new { pos_x = 1 }, version });
@@ -70,7 +70,7 @@ public class SettingsTests(TausiApp app)
             conflict.StatusCode.Should().Be(HttpStatusCode.Conflict);
             (await conflict.Json()).GetProperty("detail").GetString().Should().Be("Someone else saved settings. Reload to see their changes.");
 
-            await admin.SaveSettings(new() { ["business.name"] = "Mau's Village", ["pos.tableIdleMinutes"] = 30 });
+            await admin.SaveSettings(new() { ["business.name"] = "Demo Bar", ["pos.tableIdleMinutes"] = 30 });
         }
         finally
         {

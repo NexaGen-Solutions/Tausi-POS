@@ -57,7 +57,7 @@ function settingsWith(version = 7, logoFileId: string | null = null): Settings {
         key: 'business',
         title: 'Business details',
         entries: [
-          entry('business.name', 'String', "Mau's Village", {
+          entry('business.name', 'String', "Demo Bar", {
             label: 'Business name',
             maxLength: 100,
           }),
@@ -139,14 +139,14 @@ describe('Settings', () => {
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
         'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
         'GET /api/admin/settings': () => json(200, settings),
         'GET /api/admin/settings/history': () => json(200, []),
         'POST /api/admin/settings/receipt-preview': ({ body }) => {
           const values = (body as { values: Record<string, unknown> }).values;
           return json(200, {
             width: (body as { width: number }).width,
-            bill: `BILL for ${String(values['business.name'] ?? "Mau's Village")}`,
+            bill: `BILL for ${String(values['business.name'] ?? "Demo Bar")}`,
             receipt: 'RECEIPT No. 2041',
             logoPng: null,
           });
@@ -195,14 +195,14 @@ describe('Settings', () => {
     expect(save).toBeDisabled();
 
     await user.clear(screen.getByLabelText('Business name'));
-    await user.type(screen.getByLabelText('Business name'), "Mau's Village Bar");
+    await user.type(screen.getByLabelText('Business name'), "Demo Bar Two");
     await user.click(screen.getByRole('switch', { name: 'One Print button' }));
     expect(save).toBeEnabled();
     await user.click(save);
 
     await waitFor(() => expect(writes('/api/admin/settings')).toHaveLength(1));
     expect(writes('/api/admin/settings')[0].body).toEqual({
-      values: { 'business.name': "Mau's Village Bar", 'print.mode': 'SendAndBill' },
+      values: { 'business.name': "Demo Bar Two", 'print.mode': 'SendAndBill' },
       version: 7,
     });
     expect(await screen.findByText('Saved. Terminals updated.')).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe('Settings', () => {
     await user.click(await screen.findByRole('button', { name: 'Preview receipt' }));
     const panel = screen.getByRole('complementary', { name: 'Receipt preview' });
     expect(await within(panel).findByTestId('preview-bill')).toHaveTextContent(
-      "BILL for Mau's Village",
+      "BILL for Demo Bar",
     );
 
     await user.clear(screen.getByLabelText('Business name'));
@@ -332,18 +332,18 @@ describe('Settings', () => {
 
   it('a terminal shows the new business name as soon as settings are saved', async () => {
     setDeviceForTests({ deviceToken: 'device-1' });
-    let name = "Mau's Village";
+    let name = "Demo Bar";
     extra = {
       'GET /api/device': () => json(200, { ...deviceInfo(), businessName: name }),
       'GET /api/auth/pin/max-length': () => json(200, 4),
     };
     renderRoutes(routes, '/pos');
-    expect(await screen.findByText("Mau's Village")).toBeInTheDocument();
+    expect(await screen.findByText("Demo Bar")).toBeInTheDocument();
 
-    name = "Mau's Village Bar";
+    name = "Demo Bar Two";
     emit('settings.changed', { keys: ['business.name'] });
 
-    expect(await screen.findByText("Mau's Village Bar")).toBeInTheDocument();
+    expect(await screen.findByText("Demo Bar Two")).toBeInTheDocument();
     setDeviceForTests({ deviceToken: null });
   });
 });

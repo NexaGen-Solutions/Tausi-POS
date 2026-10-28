@@ -60,7 +60,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         {
             await db.Database.MigrateAsync();
             await new Seeder(db, new PlainPinHasher(), NullLogger<Seeder>.Instance).SeedDemo("pw", CancellationToken.None, filePrinters: true);
-            db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "MAU").Id });
+            db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "SAM").Id });
             await db.SaveChangesAsync();
         }
 
@@ -125,7 +125,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         await Seeded(name);
 
         var (edna, _) = await As(name, "edna", "Counter A");
-        var (mau, _) = await As(name, "MAU", "Counter B");
+        var (sam, _) = await As(name, "SAM", "Counter B");
         var (admin, _) = await As(name, "Administrator", "Pillar 1");
         Guid requestId, ticketId;
         await using (var scope = edna.CreateAsyncScope())
@@ -142,7 +142,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
             requestId = request.Id;
         }
 
-        var results = await Task.WhenAll(new[] { mau, admin }.Select(async provider =>
+        var results = await Task.WhenAll(new[] { sam, admin }.Select(async provider =>
         {
             await using var scope = provider.CreateAsyncScope();
             try
@@ -162,7 +162,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         (await check.OrderLines.CountAsync(l => l.TicketId == ticketId && l.Status == OrderLineStatus.Voided)).Should().Be(1);
         (await check.ApprovalRequests.SingleAsync(r => r.Id == requestId)).Status.Should().Be(ApprovalStatus.Approved);
         await edna.DisposeAsync();
-        await mau.DisposeAsync();
+        await sam.DisposeAsync();
         await admin.DisposeAsync();
     }
 
@@ -212,7 +212,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         await using var db = new SqlServerTausiDbContext(sql.Options(name));
         await db.Database.MigrateAsync();
         await new Seeder(db, new PlainPinHasher(), NullLogger<Seeder>.Instance).SeedDemo("pw", CancellationToken.None, filePrinters: true);
-        db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "MAU").Id });
+        db.WorkPeriods.Add(new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow, OpenedByUserId = db.Users.Single(u => u.Name == "SAM").Id });
         await db.SaveChangesAsync();
     }
 

@@ -38,7 +38,7 @@ public static class LicenceTool
         Console.Error.WriteLine("""
             Usage:
               tausi-licence generate-keypair <folder>
-              tausi-licence issue <private.key> --business "Mau's Village" --terminals 4 [--edition Standard]
+              tausi-licence issue <private.key> --business "Demo Bar" --terminals 4 [--edition Standard]
                                   [--expires 2027-12-31|never] [--support-until 2027-12-31] [--id ID]
               tausi-licence verify <public.key|base64> <key>
               tausi-licence sign-update <update-private.key> <installer> <version>

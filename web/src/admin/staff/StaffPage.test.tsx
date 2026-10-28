@@ -42,7 +42,7 @@ function member(
 const adminList: StaffList = {
   members: [
     member('Administrator', 'admin', { id: 'me', hasAdminPassword: true, adminUserName: 'admin' }),
-    member('MAU', 'supervisor'),
+    member('SAM', 'supervisor'),
     member('CAROL', 'cashier', { terminalsLast7Days: ['Counter A', 'Pillar 1'] }),
     member('edna', 'waiter', { mustChangePin: true }),
     member('Ruth', 'waiter', { active: false }),
@@ -59,7 +59,7 @@ describe('Staff and PINs', () => {
       fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'me', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () => json(200, { name: "Mau's Village" }),
+        'GET /api/brand': () => json(200, { name: "Demo Bar" }),
         'GET /api/admin/staff': () => json(200, list),
         'POST /api/admin/staff': ({ body }) => {
           created.push(body);
@@ -96,7 +96,7 @@ describe('Staff and PINs', () => {
     renderRoutes(routes, '/admin/staff');
     await screen.findByRole('button', { name: 'Edit CAROL' });
 
-    expect(names()).toEqual(['Administrator', 'CAROL', 'ednaPIN reset', 'MAU']);
+    expect(names()).toEqual(['Administrator', 'CAROL', 'ednaPIN reset', 'SAM']);
     expect(screen.getByText('Counter A, Pillar 1')).toBeInTheDocument();
 
     await userEvent.selectOptions(screen.getByLabelText('Status'), 'all');
@@ -183,7 +183,7 @@ describe('Staff and PINs', () => {
     await screen.findByRole('button', { name: 'Edit CAROL' });
 
     expect(screen.queryByText('Administrator')).not.toBeInTheDocument();
-    expect(screen.queryByText('MAU')).not.toBeInTheDocument();
+    expect(screen.queryByText('SAM')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Add staff' }));
     const panel = screen.getByRole('complementary', { name: 'Add staff' });
     const options = within(within(panel).getByLabelText('Role')).getAllByRole('option');

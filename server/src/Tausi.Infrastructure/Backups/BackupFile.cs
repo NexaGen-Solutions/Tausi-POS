@@ -47,7 +47,7 @@ public static class BackupFile
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
-        // The manifest is for people too: "Mau's Village", not "Mau\u0027s Village".
+        // The manifest is for people too: "Demo Bar", not "Demo Bar".
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
     };

@@ -105,11 +105,11 @@ public class ReceiptTemplateTests
     {
         var doc = ReceiptTemplate.Render(
             "[center][bold]{{business}}\n---\nItem || {{amount}}\n@cut",
-            new Dictionary<string, string> { ["business"] = "Mau's Village", ["amount"] = "250" },
+            new Dictionary<string, string> { ["business"] = "Demo Bar", ["amount"] = "250" },
             42);
 
         var lines = doc.Text.Split(Environment.NewLine);
-        lines[0].Trim().Should().Be("Mau's Village");
+        lines[0].Trim().Should().Be("Demo Bar");
         lines[1].Should().Be(new string('-', 42));
         lines[2].Should().StartWith("Item").And.EndWith("250").And.HaveLength(42);
         lines[3].Trim().Should().Be("[cut]");

@@ -117,13 +117,13 @@ public class StaffApiTests(StaffApp app)
     public async Task A_supervisor_on_the_admin_site_only_manages_waiters_and_cashiers()
     {
         var admin = await app.AdminClient();
-        var mau = await Member(admin, "MAU");
-        (await admin.PutAsJsonAsync($"/api/admin/staff/{mau.GetProperty("id").GetGuid()}", new
+        var sam = await Member(admin, "SAM");
+        (await admin.PutAsJsonAsync($"/api/admin/staff/{sam.GetProperty("id").GetGuid()}", new
         {
-            name = "MAU", roleId = RoleId("Supervisor"), adminPassword = "mau-password-1", rowVersion = mau.GetProperty("rowVersion").GetInt64(),
+            name = "SAM", roleId = RoleId("Supervisor"), adminPassword = "sam-password-1", rowVersion = sam.GetProperty("rowVersion").GetInt64(),
         })).StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var supervisor = await app.AdminClient("mau", "mau-password-1");
+        var supervisor = await app.AdminClient("sam", "sam-password-1");
         var list = await (await supervisor.GetAsync("/api/admin/staff")).Json();
         list.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("roleName").GetString())
             .Should().OnlyContain(r => r == "Waiter" || r == "Cashier");

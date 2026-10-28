@@ -91,7 +91,7 @@ public class SettingsAdminTests : IAsyncLifetime
     [Fact]
     public async Task Settings_need_settings_manage()
     {
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await FluentActions.Awaiting(() => F.Get<GetSettings>().Execute(None)).Should().ThrowAsync<PermissionDeniedException>();
         await FluentActions.Awaiting(() => F.Get<UpdateSettings>().Execute(new UpdateSettingsRequest([], 0), None))
             .Should().ThrowAsync<PermissionDeniedException>();

@@ -1,4 +1,4 @@
-         Mau's Village
+            Demo Bar
   CASH-UP · Counter A · CAROL
   20 Oct 13:42 - 20 Oct 19:42
 --------------------------------
@@ -23,7 +23,7 @@ CYNTHIA                        0
 --------------------------------
 Receipts             3 · No. 1-3
 --------------------------------
-Signed off by MAU
+Signed off by SAM
 
 
 ______________________________

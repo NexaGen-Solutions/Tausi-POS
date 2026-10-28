@@ -40,9 +40,9 @@ describe('approval pad', () => {
   it('opens on approval required, takes the supervisor PIN and retries with the token', async () => {
     fetchMock.mockImplementation(async (url) => {
       const path = String(url);
-      if (path.endsWith('/api/health')) return json(200, { server: 'POSSERVER2' });
+      if (path.endsWith('/api/health')) return json(200, { server: 'POS-SERVER' });
       if (path.endsWith('/api/auth/approve'))
-        return json(200, { approvalToken: 'tok-1', approvedByName: 'MAU' });
+        return json(200, { approvalToken: 'tok-1', approvedByName: 'SAM' });
       const retried = (
         calls('/api/pos/tickets/k1/lines/l1/void').at(-1)?.[1]?.headers as Headers
       ).get('X-Approval-Token');
@@ -71,7 +71,7 @@ describe('approval pad', () => {
   it('shows a toast when the approver is not allowed', async () => {
     fetchMock.mockImplementation(async (url) => {
       const path = String(url);
-      if (path.endsWith('/api/health')) return json(200, { server: 'POSSERVER2' });
+      if (path.endsWith('/api/health')) return json(200, { server: 'POS-SERVER' });
       if (path.endsWith('/api/auth/approve'))
         return json(403, {
           status: 403,
@@ -97,7 +97,7 @@ describe('approval pad', () => {
   it('wrong PIN keeps the pad open with a message', async () => {
     fetchMock.mockImplementation(async (url) => {
       const path = String(url);
-      if (path.endsWith('/api/health')) return json(200, { server: 'POSSERVER2' });
+      if (path.endsWith('/api/health')) return json(200, { server: 'POS-SERVER' });
       if (path.endsWith('/api/auth/approve')) return json(401, { status: 401, attemptsLeft: 4 });
       return json(403, approvalNeeded);
     });

@@ -182,7 +182,7 @@ namespace Tausi.Setup
             Update();
 
             var flow = Flow(
-                Text_("Where Tausi POS keeps its data. Mau's-style PCs that already run SQL Server Express (for SambaPOS) can use it: Tausi POS gets its own database and never touches SambaPOS's.", 44),
+                Text_("Where Tausi POS keeps its data. PCs that already run SQL Server Express (for SambaPOS) can use it: Tausi POS gets its own database and never touches SambaPOS's.", 44),
                 _sqlExpress, _existing, existingBox, _postgres, postgresBox, Row(test), _testResult, _restore, restoreBox);
             Page("Database", flow);
             _back.Visible = true;

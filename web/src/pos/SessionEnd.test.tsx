@@ -29,7 +29,7 @@ describe('end of a session', () => {
       fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
         'GET /api/auth/pin/max-length': () => json(200, 4),
-        'GET /api/brand': () => json(200, { name: "Mau's Village" }),
+        'GET /api/brand': () => json(200, { name: "Demo Bar" }),
         'GET /api/auth/session': () =>
           json(401, { status: 401, code: 'session_expired', title: 'Session expired' }),
         'POST /api/auth/logout': () => {

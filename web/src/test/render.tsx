@@ -40,7 +40,7 @@ export function fakeServer(handlers: Record<string, Handler>) {
     const method = (init?.method ?? 'GET').toUpperCase();
     const handler =
       handlers[`${method} ${url.pathname}`] ??
-      (url.pathname === '/api/health' ? () => json(200, { server: 'POSSERVER2' }) : undefined);
+      (url.pathname === '/api/health' ? () => json(200, { server: 'POS-SERVER' }) : undefined);
     if (!handler) return json(404, { status: 404 });
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
     return handler({ body, headers: new Headers(init?.headers) });
@@ -62,7 +62,7 @@ export const sessionFor = (
 export const deviceInfo = (workPeriod: { openedAt: string } | null = null) => ({
   terminalId: 't1',
   terminalName: 'Counter A',
-  businessName: "Mau's Village",
+  businessName: "Demo Bar",
   logoFileId: null,
   workPeriod: workPeriod && { id: 'wp1', openedByUserId: 'u', ...workPeriod },
 });

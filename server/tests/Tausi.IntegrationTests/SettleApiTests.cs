@@ -22,7 +22,7 @@ public class SettleApiTests(TicketsApp app) : IAsyncLifetime
         {
             if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
             var supervisor = await app.PairTerminal();
-            await supervisor.LoginWithPin(app.Pins["MAU"]);
+            await supervisor.LoginWithPin(app.Pins["SAM"]);
             (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
         }
         finally
@@ -189,10 +189,10 @@ public class SettleApiTests(TicketsApp app) : IAsyncLifetime
         var line = ticket.GetProperty("lines")[0].GetProperty("id").GetGuid();
 
         (await edna.Http.PostAsync($"/api/pos/tickets/{id}/close-empty", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        var mau = await On("MAU");
-        (await mau.Http.PostAsync($"/api/pos/tickets/{id}/close-empty", null)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var sam = await On("SAM");
+        (await sam.Http.PostAsync($"/api/pos/tickets/{id}/close-empty", null)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await Ok(await edna.Http.DeleteAsync($"/api/pos/tickets/{id}/lines/{line}"));
-        (await mau.Http.PostAsync($"/api/pos/tickets/{id}/close-empty", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await sam.Http.PostAsync($"/api/pos/tickets/{id}/close-empty", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
         app.Db(db => db.Tickets.Single(k => k.Id == id).Status).Should().Be(TicketStatus.Cancelled);
     }
 }

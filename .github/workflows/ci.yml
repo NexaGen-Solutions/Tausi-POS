@@ -175,7 +175,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: SQL Server Express (the "existing SQL Server", as at Mau's)
+      - name: SQL Server Express (the "existing SQL Server", as at many bars)
         shell: pwsh
         run: choco install sql-server-express -y --no-progress
       - name: WiX Toolset v5

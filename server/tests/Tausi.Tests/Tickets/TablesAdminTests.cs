@@ -123,7 +123,7 @@ public class TablesAdminTests : IAsyncLifetime
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Tausi.Infrastructure.Seeding.Seeder>.Instance);
 
         // A day closed earlier does not count: the seed opens a new one.
-        var oldDay = new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow.AddDays(-1), OpenedByUserId = demo.User("MAU").Id, IsOpen = false };
+        var oldDay = new WorkPeriod { OpenedAt = DateTimeOffset.UtcNow.AddDays(-1), OpenedByUserId = demo.User("SAM").Id, IsOpen = false };
         demo.Db.WorkPeriods.Add(oldDay);
         await demo.Db.SaveChangesAsync();
         demo.Db.ChangeTracker.Clear();

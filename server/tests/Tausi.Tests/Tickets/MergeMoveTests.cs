@@ -184,8 +184,8 @@ public class MergeMoveTests : IAsyncLifetime
         var token = await _f.ApprovalToken(permission);
         _f.Approval.ApprovalToken = token;
         await act.Should().NotThrowAsync();
-        var mau = _f.User("MAU").Id;
-        _f.Read().AuditEntries.Should().Contain(a => a.ApprovedByUserId == mau);
+        var sam = _f.User("SAM").Id;
+        _f.Read().AuditEntries.Should().Contain(a => a.ApprovedByUserId == sam);
 
         _f.Read().ApprovalGrants.Single().UsedAt.Should().NotBeNull("a token works once");
     }

@@ -18,7 +18,7 @@ issue them. This tool is not part of the product and is never given to customers
 ## Issuing a key
 
 ```bash
-dotnet run -- issue /path/to/private.key --business "Mau's Village" --terminals 4 \
+dotnet run -- issue /path/to/private.key --business "Demo Bar" --terminals 4 \
   --edition Standard --expires never --support-until 2027-10-31
 ```
 

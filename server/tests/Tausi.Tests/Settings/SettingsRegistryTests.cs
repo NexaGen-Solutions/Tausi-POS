@@ -88,7 +88,7 @@ public class SettingsRegistryTests
     [Fact]
     public void Values_are_stored_clean_text_trimmed_currency_upper_case_notes_sorted()
     {
-        Clean("business.name", "\"  Mau's Village Bar \"")!.GetValue<string>().Should().Be("Mau's Village Bar");
+        Clean("business.name", "\"  Demo Bar Two \"")!.GetValue<string>().Should().Be("Demo Bar Two");
         Clean("business.currency", "\"kes\"")!.GetValue<string>().Should().Be("KES");
         Clean("print.mode", "\"sendandbill\"")!.GetValue<string>().Should().Be("SendAndBill");
         Clean("cash.denominations", "[50, 1000, 50, 200]")!.AsArray().Select(n => n!.GetValue<int>()).Should().Equal(1000, 200, 50);

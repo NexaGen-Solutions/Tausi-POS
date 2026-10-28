@@ -38,16 +38,16 @@ public class DiscountPriceTests : ApprovalsFixtureBase
     private async Task<Tausi.Application.Tickets.TicketDetailDto> MixedVat()
     {
         // 2 Tusker (16%, 500) and 1 exempt water (100).
-        await F.Db.MenuItems.Where(i => i.Name == "Mau's Water 1L")
+        await F.Db.MenuItems.Where(i => i.Name == "House Water 1L")
             .ExecuteUpdateAsync(u => u.SetProperty(i => i.VatExempt, true).SetProperty(i => i.VatRate, 0m));
-        return await Printed("7", ("Tusker Lager", 2), ("Mau's Water 1L", 1));
+        return await Printed("7", ("Tusker Lager", 2), ("House Water 1L", 1));
     }
 
     [Fact]
     public async Task A_percent_discount_is_spread_by_amount_and_vat_is_worked_out_after_it()
     {
         var ticket = await MixedVat();
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         Later();
 
@@ -59,7 +59,7 @@ public class DiscountPriceTests : ApprovalsFixtureBase
         var lines = F.Ticket(ticket.Number).Lines;
         var tusker = lines.Single(l => l.Name == "Tusker Lager");
         tusker.Should().Match<OrderLine>(l => l.Discount == 50m && l.Vat == 62.07m && l.Net == 387.93m);
-        lines.Single(l => l.Name == "Mau's Water 1L").Should().Match<OrderLine>(l => l.Discount == 10m && l.Vat == 0m && l.Net == 90m);
+        lines.Single(l => l.Name == "House Water 1L").Should().Match<OrderLine>(l => l.Discount == 10m && l.Vat == 0m && l.Net == 90m);
         lines.Sum(l => l.Discount).Should().Be(60m);
 
         var bill = Jobs(ticket.Id).Last(j => j.Kind == PrintJobKind.Bill).TextPreview;
@@ -73,7 +73,7 @@ public class DiscountPriceTests : ApprovalsFixtureBase
     public async Task An_amount_discount_cant_exceed_the_total_and_percent_is_at_most_100()
     {
         var ticket = await MixedVat();
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
 
         await FluentActions.Awaiting(() => Discount(ticket.Id, DiscountKind.Amount, 601m)).Should().ThrowAsync<DomainException>().WithMessage("*more than the total*");
@@ -88,7 +88,7 @@ public class DiscountPriceTests : ApprovalsFixtureBase
     public async Task The_discount_is_spread_again_when_a_line_is_added_or_voided_and_one_replaces_the_other()
     {
         var ticket = await MixedVat();
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Discount(ticket.Id, DiscountKind.Percent, 10m);
 
@@ -114,9 +114,9 @@ public class DiscountPriceTests : ApprovalsFixtureBase
     public async Task A_gifted_line_takes_no_discount()
     {
         var ticket = await MixedVat();
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
-        await Gift(ticket.Id, LineOf(ticket, "Mau's Water 1L"), 1);
+        await Gift(ticket.Id, LineOf(ticket, "House Water 1L"), 1);
 
         var after = await Discount(ticket.Id, DiscountKind.Percent, 10m);
 
@@ -165,7 +165,7 @@ public class DiscountPriceTests : ApprovalsFixtureBase
         await FluentActions.Awaiting(() => ChangePrice(ticket.Id, LineOf(ticket, "Tusker Lager"), 200m)).Should().ThrowAsync<PermissionDeniedException>();
 
         // A supervisor may edit menu prices but needs approval for a ticket price.
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await FluentActions.Awaiting(() => ChangePrice(ticket.Id, LineOf(ticket, "Tusker Lager"), 200m)).Should().ThrowAsync<ApprovalRequiredException>();
         await F.SetPermission(DefaultPermissionRoles.Supervisor, PermissionKeys.OrderChangePrice, PermissionValue.NotAllowed);
@@ -181,22 +181,22 @@ public class DiscountPriceTests : ApprovalsFixtureBase
         var ticket = await Printed("7", ("Guiness", 2), ("Tusker Lager", 1));
         await F.LoginOn("CAROL", "Counter A");
         await TakeLock(ticket.Id);
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderGift, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderGift, "SAM");
         await Gift(ticket.Id, LineOf(ticket, "Guiness"));
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderDiscount, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderDiscount, "SAM");
         await Discount(ticket.Id, DiscountKind.Amount, 50m, "Promotion");
 
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.OrderChangePrice, "Administrator");
         var after = await ChangePrice(ticket.Id, LineOf(ticket, "Tusker Lager"), 200m);
 
         after.Total.Should().Be(300m + 200m - 50m);
-        var mau = F.User("MAU").Id;
-        F.Read().GiftLogs.Single().Should().Match<GiftLog>(g => g.RequestedByUserId == F.User("CAROL").Id && g.ApprovedByUserId == mau);
-        F.Read().DiscountLogs.Single().ApprovedByUserId.Should().Be(mau);
+        var sam = F.User("SAM").Id;
+        F.Read().GiftLogs.Single().Should().Match<GiftLog>(g => g.RequestedByUserId == F.User("CAROL").Id && g.ApprovedByUserId == sam);
+        F.Read().DiscountLogs.Single().ApprovedByUserId.Should().Be(sam);
         F.Read().PriceChangeLogs.Single(p => p.Kind == PriceChangeKind.Ticket).Should().Match<PriceChangeLog>(p =>
-            p.ChangedByUserId == mau && p.ApprovedByUserId == F.User("Administrator").Id);
+            p.ChangedByUserId == sam && p.ApprovedByUserId == F.User("Administrator").Id);
     }
 
     [Fact]

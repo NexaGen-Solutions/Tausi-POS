@@ -1,4 +1,4 @@
-         Mau's Village
+            Demo Bar
       Ruaka Road, Nairobi
         Tel 0712 345 678
 --------------------------------
@@ -10,7 +10,7 @@ Cashier: CAROL
 --------------------------------
 2 x Tusker Lager (Cold)      500
 1 x Guiness                  300
-1 x Mau's Water 1L           100
+1 x House Water 1L           100
 2 x Sodas 300ml (Cold)       200
 1 x Pineapple Punch          270
 1 x Guiness VOID               0

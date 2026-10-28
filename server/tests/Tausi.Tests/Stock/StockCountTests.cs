@@ -12,10 +12,10 @@ public class StockCountTests : StockTestBase
 {
     private StockCountCommands Counts => F.Get<StockCountCommands>();
 
-    /// <summary>MAU starts a Full count of the Bar and counts every item as expected, except the given ones.</summary>
+    /// <summary>SAM starts a Full count of the Bar and counts every item as expected, except the given ones.</summary>
     private async Task<CountDto> CountBar(params (string Item, Dictionary<string, decimal> Entered)[] differences)
     {
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         var count = await Counts.Start(new StartCountRequest(Location("Bar"), StockCountKind.Full, false, null), None);
         var entries = count.Lines.Select(l =>
         {
@@ -28,7 +28,7 @@ public class StockCountTests : StockTestBase
     [Fact]
     public async Task A_count_is_blind_until_submitted_and_a_full_count_needs_every_item()
     {
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         var count = await Counts.Start(new StartCountRequest(Location("Bar"), StockCountKind.Full, false, null), None);
         count = await Counts.Enter(count.Id, new EnterCountsRequest([new CountEntry(Item("Tusker Lager"), new() { ["crate"] = 1, ["bottle"] = 7 }, null)]), None);
 
@@ -82,7 +82,7 @@ public class StockCountTests : StockTestBase
         F.Clock.Advance(TimeSpan.FromMinutes(5));
         await F.LoginOn("edna", "Counter A");
         await Printed("7", ("Tusker Lager", 2)); // sold while the count is going on
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         await Counts.Submit(count.Id, None);
 
         await AsAdmin();
@@ -113,7 +113,7 @@ public class StockCountTests : StockTestBase
         await F.LoginOn("Administrator", "Counter B");
         F.Db.StockLocations.Add(new StockLocation { Name = "Kitchen", SortOrder = 30 });
         await F.Db.SaveChangesAsync();
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         var count = await Counts.Start(new StartCountRequest(Location("Kitchen"), StockCountKind.Partial, true, [Item("Delmonte")]), None);
         await Counts.Enter(count.Id, new EnterCountsRequest([new CountEntry(Item("Delmonte"), new() { ["pack"] = 2 }, 210m)]), None);
         var submitted = await Counts.Submit(count.Id, None);
@@ -135,7 +135,7 @@ public class StockCountTests : StockTestBase
     [Fact]
     public async Task The_count_sheet_pdf_lists_the_items_without_expected_figures()
     {
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         var count = await Counts.Start(new StartCountRequest(Location("Bar"), StockCountKind.Full, false, null), None);
 
         var pdf = await Counts.SheetPdf(count.Id, None);

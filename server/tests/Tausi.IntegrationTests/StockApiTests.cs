@@ -21,7 +21,7 @@ public class StockApiTests(TicketsApp app) : IAsyncLifetime
         {
             if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
             var supervisor = await app.PairTerminal();
-            await supervisor.LoginWithPin(app.Pins["MAU"]);
+            await supervisor.LoginWithPin(app.Pins["SAM"]);
             (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
         }
         finally

@@ -25,7 +25,7 @@ function status(
     steps,
     current: steps.find((s) => s.status === 'Todo')?.key ?? null,
     businessType: 'Bar',
-    businessName: "Mau's Village",
+    businessName: "Demo Bar",
     ...extra,
   };
 }
@@ -34,7 +34,7 @@ const trial: LicenceStatus = {
   status: 'Trial',
   isTrial: true,
   edition: 'Trial',
-  business: "Mau's Village",
+  business: "Demo Bar",
   licenceId: null,
   terminalLimit: 2,
   terminalsUsed: 0,
@@ -148,14 +148,14 @@ describe('Setup wizard', () => {
     renderRoutes(routes, '/setup');
     expect(await screen.findByRole('heading', { name: 'Your business' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Skip for now' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Business name')).toHaveValue("Mau's Village");
+    expect(screen.getByLabelText('Business name')).toHaveValue("Demo Bar");
     expect(screen.getByLabelText('VAT rate (prices include VAT)')).toHaveValue('16');
     await userEvent.click(screen.getByRole('button', { name: 'Next: first admin' }));
     expect(await screen.findByText('Choose a time zone from the list.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Next: first admin' }));
     expect(await screen.findByRole('heading', { name: 'First admin and PIN' })).toBeInTheDocument();
     expect(calls.filter((c) => c.method === 'PUT')[1].body).toMatchObject({
-      name: "Mau's Village",
+      name: "Demo Bar",
       type: 'Bar',
       vatRate: 16,
       currency: 'KES',
@@ -174,7 +174,7 @@ describe('Setup wizard', () => {
         pinSheetPdf: btoa('%PDF-1.4'),
       });
     renderRoutes(routes, '/setup');
-    await userEvent.type(await screen.findByLabelText('Full name'), 'Wanjiku Mau');
+    await userEvent.type(await screen.findByLabelText('Full name'), 'Wanjiku Njeri');
     await userEvent.type(screen.getByLabelText('Admin-site user name'), 'wanjiku');
     await userEvent.type(screen.getByLabelText('Admin-site password'), 'short');
     expect(screen.getByText('Too short: at least 10 characters.')).toBeInTheDocument();
@@ -302,7 +302,7 @@ describe('Setup wizard', () => {
       ++tested === 1
         ? json(400, { status: 400, detail: "Couldn't connect to SambaPOS: Login failed." })
         : json(200, {
-            message: 'Connected to SambaPOS5 on POSSERVER2\\SQLEXPRESS: 212 menu items.',
+            message: 'Connected to SambaPOS5 on POS-SERVER\\SQLEXPRESS: 212 menu items.',
           });
     extra['POST /api/admin/menu/import/sambapos/preview'] = () =>
       json(200, {
@@ -330,7 +330,7 @@ describe('Setup wizard', () => {
     renderRoutes(routes, '/setup');
     await userEvent.click(await screen.findByRole('button', { name: 'From SambaPOS' }));
     expect(screen.getByText(/Tausi only reads from SambaPOS/)).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText('SQL Server'), 'POSSERVER2\\SQLEXPRESS');
+    await userEvent.type(screen.getByLabelText('SQL Server'), 'POS-SERVER\\SQLEXPRESS');
     expect(screen.getByLabelText('Database')).toHaveValue('SambaPOS5');
     await userEvent.click(screen.getByRole('button', { name: 'Test connection' }));
     expect(
@@ -351,7 +351,7 @@ describe('Setup wizard', () => {
     expect(within(parts).getByLabelText('Users')).not.toBeChecked();
     expect(screen.getByLabelText('Zed (Cleaner)')).toHaveValue('');
     expect(posts('/api/admin/menu/import/sambapos/test')[0].body).toMatchObject({
-      server: 'POSSERVER2\\SQLEXPRESS',
+      server: 'POS-SERVER\\SQLEXPRESS',
       windowsLogin: true,
     });
   });
@@ -396,7 +396,7 @@ describe('Setup wizard', () => {
           {
             step: 'business',
             title: 'Your business',
-            text: "Mau's Village",
+            text: "Demo Bar",
             skipped: false,
             laterLink: null,
           },
@@ -450,7 +450,7 @@ describe('Licence', () => {
             permissions: { 'settings.manage': 'Allowed' },
           }),
         'GET /api/brand': () =>
-          json(200, { name: "Mau's Village", logoFileId: null, currency: 'KES' }),
+          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
         'GET /api/licence': () => json(200, licence),
         'POST /api/admin/licence': () =>
           json(400, {

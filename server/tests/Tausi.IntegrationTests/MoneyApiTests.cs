@@ -93,7 +93,7 @@ public class MoneyApiTests(TausiApp app)
     public async Task A_supervisors_supplier_payment_waits_until_a_manager_approves_and_only_cash_book_opens_a_receipt()
     {
         var admin = await app.AdminClient();
-        var supervisor = await SignedInAs("MAU", "Supervisor", "mau-password-1");
+        var supervisor = await SignedInAs("SAM", "Supervisor", "sam-password-1");
         var before = await Ok(await admin.GetAsync("/api/admin/cashbook"));
         var bank = before.GetProperty("tiles").GetProperty("bank").GetDecimal();
 

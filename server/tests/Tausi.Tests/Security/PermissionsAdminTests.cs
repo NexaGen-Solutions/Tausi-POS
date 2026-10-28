@@ -161,7 +161,7 @@ public class PermissionsAdminTests : IAsyncLifetime
     [Fact]
     public async Task Roles_and_permissions_need_permissions_manage()
     {
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await FluentActions.Awaiting(() => F.Get<GetPermissions>().Execute(None)).Should().ThrowAsync<PermissionDeniedException>();
         await FluentActions.Awaiting(() => F.Get<RoleCommands>().Create(new CreateRoleRequest("X", null), None))
             .Should().ThrowAsync<PermissionDeniedException>();

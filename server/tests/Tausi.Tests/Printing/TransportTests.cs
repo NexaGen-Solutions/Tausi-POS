@@ -81,7 +81,7 @@ public class FilePrinterTransportTests
         var dir = Path.Combine(Path.GetTempPath(), "tausi-print-" + Guid.NewGuid().ToString("N"));
         var options = Options.Create(new TausiOptions { Printing = { OutputDirectory = dir } });
         var transport = new FilePrinterTransport(options, new FakeEnv(), new FakeTimeProvider());
-        var job = new PrintJob { Kind = PrintJobKind.Test, TextPreview = "Mau's Village\nTest OK\n" };
+        var job = new PrintJob { Kind = PrintJobKind.Test, TextPreview = "Demo Bar\nTest OK\n" };
 
         await transport.Send(new Printer { Name = "Ticket Printer 1" }, job, CancellationToken.None);
 

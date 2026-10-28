@@ -45,7 +45,7 @@ public sealed class StaffFixture : IAsyncDisposable
         f.Terminal = await Builders.AddTerminal(f._db.Context);
         foreach (var (name, role, pin) in new[]
         {
-            ("Administrator", "Admin", "7031"), ("MAU", "Supervisor", "8014"), ("CAROL", "Cashier", "5739"),
+            ("Administrator", "Admin", "7031"), ("SAM", "Supervisor", "8014"), ("CAROL", "Cashier", "5739"),
             ("edna", "Waiter", "4821"), ("Ruth", "Waiter", "2365"),
         })
             f.Users[name] = await Builders.AddUser(f._db.Context, f.Hasher, name, f.Roles[role], pin);

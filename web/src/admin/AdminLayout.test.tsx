@@ -27,13 +27,13 @@ describe('admin layout', () => {
           permissions: {},
         });
       if (path.endsWith('/api/brand'))
-        return json(200, { name: "Mau's Village", logoFileId: 'logo-1', currency: 'KES' });
-      return json(200, { server: 'POSSERVER2' });
+        return json(200, { name: "Demo Bar", logoFileId: 'logo-1', currency: 'KES' });
+      return json(200, { server: 'POS-SERVER' });
     });
 
     renderRoutes(routes, '/admin/erp');
 
-    expect(await screen.findByText("Mau's Village")).toBeInTheDocument();
+    expect(await screen.findByText("Demo Bar")).toBeInTheDocument();
     expect(screen.getByText('Tausi POS admin')).toBeInTheDocument();
     expect(
       screen.getByText(/^Tausi POS · by NexaGen Solutions · version \d+\.\d+\.\d+$/),

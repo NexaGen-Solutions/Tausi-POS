@@ -99,7 +99,7 @@ pub fn read_installer_server(path: &Path) -> Option<String> {
     origin_of(text.lines().next()?.trim())
 }
 
-/// The paired server's origin ("http://posserver2:5080"), the only remote place the window may go.
+/// The paired server's origin ("http://pos-server:5080"), the only remote place the window may go.
 struct AllowedServer(Mutex<Option<String>>);
 
 fn load_config(app: &AppHandle) -> Result<DeviceConfig, String> {
@@ -224,7 +224,7 @@ fn save_device_config(app: AppHandle, config: DeviceConfig) -> Result<(), String
 /// token is dropped, and the app restarts so only the new server is allowed.
 #[tauri::command]
 fn set_server_url(app: AppHandle, server_url: String) -> Result<(), String> {
-    let origin = origin_of(&server_url).ok_or("Enter an address like http://POSSERVER2:5080")?;
+    let origin = origin_of(&server_url).ok_or("Enter an address like http://POS-SERVER:5080")?;
     store_config(
         &app,
         &DeviceConfig {
@@ -671,8 +671,8 @@ mod tests {
     #[test]
     fn origins_are_normalised() {
         assert_eq!(
-            origin_of("http://POSSERVER2:5080/pos").as_deref(),
-            Some("http://posserver2:5080")
+            origin_of("http://POS-SERVER:5080/pos").as_deref(),
+            Some("http://pos-server:5080")
         );
         assert_eq!(
             origin_of("https://pos.example/").as_deref(),
@@ -684,17 +684,17 @@ mod tests {
 
     #[test]
     fn only_the_paired_server_and_bundled_pages_are_allowed() {
-        let server = Some("http://posserver2:5080");
+        let server = Some("http://pos-server:5080");
         let ok = |u: &str, dev: bool| navigation_allowed(&Url::parse(u).unwrap(), server, dev);
-        assert!(ok("http://posserver2:5080/pos", false));
+        assert!(ok("http://pos-server:5080/pos", false));
         assert!(ok("http://tauri.localhost/connect", false));
         assert!(ok("tauri://localhost/index.html", false));
-        assert!(!ok("http://posserver2:5081/pos", false));
+        assert!(!ok("http://pos-server:5081/pos", false));
         assert!(!ok("https://example.com", false));
         assert!(!ok("http://localhost:5173/pos", false));
         assert!(ok("http://localhost:5173/pos", true));
         assert!(!navigation_allowed(
-            &Url::parse("http://posserver2:5080/").unwrap(),
+            &Url::parse("http://pos-server:5080/").unwrap(),
             None,
             false
         ));

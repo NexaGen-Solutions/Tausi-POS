@@ -19,7 +19,7 @@ public class ReportApiTests(TausiApp app) : IAsyncLifetime
     {
         if (app.Db(db => db.WorkPeriods.Any(w => w.IsOpen))) return;
         var supervisor = await app.PairTerminal();
-        await supervisor.LoginWithPin(app.Pins["MAU"]);
+        await supervisor.LoginWithPin(app.Pins["SAM"]);
         (await supervisor.Http.PostAsync("/api/day/open", null)).EnsureSuccessStatusCode();
     }
 
@@ -136,7 +136,7 @@ public class ReportApiTests(TausiApp app) : IAsyncLifetime
         var supervisor = await app.PairTerminal();
         var printer = app.Db(db => db.Printers.Single(p => p.Name == "Ticket Printer 1").Id);
         app.Db(db => db.Terminals.Where(t => t.Id == supervisor.TerminalId).ExecuteUpdate(u => u.SetProperty(t => t.ReceiptPrinterId, printer)));
-        (await supervisor.LoginWithPin(app.Pins["MAU"])).EnsureSuccessStatusCode();
+        (await supervisor.LoginWithPin(app.Pins["SAM"])).EnsureSuccessStatusCode();
         (await supervisor.Http.PostAsync("/api/pos/reports/sales-by-user/print", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
         app.Db(db => db.PrintJobs.Any(j => j.PrinterId == printer && j.Label == "Sales by user")).Should().BeTrue();
         (await supervisor.Http.PostAsJsonAsync("/api/admin/reports/audit/run", new { })).StatusCode.Should().Be(HttpStatusCode.Forbidden);

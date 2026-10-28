@@ -61,7 +61,7 @@ public class BackupApiTests(BackupApp app)
         var list = await (await admin.GetAsync("/api/admin/backups")).Json();
         var row = list.EnumerateArray().Single(b => b.GetProperty("name").GetString() == name);
         row.GetProperty("verified").GetBoolean().Should().BeTrue();
-        row.GetProperty("business").GetString().Should().Be("Mau's Village");
+        row.GetProperty("business").GetString().Should().Be("Demo Bar");
 
         var path = Path.Combine(Options.BackupDirectory, name);
         using (var zip = ZipFile.OpenRead(path))
@@ -124,8 +124,8 @@ public class BackupApiTests(BackupApp app)
         var refused = await Restore(admin, name, new { password = (string?)null, confirmBusiness = (string?)null });
         refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await refused.Json()).GetProperty("code").GetString().Should().Be(BackupCodes.OtherBusiness);
-        (await Restore(admin, name, new { password = (string?)null, confirmBusiness = "mau's  village" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        app.Db(db => db.BusinessSettings.Single().Name).Should().Be("Mau's Village");
+        (await Restore(admin, name, new { password = (string?)null, confirmBusiness = "demo  bar" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        app.Db(db => db.BusinessSettings.Single().Name).Should().Be("Demo Bar");
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class BackupApiTests(BackupApp app)
             (await wrong.Json()).GetProperty("code").GetString().Should().Be(BackupCodes.WrongPassword);
             var right = await (await admin.PostAsJsonAsync($"/api/admin/backups/{name}/inspect", new { password = "correct horse" })).Json();
             right.GetProperty("encrypted").GetBoolean().Should().BeTrue();
-            right.GetProperty("business").GetString().Should().Be("Mau's Village");
+            right.GetProperty("business").GetString().Should().Be("Demo Bar");
         }
         finally
         {

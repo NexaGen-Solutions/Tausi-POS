@@ -27,16 +27,16 @@ public class CashupTests : ApprovalsFixtureBase
     private Task<ShiftDto> Count(Guid shiftId, decimal total) =>
         F.Get<CountShift>().Execute(shiftId, new CountShiftRequest(new CashCount(Total: total)), None);
 
-    private async Task<ShiftDto> SignOff(Guid shiftId, string supervisor = "MAU")
+    private async Task<ShiftDto> SignOff(Guid shiftId, string supervisor = "SAM")
     {
         F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.DayOpenClose, supervisor);
         return await F.Get<CloseShift>().Execute(shiftId, None);
     }
 
-    /// <summary>A pay-out by the cashier, approved by MAU's PIN (cashiers need approval for cash.expense).</summary>
+    /// <summary>A pay-out by the cashier, approved by SAM's PIN (cashiers need approval for cash.expense).</summary>
     private async Task<ShiftDto> PayOut(Guid shiftId, decimal amount, string category = "Transport", string note = "Taxi for ice")
     {
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.CashExpense, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.CashExpense, "SAM");
         return await F.Get<DrawerMovements>().PayOut(shiftId,
             new DrawerMovementRequest(amount, F.Read().ExpenseCategories.Single(c => c.Name == category).Id, note), None);
     }
@@ -59,7 +59,7 @@ public class CashupTests : ApprovalsFixtureBase
     {
         await F.LoginOn("CAROL", "Counter A");
         await StartShift(2000m);
-        var first = await ForCarol("1", ("Tusker Lager", 2), ("Guiness", 1), ("Mau's Water 1L", 1), ("Sodas 300ml", 2), ("Pineapple Punch", 1));
+        var first = await ForCarol("1", ("Tusker Lager", 2), ("Guiness", 1), ("House Water 1L", 1), ("Sodas 300ml", 2), ("Pineapple Punch", 1));
         await Pay(first.Id, PaymentType.Mpesa, 1000m, code: "SJK3ABC123");
         await Pay(first.Id, PaymentType.Cash, tendered: 500m);
         await Settle(first.Id);
@@ -91,7 +91,7 @@ public class CashupTests : ApprovalsFixtureBase
         await F.LoginOn("CAROL", "Counter B");
         await FluentActions.Awaiting(() => StartShift()).Should().ThrowAsync<ConflictException>()
             .Where(e => e.Code == ShiftCodes.AlreadyOpen && e.Message == "You already have a shift open on Counter A. Close it first.");
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await FluentActions.Awaiting(() => StartShift()).Should().ThrowAsync<ConflictException>()
             .Where(e => e.Code == ShiftCodes.DrawerInUse && e.Message == "Counter A's drawer is in CAROL's shift. CAROL must close it first.");
         await F.LoginOn("edna", "Counter B");
@@ -118,7 +118,7 @@ public class CashupTests : ApprovalsFixtureBase
         (await F.Get<ShiftQueries>().Current(None)).Start.DefaultFloat.Should().Be(1500m);
         (await F.Get<OpenShift>().Execute(new OpenShiftRequest(), None)).OpeningFloat.Should().Be(1500m);
 
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         var counted = await F.Get<OpenShift>().Execute(new OpenShiftRequest(
             new CashCount(new Dictionary<string, int> { ["1000"] = 1, ["500"] = 1, ["50"] = 3 }, 20m)), None);
         counted.OpeningFloat.Should().Be(1670m);
@@ -176,7 +176,7 @@ public class CashupTests : ApprovalsFixtureBase
     {
         await F.LoginOn("CAROL", "Counter A");
         var shift = await StartShift(500m);
-        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.CashExpense, "MAU");
+        F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.CashExpense, "SAM");
         await FluentActions.Awaiting(() => PayOut(shift.Id, 600m)).Should().ThrowAsync<DomainException>().Where(e => e.Code == ShiftCodes.BelowZero);
         await FluentActions.Awaiting(() => Drop(shift.Id, 501m)).Should().ThrowAsync<DomainException>().Where(e => e.Code == ShiftCodes.BelowZero);
 
@@ -186,7 +186,7 @@ public class CashupTests : ApprovalsFixtureBase
 
         var slips = F.Read().PrintJobs.Where(j => j.Kind == PrintJobKind.CashUp).OrderBy(j => j.CreatedAt).ToList();
         slips.Should().HaveCount(2);
-        slips[0].TextPreview.Should().Contain("PAY OUT").And.Contain("Transport").And.Contain("Taxi for ice").And.Contain("Approved by").And.Contain("MAU");
+        slips[0].TextPreview.Should().Contain("PAY OUT").And.Contain("Transport").And.Contain("Taxi for ice").And.Contain("Approved by").And.Contain("SAM");
         slips[1].TextPreview.Should().Contain("CASH DROP").And.Contain("300");
     }
 
@@ -219,7 +219,7 @@ public class CashupTests : ApprovalsFixtureBase
 
         // The supervisor sees both.
         var cashierSession = F.Session.User!;
-        await F.LoginOn("MAU", "Counter B");
+        await F.LoginOn("SAM", "Counter B");
         (await F.Get<ShiftQueries>().Summary(shift.Id, None)).Expected.Should().Be(1170m);
         F.ActAs(cashierSession);
 
@@ -229,7 +229,7 @@ public class CashupTests : ApprovalsFixtureBase
         await FluentActions.Awaiting(() => Count(shift.Id, 1200m)).Should().ThrowAsync<ConflictException>()
             .Where(e => e.Code == ShiftCodes.AlreadyCounted, "a blind count is submitted once");
 
-        // CAROL's own PIN is refused, and so is a waiter's; MAU signs off.
+        // CAROL's own PIN is refused, and so is a waiter's; SAM signs off.
         F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.DayOpenClose, "CAROL");
         await FluentActions.Awaiting(() => F.Get<CloseShift>().Execute(shift.Id, None)).Should().ThrowAsync<ApprovalRequiredException>().WithMessage("*own*");
         F.Approval.ApprovalToken = await F.ApprovalToken(PermissionKeys.DayOpenClose, "edna");
@@ -238,9 +238,9 @@ public class CashupTests : ApprovalsFixtureBase
         await FluentActions.Awaiting(() => F.Get<CloseShift>().Execute(shift.Id, None)).Should().ThrowAsync<ApprovalRequiredException>();
 
         var closed = await SignOff(shift.Id);
-        closed.Should().Match<ShiftDto>(s => s.Status == "Closed" && s.SignedOffBy == "MAU" && s.Difference == 0m);
+        closed.Should().Match<ShiftDto>(s => s.Status == "Closed" && s.SignedOffBy == "SAM" && s.Difference == 0m);
         var slip = F.Read().PrintJobs.Where(j => j.Kind == PrintJobKind.CashUp).AsEnumerable().OrderBy(j => j.CreatedAt).Last();
-        slip.TextPreview.Should().Contain("CASH-UP · Counter A · CAROL").And.Contain("Signed off by MAU").And.Contain("Pay out · Transport")
+        slip.TextPreview.Should().Contain("CASH-UP · Counter A · CAROL").And.Contain("Signed off by SAM").And.Contain("Pay out · Transport")
             .And.Contain("Receipts").And.Contain("No. 1-3");
 
         // A closed shift can't be changed.
@@ -313,7 +313,7 @@ public class CashupTests : ApprovalsFixtureBase
         await F.LoginOn("edna", "Pillar 1");
         var open = await Printed("9", ("Guiness", 1));
         await Request(Tausi.Domain.Service.ApprovalKind.Void, open.Id, LineOf(open, "Guiness"), new VoidLineRequest(1, "Wrong item"));
-        var mau = await F.LoginOn("MAU", "Counter B");
+        var sam = await F.LoginOn("SAM", "Counter B");
 
         var status = await F.Get<GetDayStatus>().Execute(None);
         status.Blockers.OpenTickets.Should().ContainSingle(k => k.Number == open.Number);
@@ -328,14 +328,14 @@ public class CashupTests : ApprovalsFixtureBase
         var carolSession = F.Session.User!;
         await Pay(open.Id, PaymentType.Card, 300m);
         await FluentActions.Awaiting(() => Settle(open.Id)).Should().ThrowAsync<ConflictException>("the void request still waits");
-        F.ActAs(mau);
+        F.ActAs(sam);
         await F.Get<Tausi.Application.Approvals.RejectRequest>().Execute(F.Read().ApprovalRequests.Single().Id, new(null), None);
         F.ActAs(carolSession);
         await Settle(open.Id);
         await Count(shift.Id, 1170m);
         await SignOff(shift.Id);
 
-        F.ActAs(mau);
+        F.ActAs(sam);
         var ready = await F.Get<GetDayStatus>().Execute(None);
         ready.Blockers.Blocked.Should().BeFalse();
         var summary = ready.Summary!;
@@ -351,7 +351,7 @@ public class CashupTests : ApprovalsFixtureBase
         var closed = await F.Get<CloseWorkPeriod>().Execute(None);
         closed.LogoutAt.Should().Be(closed.ClosedAt + TimeSpan.FromSeconds(60));
         closed.Printed.Should().BeTrue();
-        F.Read().PrintJobs.AsEnumerable().OrderBy(j => j.CreatedAt).Last().TextPreview.Should().Contain("DAY REPORT · Z").And.Contain("Closed by MAU");
+        F.Read().PrintJobs.AsEnumerable().OrderBy(j => j.CreatedAt).Last().TextPreview.Should().Contain("DAY REPORT · Z").And.Contain("Closed by SAM");
         F.Events.Published.Should().Contain(e => e.Name == Tausi.Application.Events.PosEventNames.DayClosed);
 
         // Everyone is logged out once the warning is over.
@@ -376,7 +376,7 @@ public class CashupTests : ApprovalsFixtureBase
         await F.LoginOn("edna", "Pillar 1");
         var ticket = await Printed("9", ("Guiness", 1));
         await Request(Tausi.Domain.Service.ApprovalKind.Reprint, ticket.Id, null, new ReprintRequest());
-        await F.LoginOn("MAU", "Counter A");
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Void(ticket.Id, LineOf(ticket, "Guiness"));
         // A ticket with nothing left keeps the day open until it is closed empty.
@@ -399,8 +399,8 @@ public class CashupTests : ApprovalsFixtureBase
         await TakeLock(ticket.Id);
         await F.Add(ticket.Id, "Guiness", 1, ["Cold"]);
         await F.Get<PrintTicket>().Print(ticket.Id, None);
-        // MAU voids a Tusker, gifts the punch and gives 10% off.
-        await F.LoginOn("MAU", "Counter A");
+        // SAM voids a Tusker, gifts the punch and gives 10% off.
+        await F.LoginOn("SAM", "Counter A");
         await TakeLock(ticket.Id);
         await Void(ticket.Id, LineOf(ticket, "Tusker Lager"), 1);
         await Gift(ticket.Id, LineOf(ticket, "Pineapple Punch"), 1);
