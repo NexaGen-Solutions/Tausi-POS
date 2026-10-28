@@ -229,7 +229,7 @@ describe('order screen', () => {
             },
             rules,
           }),
-        'GET /api/brand': () => json(200, { name: "Demo Bar", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'id-edna', name: 'edna', role: 'Waiter' }, permissions }),
         'GET /api/pos/menu': () => json(200, menu),

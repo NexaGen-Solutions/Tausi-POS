@@ -188,9 +188,9 @@
   cursor: pointer;
 }
 .order-category--on {
-  border-color: var(--color-text);
-  background: var(--color-text);
-  color: var(--color-panel);
+  border-color: var(--color-surface-dark);
+  background: var(--color-surface-dark);
+  color: var(--color-topbar-text);
   font-weight: 600;
 }
 .order-categories__spacer {

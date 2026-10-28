@@ -118,8 +118,7 @@ describe('Stock', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock': () =>
           json(
             200,
@@ -369,8 +368,7 @@ describe('Deliveries', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock': () => json(200, overview()),
         'GET /api/admin/awaiting': () => json(200, []),
         'GET /api/admin/deliveries': () => json(200, []),
@@ -571,8 +569,7 @@ describe('Stock count', () => {
       return fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'a', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () =>
-          json(200, { name: "Demo Bar", logoFileId: null, currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', logoFileId: null, currency: 'KES' }),
         'GET /api/admin/stock-counts/c1': () => json(200, count),
         'PUT /api/admin/stock-counts/c1/lines': () => json(200, count),
         ...extra,

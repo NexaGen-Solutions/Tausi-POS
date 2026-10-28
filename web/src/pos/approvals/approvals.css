@@ -14,8 +14,8 @@
   margin-left: var(--space-2);
   padding: 0 var(--space-2);
   border-radius: 999px;
-  background: var(--color-primary);
-  color: var(--color-primary-text);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
   font-size: 14px;
   font-weight: 600;
   text-align: center;
@@ -69,7 +69,7 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
-  border: 2px solid var(--color-primary);
+  border: 2px solid var(--color-warning);
   border-radius: var(--radius);
   background: var(--color-panel);
 }

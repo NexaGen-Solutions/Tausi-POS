@@ -59,9 +59,16 @@
   background: var(--color-ok);
 }
 .pin-login__status-dot--off {
-  background: var(--color-primary);
+  background: var(--color-warning);
+}
+.pin-login__tausi {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-surface-dark-text);
 }
 .pin-login__pad {
+  background: var(--color-ground-brand);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -113,13 +120,54 @@
   color: var(--color-text-secondary);
 }
 
-/* First-run setup */
+/* First-run setup: the terminal's pairing screen. Tausi's own surface: deep teal and cream. */
+.pairing {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--color-ground-brand);
+}
+.pairing__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-5);
+  background: var(--color-surface-dark);
+  color: var(--color-surface-dark-text);
+}
+.pairing__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pairing__heading {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.15;
+}
+.pairing__about {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  margin-top: auto;
+  color: var(--color-surface-dark-text);
+}
 .setup {
   display: flex;
   flex: 1;
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
+}
+.setup__server {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
 }
 .setup__panel {
   display: grid;
@@ -150,6 +198,14 @@
   display: grid;
   justify-items: center;
   gap: var(--space-3);
+}
+@media (max-width: 900px) {
+  .pairing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pairing__side {
+    padding: var(--space-4);
+  }
 }
 
 /* TEMPORARY test menu list (remove with the order-screen task) */
@@ -183,5 +239,28 @@
   justify-content: space-between;
   gap: var(--space-2);
   padding: 2px 0;
-  border-bottom: 1px solid #e3e3df;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* The terminal's splash: Tausi's own surface, the full logo on deep teal. */
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  min-height: 100vh;
+  padding: var(--space-5);
+  background: var(--color-surface-dark);
+  color: var(--color-surface-dark-text);
+}
+.splash__logo {
+  width: min(60vw, 720px);
+}
+.splash__logo .tausi-logo {
+  width: 100%;
+}
+.splash__status {
+  margin: 0;
+  font-size: 20px;
 }

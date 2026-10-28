@@ -86,7 +86,7 @@ describe('cash screens', () => {
       calls.push({ method, path: url.pathname, body, headers: new Headers(init?.headers) });
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-22T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Demo Bar", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'id-CAROL', name: 'CAROL', role: 'Cashier' }, permissions }),
         'GET /api/pos/shifts/current': () =>

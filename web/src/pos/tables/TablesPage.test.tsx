@@ -107,7 +107,7 @@ describe('table map', () => {
       }
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Demo Bar", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'u-edna', name: 'edna', role: 'Waiter' }, permissions }),
         'GET /api/pos/tables': () => json(200, map),

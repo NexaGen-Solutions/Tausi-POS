@@ -59,7 +59,7 @@ describe('Staff and PINs', () => {
       fakeServer({
         'GET /api/auth/me': () =>
           json(200, { user: { id: 'me', name: 'Administrator', role: 'Admin' }, permissions: {} }),
-        'GET /api/brand': () => json(200, { name: "Demo Bar" }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar' }),
         'GET /api/admin/staff': () => json(200, list),
         'POST /api/admin/staff': ({ body }) => {
           created.push(body);

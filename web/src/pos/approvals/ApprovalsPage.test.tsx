@@ -91,7 +91,7 @@ describe('approvals screen', () => {
         return json(200, url.searchParams.get('status') === 'decided' ? decided : pending);
       return fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Demo Bar", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, {
             user: { id: 'id-SAM', name: 'SAM', role: 'Supervisor' },
@@ -231,7 +231,7 @@ describe('approvals screen', () => {
     fetchMock.mockImplementation(
       fakeServer({
         'GET /api/device': () => json(200, deviceInfo({ openedAt: '2026-10-20T08:14:00' })),
-        'GET /api/brand': () => json(200, { name: "Demo Bar", currency: 'KES' }),
+        'GET /api/brand': () => json(200, { name: 'Demo Bar', currency: 'KES' }),
         'GET /api/auth/me': () =>
           json(200, {
             user: { id: 'id-edna', name: 'edna', role: 'Waiter' },

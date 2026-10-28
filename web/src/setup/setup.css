@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: 380px minmax(0, 1fr);
   min-height: 100vh;
-  background: var(--color-ground);
+  background: var(--color-ground-brand);
 }
 .wizard--plain {
   display: grid;
@@ -16,10 +16,13 @@
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-6) var(--space-5);
-  background: var(--color-topbar);
+  background: var(--color-surface-dark);
   color: var(--color-topbar-text);
 }
 .wizard__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   margin: 0;
   color: var(--color-topbar-muted);
   font-size: 14px;
@@ -58,7 +61,7 @@
   cursor: pointer;
 }
 .wizard__step--on {
-  background: #333331;
+  background: var(--color-surface-dark-raised);
   color: var(--color-topbar-text);
   font-weight: 600;
 }
@@ -73,9 +76,12 @@
   font-size: 14px;
 }
 .wizard__step--on .wizard__number {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-primary-text);
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-surface-dark);
+  /* Large and bold: deep teal on gold is AA for large text (tokens.test.ts). */
+  font-size: 19px;
+  font-weight: 700;
 }
 .wizard__number--done {
   border-color: var(--color-ok);
