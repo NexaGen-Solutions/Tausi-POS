@@ -2,6 +2,7 @@ import { deviceToken } from '../device/device';
 import { updateConnection } from '../connection/status';
 import { clientVersion, setServerMode, setServerVersion } from '../connection/serverState';
 import { endPinSession, pinSession, touchSession } from '../session/session';
+import { newRequestId } from './requestId';
 
 /** The problem-details body the server sends for errors. */
 export interface Problem {
@@ -118,9 +119,7 @@ export interface RequestOptions {
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET';
   const idempotencyKey =
-    method === 'GET' || options.readOnly
-      ? undefined
-      : (options.idempotencyKey ?? crypto.randomUUID());
+    method === 'GET' || options.readOnly ? undefined : (options.idempotencyKey ?? newRequestId());
 
   let response = await send(path, method, options, idempotencyKey, options.approvalToken);
   if (response.status === 403) {
@@ -172,9 +171,7 @@ export interface ApiFile {
 export async function apiFile(path: string, options: RequestOptions = {}): Promise<ApiFile> {
   const method = options.method ?? 'GET';
   const idempotencyKey =
-    method === 'GET' || options.readOnly
-      ? undefined
-      : (options.idempotencyKey ?? crypto.randomUUID());
+    method === 'GET' || options.readOnly ? undefined : (options.idempotencyKey ?? newRequestId());
   const response = await send(path, method, options, idempotencyKey, options.approvalToken);
   if (!response.ok) throw new ApiError(await readProblem(response));
   const disposition = response.headers.get('content-disposition') ?? '';

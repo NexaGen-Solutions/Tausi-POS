@@ -8,6 +8,7 @@ import { useToast } from '../../shared/ui';
 import { usePinSession } from '../usePinSession';
 import type { OrderLine, TableEvent, TicketDetail } from '../tables/types';
 import { priced, type PosItem } from './menu';
+import { newRequestId } from '../../shared/api/requestId';
 
 /** An add that the server hasn't confirmed yet. */
 interface PendingAdd {
@@ -102,7 +103,7 @@ export function useOrder(routeId: string, tableId: string | null, draftCustomer:
     (item: PosItem, optionIds: string[], quantity: number) => {
       const price = priced(item, optionIds);
       const entry: PendingAdd = {
-        key: crypto.randomUUID(),
+        key: newRequestId(),
         item,
         optionIds,
         quantity,
