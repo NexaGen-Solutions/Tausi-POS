@@ -36,8 +36,11 @@ public sealed class StockSelling(ITausiDb db, StockBook book, ILedgerPostingServ
         var costs = await db.StockItems.AsNoTracking().Where(i => itemIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, i => i.AverageCost, ct);
 
         var value = 0m;
-        foreach (var line in lines)
-        foreach (var ingredient in recipes.Where(r => r.MenuItemId == line.MenuItemId).OrderBy(r => r.SortOrder))
+        // Stock on hand is updated in one order (by stock item) whatever the ticket's order, so two
+        // prints at once on different counters can't lock each other's rows (a database deadlock).
+        var moves = lines.SelectMany(line => recipes.Where(r => r.MenuItemId == line.MenuItemId).Select(ingredient => (line, ingredient)))
+            .OrderBy(m => m.ingredient.StockItemId).ThenBy(m => m.line.Id).ThenBy(m => m.ingredient.SortOrder);
+        foreach (var (line, ingredient) in moves)
         {
             var moved = await book.Move(ingredient.StockItemId, locationId, -ingredient.BaseQuantity * line.Quantity,
                 costs[ingredient.StockItemId], StockMovementKind.Sale, SaleReference, line.Id, userId, workPeriodId, ct,
@@ -66,7 +69,7 @@ public sealed class StockSelling(ITausiDb db, StockBook book, ILedgerPostingServ
         if (sales.Count == 0) return;
 
         var value = 0m;
-        foreach (var sale in sales.Where(s => s.LineQuantity is > 0))
+        foreach (var sale in sales.Where(s => s.LineQuantity is > 0).OrderBy(s => s.StockItemId).ThenBy(s => s.LocationId))
         {
             var share = -sale.Quantity * part.Quantity / sale.LineQuantity!.Value;
             value += share * sale.UnitCost;
