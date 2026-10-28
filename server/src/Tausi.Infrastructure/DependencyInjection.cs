@@ -32,11 +32,13 @@ public static class DependencyInjection
         switch (provider)
         {
             case DatabaseProvider.SqlServer:
-                services.AddDbContext<SqlServerTausiDbContext>(o => o.UseSqlServer(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)));
+                services.AddDbContext<SqlServerTausiDbContext>((sp, o) => o.UseSqlServer(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
+                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>()));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
                 break;
             default:
-                services.AddDbContext<PostgresTausiDbContext>(o => o.UseNpgsql(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)));
+                services.AddDbContext<PostgresTausiDbContext>((sp, o) => o.UseNpgsql(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
+                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>()));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<PostgresTausiDbContext>());
                 break;
         }
@@ -56,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<IPrinterTransport, WindowsShareTransport>();
         services.AddScoped<IPrinterTransport, ViaTerminalTransport>();
         services.AddScoped<IPrinterTransport, FilePrinterTransport>();
+        services.AddSingleton<PrintWakeUp>();
         services.AddScoped<PrintJobProcessor>();
         services.AddScoped<ILogoProvider, SkiaLogoProvider>();
         services.AddScoped<ILogoImages, SkiaLogoImages>();
