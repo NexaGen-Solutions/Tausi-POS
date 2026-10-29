@@ -63,3 +63,20 @@ h3 {
   outline: none;
   box-shadow: none;
 }
+
+/* The app couldn't start (StartFailed): a plain page, never a blank one. */
+.start-failed {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 640px;
+  margin: 10vh auto;
+  padding: var(--space-5);
+}
+.start-failed pre {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  white-space: pre-wrap;
+}

@@ -1834,5 +1834,10 @@
   "splash": {
     "connecting": "Connecting to {server}…",
     "failed": "Cannot reach {server}. Trying again…"
+  },
+  "startFailed": {
+    "title": "Tausi POS couldn't start",
+    "help": "This screen couldn't read the terminal's settings. Try again; if it keeps happening, restart the PC and call NexaGen with the message below.",
+    "retry": "Try again"
   }
 }
