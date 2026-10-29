@@ -267,7 +267,8 @@ function FileImport({ onImported }: { onImported: (summary: string) => void }) {
   );
 }
 
-function SambaImport({ onImported }: { onImported: (summary: string) => void }) {
+/** The SambaPOS import panel: setup step 4, and the Menu page's "Import from SambaPOS". */
+export function SambaImport({ onImported }: { onImported: (summary: string) => void }) {
   const [connection, setConnection] = useState<SambaConnection>({
     server: '',
     database: 'SambaPOS5',
@@ -282,6 +283,7 @@ function SambaImport({ onImported }: { onImported: (summary: string) => void }) 
     tables: true,
     users: true,
     categoriesFromScreenMenu: false,
+    firstPriceOnly: true,
     userRoles: {},
   });
   const [message, setMessage] = useState<string | null>(null);
@@ -345,6 +347,18 @@ function SambaImport({ onImported }: { onImported: (summary: string) => void }) 
           </>
         )}
       </div>
+      <label className="report-check">
+        <input
+          type="checkbox"
+          checked={options.firstPriceOnly}
+          onChange={(e) => {
+            const firstPriceOnly = e.target.checked;
+            setOptions((o) => ({ ...o, firstPriceOnly }));
+            setPreview(null);
+          }}
+        />
+        {t('wizard.samba.firstPriceOnly')}
+      </label>
       <div className="wizard__row">
         <Button
           disabled={busy || !connection.server.trim()}

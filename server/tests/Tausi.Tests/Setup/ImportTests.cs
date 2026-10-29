@@ -197,6 +197,47 @@ public class ImportTests : ApprovalsFixtureBase
         (after.MenuItems.Count(), after.Tables.Count(), after.Users.Count(), after.PriceLists.Count()).Should().Be(counts);
     }
 
+    private static readonly SambaImportRequest FirstPrice = Everything with { Options = new SambaImportOptions(Users: false, FirstPriceOnly: true) };
+
+    [Fact]
+    public async Task First_price_only_makes_one_item_per_SambaPos_item_with_its_plain_name_and_main_price()
+    {
+        await Admin();
+        SambaData();
+        var import = F.Get<SambaPosImport>();
+
+        var preview = await import.Preview(FirstPrice, None);
+        preview.Items.Select(i => (i.Name, string.Join(", ", i.Prices))).Should().Equal(
+            ("Tusker", "Standard: 250"), ("Guinness Can", "Standard: 200"), ("Chips", "Standard: 150"));
+        preview.PriceLists.Should().Equal("Standard");
+
+        await import.Apply(FirstPrice, None);
+        var db = F.Read();
+        db.MenuItems.Include(i => i.Prices).Single(i => i.Name == "Guinness Can").Should()
+            .Match<MenuItem>(i => i.ExternalRef == "sambapos:portion:21" && i.Prices.Single().Price == 200);
+        db.MenuItems.Should().NotContain(i => i.Name.Contains('('));
+        db.PriceLists.Should().NotContain(l => l.Name == "Happy Hour");
+    }
+
+    [Fact]
+    public async Task First_price_only_after_a_full_import_renames_the_first_portion_and_hides_the_others()
+    {
+        await Admin();
+        SambaData();
+        var import = F.Get<SambaPosImport>();
+        await import.Apply(Everything with { Options = new SambaImportOptions(Users: false) }, None);
+
+        var result = await import.Apply(FirstPrice, None);
+
+        result.Summary.Should().Contain("Renamed 1 items to their plain names and hid 1 items from other portions.");
+        var db = F.Read();
+        db.MenuItems.Single(i => i.ExternalRef == "sambapos:portion:21").Should()
+            .Match<MenuItem>(i => i.Name == "Guinness Can" && i.ShortName == "Guinness Can" && i.Active);
+        db.MenuItems.Single(i => i.ExternalRef == "sambapos:portion:22").Should()
+            .Match<MenuItem>(i => i.Name == "Guinness Can (Large)" && !i.Active);
+        db.MenuItems.Count(i => i.ExternalRef != null && i.ExternalRef.StartsWith("sambapos:")).Should().Be(4, "nothing is duplicated");
+    }
+
     // ---- Stock ----
 
     [Fact]

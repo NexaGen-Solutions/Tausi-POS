@@ -354,6 +354,13 @@ describe('Setup wizard', () => {
       server: 'POS-SERVER\\SQLEXPRESS',
       windowsLogin: true,
     });
+    expect(posts('/api/admin/menu/import/sambapos/preview')[0].body).toMatchObject({
+      options: { firstPriceOnly: true },
+    });
+
+    // Changing it clears the preview: the items it shows depend on it.
+    await userEvent.click(screen.getByLabelText(/One price per item/));
+    expect(screen.queryByRole('group', { name: 'What to bring across' })).not.toBeInTheDocument();
   });
 
   it('step 6 says why a key is refused and starts the trial', async () => {

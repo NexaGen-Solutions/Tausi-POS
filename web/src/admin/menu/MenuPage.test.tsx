@@ -326,6 +326,15 @@ describe('Menu and prices', () => {
     expect(requests.filter((r) => r.path.endsWith('/apply'))).toHaveLength(1);
   });
 
+  it('imports from SambaPOS after setup, with one price per item ticked', async () => {
+    serve(menu());
+    renderRoutes(routes, '/admin/menu');
+    await userEvent.click(await screen.findByRole('button', { name: 'Import from SambaPOS' }));
+    const dialog = screen.getByRole('dialog', { name: 'Import from SambaPOS' });
+    expect(within(dialog).getByLabelText('SQL Server')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/One price per item/)).toBeChecked();
+  });
+
   it('deactivating a category with items offers to deactivate them too', async () => {
     serve(menu(), {
       'POST /api/admin/menu/categories/c-beer/deactivate': () => json(200, { itemsDeactivated: 2 }),

@@ -553,6 +553,7 @@
     "menu": {
       "title": "Menu and prices",
       "importCsv": "Import CSV",
+      "importSambaPos": "Import from SambaPOS",
       "exportCsv": "Export CSV",
       "optionGroups": "Option groups",
       "priceLists": "Price lists",
@@ -1739,6 +1740,7 @@
       "password": "Password",
       "test": "Test connection",
       "preview": "Preview",
+      "firstPriceOnly": "One price per item: the item's own name and its first portion's price (leave off to bring each portion as its own item, e.g. \"Tusker (Large)\")",
       "bring": "What to bring across",
       "parts": {
         "menu": "Menu",
