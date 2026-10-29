@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ApiError, api } from '../shared/api/client';
 import { TausiMark } from '../shared/brand';
+import { deviceToken } from '../shared/device/device';
 import { t } from '../shared/i18n/i18n';
 import { Button, Field } from '../shared/ui';
 import { AdminStep } from './steps/AdminStep';
@@ -36,17 +37,22 @@ const steps: Record<StepKey, (props: StepProps) => ReactNode> = {
  * The first-run setup wizard (/setup): the setup token, then six steps in a dark panel on the
  * left (the current one highlighted, finished ones ticked, skipped ones marked) and the step's form
  * on the right with Back, Next and, for steps 3 to 5, Skip. It resumes where it stopped.
+ * A paired terminal never shows the wizard: it says setup is done on the server, and goes to
+ * its PIN screen once it is.
  */
 export function SetupWizard() {
   const queries = useQueryClient();
+  const terminal = deviceToken() !== null;
   const status = useQuery({
     queryKey: ['setup', 'status'],
     queryFn: () => api<SetupStatus>('/api/setup/status'),
+    refetchInterval: terminal ? 5000 : false,
   });
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const data = status.data;
+  if (terminal) return <TerminalWaits complete={data?.complete ?? false} />;
   if (!data) return <main className="wizard wizard--plain">{t('common.loading')}</main>;
   if (data.complete) return <AlreadyComplete />;
   if (!data.unlocked)
@@ -229,6 +235,22 @@ function TokenPage({ status, onUnlocked }: { status: SetupStatus; onUnlocked: ()
           {t('wizard.token.unlock')}
         </Button>
       </form>
+    </main>
+  );
+}
+
+/** On a paired terminal: setup is finished on the server's admin site; then on to the PIN screen. */
+function TerminalWaits({ complete }: { complete: boolean }) {
+  useEffect(() => {
+    if (complete) location.assign('/pos');
+  }, [complete]);
+  return (
+    <main className="wizard wizard--plain">
+      <div className="wizard__token" role="status">
+        <p className="wizard__brand wizard__brand--dark">{t('wizard.brand')}</p>
+        <h1 className="wizard__title">{t('wizard.terminalWaits.title')}</h1>
+        <p>{t('wizard.terminalWaits.text')}</p>
+      </div>
     </main>
   );
 }

@@ -1587,6 +1587,10 @@
   },
   "wizard": {
     "brand": "Tausi POS",
+    "terminalWaits": {
+      "title": "Setup isn't finished yet",
+      "text": "Finish setting up in the admin site on the server PC (Tausi POS Admin). This terminal goes to its PIN screen by itself when it is done."
+    },
     "heading": "Set up your business",
     "later": "You can change all of this later in Settings.",
     "stepOf": "Step {n} of 6",
