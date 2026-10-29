@@ -6,6 +6,7 @@ import type { Brand, DeviceInfo, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { isOffline } from '../../shared/connection/status';
 import { useConnection } from '../../shared/connection/useConnection';
+import { useLogout } from '../useLogout';
 import { usePosRules } from '../../shared/device/usePosRules';
 import { formatAmount, formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
@@ -113,6 +114,7 @@ export function OrderPage() {
   // Settling can't be approved for someone else: only Allowed counts.
   const canSettle = permission('ticket.settle') === 'Allowed';
   const rules = usePosRules();
+  const logout = useLogout();
   const canVoid = permission('order.void') !== 'NotAllowed';
   const canGift = permission('order.gift') !== 'NotAllowed';
   const canDiscount = permission('order.discount') !== 'NotAllowed';
@@ -125,9 +127,14 @@ export function OrderPage() {
   };
 
   const act = (run: () => Promise<unknown>) => run().catch(order.fail);
-  const print = () => order.write('/print', 'POST');
-  const send = () => order.write('/send', 'POST');
-  const printBill = () => order.write('/print-bill', 'POST');
+  // pos.logoutAfterPrint: once the slips are queued, back to the PIN pad.
+  const printed = async (path: string) => {
+    const detail = await order.write(path, 'POST');
+    if (detail && rules.logoutAfterPrint) await logout();
+  };
+  const print = () => printed('/print');
+  const send = () => printed('/send');
+  const printBill = () => printed('/print-bill');
   // With a supervisor elsewhere, the approval pad can send a reprint request instead.
   const reprint = () =>
     order.write('/reprint-bill', 'POST', undefined, {
@@ -481,7 +488,12 @@ export function OrderPage() {
             <Button
               size="lg"
               disabled={
-                disabled || order.pending > 0 || !ticket || !canReprint || ticket.billNumber === 0
+                disabled ||
+                order.pending > 0 ||
+                !ticket ||
+                !canReprint ||
+                ticket.billNumber === 0 ||
+                newCount > 0
               }
               onClick={() => void act(reprint)}
             >

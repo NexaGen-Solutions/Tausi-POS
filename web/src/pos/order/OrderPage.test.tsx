@@ -544,6 +544,33 @@ describe('order screen', () => {
     expect(writes('/print')).toHaveLength(1);
   });
 
+  it('Reprint bill is off while new items wait: Print sends them with the bill', async () => {
+    ticket = ticketWith([line('l1', { status: 'Printed' }), line('l2')], { billNumber: 1 });
+    renderRoutes(routes, '/pos/ticket/k1?table=t-7');
+
+    expect(await screen.findByRole('button', { name: 'Print (1 new)' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Reprint bill' })).toBeDisabled();
+  });
+
+  it('with log out after printing on, Print goes back to the PIN pad', async () => {
+    const user = userEvent.setup();
+    rules = {
+      approvalsFromOwnCounter: true,
+      recordBroughtBy: true,
+      mpesaCodeRequired: true,
+      closeVoidedWithoutReceipt: true,
+      returnOnVoidIfNotServed: true,
+      approvalChime: true,
+      logoutAfterPrint: true,
+    };
+    const router = await open();
+
+    await user.click(await screen.findByRole('button', { name: 'Print (1 new)' }));
+    await waitFor(() => expect(writes('/auth/logout')).toHaveLength(1));
+    expect(writes('/print')).toHaveLength(1);
+    await waitFor(() => expect(router.state.location.pathname).not.toMatch(/^\/pos\/ticket/));
+  });
+
   it('without ticket.reprint, Reprint says it needs a supervisor and is disabled', async () => {
     permissions['ticket.reprint'] = 'NotAllowed';
     ticket = ticketWith([line('l1', { status: 'Printed' })], { billNumber: 1 });

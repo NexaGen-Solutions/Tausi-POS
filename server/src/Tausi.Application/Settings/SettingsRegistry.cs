@@ -80,6 +80,7 @@ public static class SettingsRegistry
     public const string PosIdleLogoutEnabled = "pos.idleLogoutEnabled";
     public const string PosIdleLogoutMinutes = "pos.idleLogoutMinutes";
     public const string PosLogoutAfterSettle = "pos.logoutAfterSettle";
+    public const string PosLogoutAfterPrint = "pos.logoutAfterPrint";
     public const string PosTableIdleMinutes = "pos.tableIdleMinutes";
     public const string PosApprovalExpiryMinutes = "pos.approvalExpiryMinutes";
     public const string PosApprovalsFromOwnCounter = "pos.approvalsFromOwnCounter";
@@ -144,6 +145,8 @@ public static class SettingsRegistry
             "How long a terminal can sit unused before it logs out.", Min: 1, Max: 120),
         new(PosLogoutAfterSettle, SettingType.Bool, false, Sections.Pos, "Log out after settling",
             "The cashier's terminal returns to the PIN screen after each receipt."),
+        new(PosLogoutAfterPrint, SettingType.Bool, false, Sections.Pos, "Log out after printing",
+            "The waiter's terminal returns to the PIN screen after Print, Send or Print bill."),
         new(PosTableIdleMinutes, SettingType.Int, 30, Sections.Pos, "Table idle warning (minutes)",
             "A table with an open ticket shows as idle after this long without activity.", Min: 1, Max: MaxMinutes),
         new(PosApprovalExpiryMinutes, SettingType.Int, 30, Sections.Pos, "Approval requests expire after (minutes)",
