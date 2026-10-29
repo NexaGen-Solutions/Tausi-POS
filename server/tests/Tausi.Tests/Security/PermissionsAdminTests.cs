@@ -37,11 +37,11 @@ public class PermissionsAdminTests : IAsyncLifetime
         F.Read().Roles.AsEnumerable().Select(r => (r.Name, key, value)).ToArray();
 
     [Fact]
-    public void Keys_that_can_not_be_approved_are_settle_menu_reports_day_and_admin()
+    public void Keys_that_can_not_be_approved_are_settle_others_tickets_menu_reports_day_and_admin()
     {
         PermissionCatalog.All.Select(p => p.Key).Should().Equal(PermissionKeys.All, "every key, in the order of AGENTS.md");
         PermissionCatalog.NotApprovable.Should().BeEquivalentTo(
-            PermissionKeys.TicketSettle, PermissionKeys.MenuEdit, PermissionKeys.MenuEditPrices, PermissionKeys.ReportsOwn,
+            PermissionKeys.TicketSettle, PermissionKeys.TicketOthers, PermissionKeys.MenuEdit, PermissionKeys.MenuEditPrices, PermissionKeys.ReportsOwn,
             PermissionKeys.ReportsAll, PermissionKeys.DayOpenClose, PermissionKeys.StaffManage, PermissionKeys.PermissionsManage,
             PermissionKeys.DevicesManage, PermissionKeys.SettingsManage, PermissionKeys.ErpManage);
         PermissionCatalog.All.Should().OnlyContain(p => p.Help.Length > 0 && p.Label.Length > 0);

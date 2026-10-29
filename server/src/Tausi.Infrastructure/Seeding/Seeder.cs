@@ -67,10 +67,12 @@ public sealed partial class Seeder(
             }
             // Roles from before built-in keys existed get theirs here.
             role.SystemKey ??= roleKey;
+            // A key added in a later version reaches existing roles here. Added through the set, not the
+            // role's list: the new row's id is already set, so EF would take it for an existing row.
             foreach (var key in PermissionKeys.All)
             {
                 if (role.Permissions.Any(p => p.PermissionKey == key)) continue;
-                role.Permissions.Add(new RolePermission
+                db.RolePermissions.Add(new RolePermission
                 {
                     RoleId = role.Id,
                     PermissionKey = key,
@@ -78,6 +80,9 @@ public sealed partial class Seeder(
                 });
             }
         }
+        // Roles a business made itself keep working on any ticket, as before ticket.others existed.
+        foreach (var role in roles.Where(r => r.SystemKey == null && r.Permissions.All(p => p.PermissionKey != PermissionKeys.TicketOthers)))
+            db.RolePermissions.Add(new RolePermission { RoleId = role.Id, PermissionKey = PermissionKeys.TicketOthers, Value = PermissionValue.Allowed });
 
         if (!await db.PriceLists.AnyAsync(ct))
         {

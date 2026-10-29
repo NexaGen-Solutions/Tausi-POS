@@ -16,9 +16,11 @@ public sealed record TicketLockState(bool Editable, LockDto? HeldBy, string? Mes
 /// Takes or renews the edit lock on a ticket for this terminal and user. A ticket open on another
 /// terminal comes back read-only. The lock fields change with a conditional update, so two
 /// terminals can't both win, and a renewal doesn't count as an edit (the row version stays).
+/// Another waiter's ticket comes back read-only without ticket.others.
 /// </summary>
 public sealed class LockTicket(
-    ITausiDb db, ICurrentSession session, IPermissionService permissions, TicketLocks locks, TicketEvents events, TimeProvider clock)
+    ITausiDb db, ICurrentSession session, IPermissionService permissions, TicketLocks locks, TicketAccess access,
+    TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketLockState> Execute(Guid id, CancellationToken ct)
     {
@@ -32,6 +34,14 @@ public sealed class LockTicket(
             var ticket = await db.Tickets.AsNoTracking().FirstOrDefaultAsync(k => k.Id == id, ct)
                 ?? throw new NotFoundException("Ticket not found.");
             if (!ticket.IsOpen) return new TicketLockState(false, null, $"#{ticket.Number} is no longer open.");
+            // Another waiter's ticket opens read-only (or not at all, when others' tickets are hidden).
+            if (!await access.MayChange(user, ticket, ct))
+            {
+                if (await access.OthersHidden(user, ct))
+                    throw new ForbiddenException("This is another waiter's table.", TicketCodes.NotYours);
+                return new TicketLockState(false, null,
+                    $"#{ticket.Number} is {await access.OwnerName(ticket, ct)}'s ticket. You can view it but not change it.");
+            }
 
             var holder = await locks.Holder(ticket, ct);
             if (holder is not null && holder.TerminalId != terminalId)

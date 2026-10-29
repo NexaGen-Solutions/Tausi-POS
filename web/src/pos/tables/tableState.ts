@@ -17,6 +17,8 @@ export interface TileState {
   notPrinted: number;
   /** What's left to pay on part-paid tickets, or null when none is part paid. */
   partPaidLeft: number | null;
+  /** Other waiters' tables hidden from this user: "Taken", with no amount or name. */
+  hidden: boolean;
 }
 
 /**
@@ -39,11 +41,14 @@ export function tileState(
       lockedElsewhere: false,
       notPrinted: 0,
       partPaidLeft: null,
+      hidden: false,
     };
 
   const total = tickets.reduce((sum, t) => sum + t.total, 0);
-  const waiter =
-    tickets.length === 1
+  const hidden = tickets.every((t) => t.private);
+  const waiter = hidden
+    ? t('pos.map.taken')
+    : tickets.length === 1
       ? tickets[0].openedBy
       : `${tickets[0].openedBy} · ${tickets.length} tickets`;
   const quietest = Math.min(...tickets.map((t) => Date.parse(t.lastActivityAt)));
@@ -55,7 +60,7 @@ export function tileState(
   const partPaid = tickets.filter((t) => t.left != null);
   const partPaidLeft =
     partPaid.length > 0 ? partPaid.reduce((sum, t) => sum + (t.left ?? 0), 0) : null;
-  const shared = { total, waiter, lockedElsewhere, notPrinted, partPaidLeft };
+  const shared = { total, waiter, lockedElsewhere, notPrinted, partPaidLeft, hidden };
   return idle >= idleLimitMinutes
     ? { kind: 'idle', idleMinutes: idle, ...shared }
     : { kind: 'occupied', idleMinutes: null, ...shared };
@@ -99,7 +104,7 @@ export function age(fromIso: string, nowMs: number): string {
 /** The tile's accessible name: "7: edna · 2 tickets, 1,910, Idle 42 min". */
 export function tileLabel(table: TableTile, state: TileState): string {
   if (state.kind === 'free') return `${table.name}: ${t('pos.map.free')}`;
-  const parts = [state.waiter, formatAmount(state.total)];
+  const parts = state.hidden ? [state.waiter] : [state.waiter, formatAmount(state.total)];
   if (state.idleMinutes !== null) parts.push(t('pos.map.idle', { minutes: state.idleMinutes }));
   if (state.notPrinted > 0) parts.push(t('pos.map.notPrinted', { count: state.notPrinted }));
   if (state.partPaidLeft !== null)

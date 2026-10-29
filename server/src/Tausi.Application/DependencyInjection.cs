@@ -187,6 +187,7 @@ public static class DependencyInjection
         services.AddScoped<MergeTickets>();
         services.AddScoped<MenuPricing>();
         services.AddScoped<TicketEditing>();
+        services.AddScoped<TicketAccess>();
         services.AddScoped<AddLine>();
         services.AddScoped<ChangeLine>();
         services.AddScoped<UpdateTicket>();

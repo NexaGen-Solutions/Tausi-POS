@@ -30,7 +30,7 @@ function ticket(id: string, number: number, extra: Partial<TicketSummary> = {}):
     number,
     tableId: 't-7',
     customerName: null,
-    openedById: 'u-edna',
+    openedById: 'id-edna',
     openedBy: 'edna',
     total: 1370,
     openedAt: ago(40),
@@ -341,6 +341,55 @@ describe('table map', () => {
       },
     );
     expect(screen.queryByText('Choose a table for #1047')).not.toBeInTheDocument();
+  });
+
+  it("another waiter's table: their ticket opens to look, but no new ticket or move here", async () => {
+    map = mapWith(
+      standardTables().map((t) =>
+        t.name === '7'
+          ? { ...t, tickets: [ticket('k9', 1050, { openedById: 'id-ruth', openedBy: 'Ruth' })] }
+          : t,
+      ),
+    );
+    serve();
+    await open();
+
+    await userEvent.click(tileFor('7'));
+    await userEvent.click(screen.getByRole('button', { name: /#1050/ }));
+    expect(screen.getByText(/This is Ruth's table/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'New ticket on this table' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to another table' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Open ticket' })).toBeEnabled();
+  });
+
+  it('with others hidden, their table says only Taken and nothing on it opens', async () => {
+    map = mapWith(
+      standardTables().map((t) =>
+        t.name === '7'
+          ? {
+              ...t,
+              tickets: [
+                ticket('k9', 1050, {
+                  openedById: 'id-ruth',
+                  openedBy: '',
+                  total: 0,
+                  private: true,
+                }),
+              ],
+            }
+          : t,
+      ),
+    );
+    serve();
+    await open();
+
+    expect(tileFor('7')).toHaveTextContent('Taken');
+    await userEvent.click(tileFor('7'));
+    expect(screen.getByRole('button', { name: /Another waiter's ticket/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Open ticket' })).toBeDisabled();
+    expect(screen.getByText("This is another waiter's table.")).toBeInTheDocument();
   });
 
   it('an incoming ticket.changed refetches and redraws just that table', async () => {

@@ -3,7 +3,10 @@ namespace Tausi.Application.Tickets;
 /// <summary>The terminal or user holding a ticket's edit lock.</summary>
 public sealed record LockDto(Guid TerminalId, string Terminal, Guid UserId, string User);
 
-/// <summary>An open ticket as the table map and the takeaway list show it.</summary>
+/// <summary>
+/// An open ticket as the table map and the takeaway list show it. <see cref="Private"/>: another
+/// waiter's ticket, hidden from this user (pos.showOthersTickets off): only that the table is taken.
+/// </summary>
 public sealed record TicketSummaryDto(
     Guid Id,
     long Number,
@@ -18,7 +21,15 @@ public sealed record TicketSummaryDto(
     LockDto? Lock,
     int NewLines = 0,
     decimal Paid = 0,
-    decimal? Left = null);
+    decimal? Left = null,
+    bool Private = false)
+{
+    /// <summary>The same ticket with nothing but that it is there and since when.</summary>
+    public TicketSummaryDto Hidden() => this with
+    {
+        CustomerName = null, OpenedBy = "", Total = 0, Lock = null, NewLines = 0, Paid = 0, Left = null, Private = true,
+    };
+}
 
 public sealed record AreaDto(Guid Id, string Name, int SortOrder);
 
