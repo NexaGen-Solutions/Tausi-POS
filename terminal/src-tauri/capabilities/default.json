@@ -1,7 +1,26 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The bundled setup screen. Pages from the paired server get their own capability at runtime, for that server's address only.",
-  "windows": ["main"],
-  "permissions": ["core:default", "store:default", "autostart:default", "updater:default"]
+  "description": "The bundled pages (setup, pairing, splash): every app command. Pages from the paired server get their own capability at runtime, for that server's address only (lib.rs, REMOTE_COMMANDS).",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "store:default",
+    "autostart:default",
+    "updater:default",
+    "allow-get-device-config",
+    "allow-save-device-config",
+    "allow-set-server-url",
+    "allow-open-server",
+    "allow-print-raw",
+    "allow-list-printers",
+    "allow-check-printer",
+    "allow-kiosk-set",
+    "allow-kiosk-exit",
+    "allow-move-server",
+    "allow-update-check",
+    "allow-update-install"
+  ]
 }

@@ -41,10 +41,13 @@
   font-weight: 600;
   line-height: 1.1;
 }
+/* The business's own logo, large: it is their screen (the owner asked for it bigger than 160 × 80). */
 .pin-login__logo {
-  max-width: 160px;
-  max-height: 80px;
+  display: block;
+  max-width: min(100%, 320px);
+  max-height: 220px;
   margin-bottom: var(--space-4);
+  object-fit: contain;
 }
 .pin-login__status {
   display: flex;

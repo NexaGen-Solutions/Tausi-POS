@@ -132,6 +132,7 @@ public static class DependencyInjection
         services.AddScoped<ReorderCategories>();
         services.AddScoped<DeactivateCategory>();
         services.AddScoped<SaveItem>();
+        services.AddScoped<ItemImages>();
         services.AddScoped<SetItemPrices>();
         services.AddScoped<SaveGroup>();
         services.AddScoped<SetOptionPrices>();
@@ -190,6 +191,7 @@ public static class DependencyInjection
         services.AddScoped<MergeTickets>();
         services.AddScoped<MenuPricing>();
         services.AddScoped<TicketEditing>();
+        services.AddScoped<TicketAccess>();
         services.AddScoped<AddLine>();
         services.AddScoped<ChangeLine>();
         services.AddScoped<UpdateTicket>();

@@ -88,6 +88,10 @@
       "openTickets": "{count} open tickets",
       "openTicket": "1 open ticket",
       "ticketLine": "#{number} · {waiter} · {total} · {age}",
+      "ticketTaken": "Another waiter's ticket · {age}",
+      "taken": "Taken",
+      "othersTable": "This is {waiter}'s table. You can open their ticket to look; only {waiter} or a supervisor can add to it.",
+      "othersTableHidden": "This is another waiter's table.",
       "newTicket": "New ticket",
       "openTheTicket": "Open ticket",
       "newOnTable": "New ticket on this table",
@@ -177,6 +181,10 @@
       "search": "Search the menu",
       "searchPlaceholder": "Search",
       "noMatch": "Nothing matches.",
+      "pages": "Pages of items",
+      "pagePrevious": "Previous",
+      "pageNext": "Next",
+      "pageOf": "Page {page} of {pages}",
       "optionsHint": "Items with a choice, like Cold or Warm, ask before they are added.",
       "retry": "Retry",
       "billNotPrinted": "Bill not printed on {printer}",
@@ -557,6 +565,7 @@
     "menu": {
       "title": "Menu and prices",
       "importCsv": "Import CSV",
+      "importSambaPos": "Import from SambaPOS",
       "exportCsv": "Export CSV",
       "optionGroups": "Option groups",
       "priceLists": "Price lists",
@@ -636,6 +645,16 @@
         "rename": "Rename",
         "activeLabel": "Active"
       },
+      "picture": {
+        "label": "Picture",
+        "none": "No picture",
+        "add": "Add picture",
+        "change": "Change picture",
+        "remove": "Remove picture",
+        "hint": "PNG or JPG, up to 2 MB. Shown on the item's tile on the order screen. Saved at once.",
+        "type": "The picture must be a PNG or JPG image.",
+        "size": "The picture must be smaller than 2 MB."
+      },
       "categories": {
         "title": "Manage categories",
         "newName": "New category",
@@ -646,7 +665,11 @@
         "confirmItems": "{name} has {count} active items. Deactivate them too? Inactive items don't show on terminals.",
         "withItems": "Deactivate category and items",
         "onlyCategory": "Only the category",
-        "confirmPlain": "Deactivate {name}? Nothing is deleted; you can reactivate it later."
+        "confirmPlain": "Deactivate {name}? Nothing is deleted; you can reactivate it later.",
+        "perPage": "Items per page",
+        "perPageShort": "{count} a page",
+        "perPageTitle": "Items per page: {name}",
+        "perPageHint": "4 to 60. The order screen shows this many at a time with Previous and Next. Leave empty to show them all on one page that scrolls."
       },
       "import": {
         "title": "Import menu from CSV",
@@ -836,6 +859,7 @@
       "logoType": "The logo must be a PNG or JPG picture.",
       "logoSize": "The logo must be smaller than 2 MB.",
       "range": "From {min} to {max}",
+      "footerHint": "Printed centred on bills and receipts, line by line as typed. Start a line with [bold], [big] (double height) or [wide] (double width) to make it stand out, e.g. [bold][big][wide]4235672",
       "listHint": "Note values, separated by commas, e.g. 1000, 500, 200",
       "leaveTitle": "Leave without saving?",
       "leaveText": "Your changes to the settings are not saved yet.",
@@ -1592,6 +1616,7 @@
     "ticket.move": "Move a ticket",
     "ticket.merge": "Merge tickets",
     "ticket.settle": "Settle and take payment",
+    "ticket.others": "Work on other waiters' tickets",
     "menu.edit": "Edit the menu",
     "menu.edit_prices": "Edit menu prices",
     "stock.receive": "Receive deliveries",
@@ -1611,6 +1636,10 @@
   },
   "wizard": {
     "brand": "Tausi POS",
+    "terminalWaits": {
+      "title": "Setup isn't finished yet",
+      "text": "Finish setting up in the admin site on the server PC (Tausi POS Admin). This terminal goes to its PIN screen by itself when it is done."
+    },
     "heading": "Set up your business",
     "later": "You can change all of this later in Settings.",
     "stepOf": "Step {n} of 6",
@@ -1764,6 +1793,7 @@
       "password": "Password",
       "test": "Test connection",
       "preview": "Preview",
+      "firstPriceOnly": "One price per item: the item's own name and its first portion's price (leave off to bring each portion as its own item, e.g. \"Tusker (Large)\")",
       "bring": "What to bring across",
       "parts": {
         "menu": "Menu",
@@ -1862,5 +1892,10 @@
   "splash": {
     "connecting": "Connecting to {server}…",
     "failed": "Cannot reach {server}. Trying again…"
+  },
+  "startFailed": {
+    "title": "Tausi POS couldn't start",
+    "help": "This screen couldn't read the terminal's settings. Try again; if it keeps happening, restart the PC and call NexaGen with the message below.",
+    "retry": "Try again"
   }
 }

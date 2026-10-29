@@ -19,16 +19,17 @@ public sealed record DeviceInfo(
 /// <summary>
 /// The settings that change what the terminal screens offer (the server enforces each of them too):
 /// the request option for approvals, the Brought by field, the M-Pesa code, Close ticket for a fully
-/// voided ticket, the "already poured?" question and the approval chime.
+/// voided ticket, the "already poured?" question, the approval chime and logging out after printing.
 /// </summary>
 public sealed record PosRules(
     bool ApprovalsFromOwnCounter, bool RecordBroughtBy, bool MpesaCodeRequired, bool CloseVoidedWithoutReceipt,
-    bool ReturnOnVoidIfNotServed, bool ApprovalChime)
+    bool ReturnOnVoidIfNotServed, bool ApprovalChime, bool LogoutAfterPrint = false)
 {
     public static PosRules From(SettingValues v) => new(
         v.Bool(SettingsRegistry.PosApprovalsFromOwnCounter), v.Bool(SettingsRegistry.PaymentsRecordBroughtBy),
         v.Bool(SettingsRegistry.PaymentsMpesaCodeRequired), v.Bool(SettingsRegistry.TicketsCloseVoidedWithoutReceipt),
-        v.Bool(SettingsRegistry.StockReturnOnVoidIfNotServed), v.Bool(SettingsRegistry.PosApprovalChime));
+        v.Bool(SettingsRegistry.StockReturnOnVoidIfNotServed), v.Bool(SettingsRegistry.PosApprovalChime),
+        v.Bool(SettingsRegistry.PosLogoutAfterPrint));
 }
 
 /// <summary>

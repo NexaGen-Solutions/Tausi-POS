@@ -72,6 +72,8 @@ export interface SambaOptions {
   tables: boolean;
   users: boolean;
   categoriesFromScreenMenu: boolean;
+  /** One item per SambaPOS item: its plain name and its first portion's main price. */
+  firstPriceOnly: boolean;
   userRoles: Record<string, string>;
 }
 

@@ -14,6 +14,8 @@ public static class PermissionKeys
     public const string TicketMove = "ticket.move";
     public const string TicketMerge = "ticket.merge";
     public const string TicketSettle = "ticket.settle";
+    /// <summary>Work on tickets other waiters opened (and open tickets on their tables).</summary>
+    public const string TicketOthers = "ticket.others";
     public const string MenuEdit = "menu.edit";
     public const string MenuEditPrices = "menu.edit_prices";
     public const string StockReceive = "stock.receive";
@@ -34,7 +36,7 @@ public static class PermissionKeys
     public static readonly IReadOnlyList<string> All =
     [
         OrderAdd, OrderCancelUnprinted, OrderVoid, OrderGift, OrderDiscount, OrderChangePrice,
-        TicketPrint, TicketReprint, TicketMove, TicketMerge, TicketSettle,
+        TicketPrint, TicketReprint, TicketMove, TicketMerge, TicketSettle, TicketOthers,
         MenuEdit, MenuEditPrices,
         StockReceive, StockWaste, StockCount, StockAdjust,
         CashExpense, CashBook,

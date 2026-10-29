@@ -170,4 +170,47 @@ public class MenuApiTests(MenuApp app)
         await terminal.LoginWithPin(app.Pins["Ruth"]);
         (await terminal.Http.GetAsync("/api/admin/menu")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task An_item_picture_and_the_categorys_items_per_page_reach_the_terminal_menu()
+    {
+        var admin = await app.AdminClient();
+        var counter = await app.PairTerminal("Menu Pictures");
+        var item = ItemId("Balozi Lager");
+
+        static MultipartFormDataContent Form(byte[] bytes, string type)
+        {
+            var form = new MultipartFormDataContent();
+            var file = new ByteArrayContent(bytes);
+            file.Headers.ContentType = new MediaTypeHeaderValue(type);
+            form.Add(file, "file", "balozi.png");
+            return form;
+        }
+        (await admin.PostAsync($"/api/admin/menu/items/{item}/image", Form("GIF89a"u8.ToArray(), "image/gif")))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var bitmap = new SkiaSharp.SKBitmap(900, 600);
+        var png = SkiaSharp.SKImage.FromBitmap(bitmap).Encode(SkiaSharp.SKEncodedImageFormat.Png, 100).ToArray();
+        var upload = await admin.PostAsync($"/api/admin/menu/items/{item}/image", Form(png, "image/png"));
+        upload.StatusCode.Should().Be(HttpStatusCode.OK, await upload.Content.ReadAsStringAsync());
+
+        var beers = app.Db(db => db.Categories.Single(c => c.Name == "Beers"));
+        (await admin.PutAsJsonAsync($"/api/admin/menu/categories/{beers.Id}", new { name = "Beers", active = true, rowVersion = beers.RowVersion, itemsPerPage = 2 }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "fewer than 4 a page is refused");
+        (await admin.PutAsJsonAsync($"/api/admin/menu/categories/{beers.Id}", new { name = "Beers", active = true, rowVersion = beers.RowVersion, itemsPerPage = 8 }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var menu = await (await counter.Http.GetAsync("/api/pos/menu")).Json();
+        var category = menu.GetProperty("categories").EnumerateArray().Single(c => c.GetProperty("name").GetString() == "Beers");
+        category.GetProperty("itemsPerPage").GetInt32().Should().Be(8);
+        var balozi = category.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("name").GetString() == "Balozi Lager");
+        var picture = balozi.GetProperty("imageFileId").GetGuid();
+        var served = SkiaSharp.SKBitmap.Decode(await (await app.CreateClient().GetAsync($"/files/{picture}")).Content.ReadAsByteArrayAsync());
+        served.Width.Should().Be(512, "kept at most 512 px");
+
+        var terminalWaiter = await app.PairTerminal("Menu Pictures Waiter");
+        await terminalWaiter.LoginWithPin(app.Pins["Ruth"]);
+        (await terminalWaiter.Http.DeleteAsync($"/api/admin/menu/items/{item}/image")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await admin.DeleteAsync($"/api/admin/menu/items/{item}/image")).StatusCode.Should().Be(HttpStatusCode.OK);
+        app.Db(db => db.MenuItems.Single(i => i.Id == item).ImageFileId).Should().BeNull();
+    }
 }

@@ -6,12 +6,17 @@ namespace Tausi.Application.Printing;
 
 /// <summary>
 /// How a slip is printed on a given printer. <paramref name="PoweredBy"/> adds the "Powered by Tausi POS"
-/// line to customer slips (bills and receipts), from the <c>print.poweredByFooter</c> setting.
+/// line to customer slips (bills and receipts), from the <c>print.poweredByFooter</c> setting;
+/// <paramref name="VatAmounts"/> off (<c>print.vatAmounts</c>) prints "Inclusive of VAT" instead of the amounts.
 /// </summary>
-public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string Currency = "KES", bool PoweredBy = false)
+public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string Currency = "KES", bool PoweredBy = false, bool VatAmounts = true)
 {
-    public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency = "KES", bool poweredBy = false) =>
-        new(printer.Columns, printer.CutAfterSlip, logo, currency, poweredBy);
+    public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency = "KES", bool poweredBy = false, bool vatAmounts = true) =>
+        new(printer.Columns, printer.CutAfterSlip, logo, currency, poweredBy, vatAmounts);
+
+    /// <summary>A customer slip (bill or receipt) with the printing settings.</summary>
+    public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency, Settings.PrintSettings print) =>
+        For(printer, logo, currency, print.PoweredByFooter, print.VatAmounts);
 }
 
 /// <summary>
@@ -94,6 +99,7 @@ public static class Slips
 
     public const string PoweredByText = "Powered by Tausi POS";
     public const string NotAReceiptText = "This is not a receipt";
+    public const string InclusiveOfVatText = "Inclusive of VAT";
 
     /// <summary>The customer's bill: every line on the ticket, identical lines added together.</summary>
     public static PrintDocument Bill(BillSlip d, SlipStyle style)
@@ -161,6 +167,13 @@ public static class Slips
 
     private static ReceiptBuilder WriteVat(ReceiptBuilder b, IReadOnlyList<SlipLine> lines, SlipStyle style)
     {
+        if (!style.VatAmounts)
+        {
+            if (lines.Any(l => !l.VatExempt && !l.IsGift)) b.Text(InclusiveOfVatText);
+            if (lines.Any(l => l.VatExempt && !l.IsGift))
+                b.Columns2("VAT exempt:", MoneyCents(lines.Where(l => l.VatExempt).Sum(l => l.Amount - l.Discount), style.Currency));
+            return b;
+        }
 
         // One line per VAT rate (0% included: zero-rated), from the VAT stored on each line, which is
         // worked out after the discount. Gifts carry none. The amount is never split over two lines:
@@ -177,10 +190,21 @@ public static class Slips
         return b;
     }
 
-    /// <summary>The business's footer, then "Powered by Tausi POS" when switched on.</summary>
+    /// <summary>
+    /// The business's footer, then "Powered by Tausi POS" when switched on. The footer is centred, line by
+    /// line as typed; a line starting with <c>[bold]</c> or <c>[big]</c> prints that way ("[bold]Buy Goods").
+    /// </summary>
     private static ReceiptBuilder WriteFooter(ReceiptBuilder b, BusinessInfo business, SlipStyle style)
     {
-        if (!string.IsNullOrWhiteSpace(business.Footer)) b.Separator().Text(business.Footer, TextStyle.Center);
+        if (!string.IsNullOrWhiteSpace(business.Footer))
+        {
+            b.Separator();
+            foreach (var line in business.Footer.Trim().Replace("\r\n", "\n").Split('\n'))
+            {
+                var (text, tags) = ReceiptTemplate.Styled(line.Trim());
+                b.Text(text.Trim(), tags | TextStyle.Center);
+            }
+        }
         if (style.PoweredBy) b.Feed().Text(PoweredByText, TextStyle.Center);
         return b;
     }
@@ -209,7 +233,8 @@ public static class Slips
 
     /// <summary>
     /// To the dispense printer that printed the item: "VOID" in large text with the dispense header,
-    /// the item as on the dispense slip, the reason, and who asked and approved.
+    /// then the item as on the bill (full name and options, normal size) with its amount as a minus,
+    /// the reason, and who asked and approved.
     /// </summary>
     public static PrintDocument Void(VoidSlip d, SlipStyle style)
     {
@@ -219,10 +244,7 @@ public static class Slips
             .Columns2($"{d.Where} · #{d.TicketNumber}", d.At.ToString("HH:mm", CultureInfo.InvariantCulture))
             .Separator();
         foreach (var line in d.Lines)
-        {
-            b.Text($"{Qty(line.Quantity)} x {line.ShortName ?? line.Name}", TextStyle.Bold | TextStyle.DoubleHeight);
-            if (line.Options is { Length: > 0 } options) b.Text("   " + options.ToUpperInvariant());
-        }
+            b.Columns2(LineText(line), "-" + Amount(line.Amount - line.Discount));
         b.Separator()
             .Text($"Reason: {d.Reason}")
             .Text($"By: {d.RequestedBy} · Approved: {d.ApprovedBy}");

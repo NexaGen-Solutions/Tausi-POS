@@ -13,7 +13,7 @@
 //! when the web side says the PIN screen has been idle long enough.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -27,6 +27,27 @@ use tausi_print::{PrintError, PrintRequest};
 use url::Url;
 
 const STORE_FILE: &str = "tausi.json";
+
+/// The app commands the paired server's pages may call (the POS screens read the device config, print
+/// via the terminal, leave kiosk mode, move to a new server, update). Choosing the server and opening it
+/// stay with the bundled setup screen.
+pub const REMOTE_COMMANDS: &[&str] = &[
+    "get_device_config",
+    "save_device_config",
+    "print_raw",
+    "list_printers",
+    "check_printer",
+    "kiosk_set",
+    "kiosk_exit",
+    "move_server",
+    "update_check",
+    "update_install",
+];
+
+/// `allow-get-device-config` for `get_device_config`: the permission tauri-build makes for an app command.
+pub fn remote_permission(command: &str) -> String {
+    format!("allow-{}", command.replace('_', "-"))
+}
 const MAIN_WINDOW_TITLE: &str = "Tausi POS";
 
 /// Before the rename to Tausi POS the app had another identifier, so another app-data folder, and
@@ -193,6 +214,56 @@ pub fn start_page(config: &DeviceConfig) -> &'static str {
     }
 }
 
+/// What the paired server's pages may do: the app's remote commands, the store, and closing the
+/// window (the order screen gives back its ticket's edit lock when the window closes, then closes
+/// the window itself).
+fn server_capability(name: &str, origin: &str) -> CapabilityBuilder {
+    let mut capability = CapabilityBuilder::new(name)
+        .remote(format!("{origin}/*"))
+        .window(MAIN_WINDOW)
+        .permission("core:default")
+        .permission("store:default")
+        .permission("core:window:allow-destroy");
+    for command in REMOTE_COMMANDS {
+        capability = capability.permission(remote_permission(command));
+    }
+    capability
+}
+
+/// A bundled page's address in the window (Windows serves them from http://tauri.localhost).
+pub fn bundled_page_url(page: &str) -> String {
+    if cfg!(windows) {
+        format!("http://tauri.localhost/{page}")
+    } else {
+        format!("tauri://localhost/{page}")
+    }
+}
+
+/// Goes on to the stored server without restarting: allows its pages in (the capability, and
+/// navigation) and opens the bundled start page, which takes it from there. Restarting did the
+/// same, but Tauri starts the new copy before the old one exits, and the single-instance guard
+/// then closed both: the app vanished after pairing. A server allowed earlier in this run stays
+/// in the capabilities until the next start; navigation follows only the new one.
+fn go_to_stored_server(app: &AppHandle) -> Result<(), String> {
+    static ADDED: AtomicUsize = AtomicUsize::new(0);
+    let config = load_config(app)?;
+    if let Some(origin) = config.server_url.as_deref().and_then(origin_of) {
+        let allowed = app.state::<AllowedServer>();
+        let mut current = allowed.0.lock().map_err(|e| e.to_string())?;
+        if current.as_deref() != Some(origin.as_str()) {
+            let name = format!("paired-server-{}", ADDED.fetch_add(1, Ordering::SeqCst) + 1);
+            app.add_capability(server_capability(&name, &origin))
+                .map_err(|e| e.to_string())?;
+            *current = Some(origin);
+        }
+    }
+    let window = app
+        .get_webview_window(MAIN_WINDOW)
+        .ok_or("no main window")?;
+    let url = Url::parse(&bundled_page_url(start_page(&config))).map_err(|e| e.to_string())?;
+    window.navigate(url).map_err(|e| e.to_string())
+}
+
 /// The address the window should show. Bundled pages are the web build's routes (Tauri serves
 /// index.html for them).
 fn start_url(config: &DeviceConfig) -> Result<WebviewUrl, String> {
@@ -224,7 +295,7 @@ fn save_device_config(app: AppHandle, config: DeviceConfig) -> Result<(), String
 }
 
 /// Changes the server address (the setup screen asks for an admin-site login first). The device
-/// token is dropped, and the app restarts so only the new server is allowed.
+/// token is dropped, and the window goes back to the connect page for the new server.
 #[tauri::command]
 fn set_server_url(app: AppHandle, server_url: String) -> Result<(), String> {
     let origin = origin_of(&server_url).ok_or("Enter an address like http://POS-SERVER:5080")?;
@@ -239,11 +310,11 @@ fn set_server_url(app: AppHandle, server_url: String) -> Result<(), String> {
     if cfg!(debug_assertions) {
         return Ok(());
     }
-    app.restart();
+    go_to_stored_server(&app)
 }
 
 /// Moving to a new server PC: the paired server sends its terminals to the new address, where the
-/// restored database knows their device tokens. Keeps the pairing, and restarts so only the new server is allowed.
+/// restored database knows their device tokens. Keeps the pairing, and goes on to the new server.
 #[tauri::command]
 fn move_server(app: AppHandle, server_url: String) -> Result<(), String> {
     let origin = origin_of(&server_url).ok_or("not a server address")?;
@@ -259,10 +330,10 @@ fn move_server(app: AppHandle, server_url: String) -> Result<(), String> {
     if cfg!(debug_assertions) {
         return Ok(());
     }
-    app.restart();
+    go_to_stored_server(&app)
 }
 
-/// Moves the window to the paired server's POS screens (restarts so the server is allowed in).
+/// Moves the window to the paired server's POS screens, right after pairing.
 #[tauri::command]
 fn open_server(app: AppHandle) -> Result<(), String> {
     if cfg!(debug_assertions) {
@@ -273,7 +344,7 @@ fn open_server(app: AppHandle) -> Result<(), String> {
             .eval("window.location.replace('/pos')")
             .map_err(|e| e.to_string());
     }
-    app.restart();
+    go_to_stored_server(&app)
 }
 
 /// Prints raw ESC/POS bytes on a printer plugged into this PC ("Via terminal" printers).
@@ -445,16 +516,7 @@ pub fn run() {
 
             // Only the paired server's pages may call the app's commands.
             if let Some(origin) = &server_origin {
-                app.add_capability(
-                    CapabilityBuilder::new("paired-server")
-                        .remote(format!("{origin}/*"))
-                        .window(MAIN_WINDOW)
-                        .permission("core:default")
-                        .permission("store:default")
-                        // The order screen gives back its ticket's edit lock when the window
-                        // closes, then closes the window itself.
-                        .permission("core:window:allow-destroy"),
-                )?;
+                app.add_capability(server_capability("paired-server", origin))?;
             }
             app.manage(AllowedServer(Mutex::new(server_origin)));
 
@@ -576,6 +638,22 @@ mod secrets {
 mod tests {
     use super::*;
 
+    #[test]
+    fn after_pairing_the_window_goes_to_the_bundled_splash_which_navigation_allows() {
+        let config = DeviceConfig {
+            server_url: Some("http://pos-server:5080".into()),
+            device_token: Some("token".into()),
+            ..Default::default()
+        };
+        let url = Url::parse(&bundled_page_url(start_page(&config))).unwrap();
+        assert!(url.path().ends_with("/splash"));
+        assert!(navigation_allowed(
+            &url,
+            Some("http://pos-server:5080"),
+            false
+        ));
+    }
+
     fn temp_root(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("tausi-store-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -641,9 +719,38 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(start_page(&paired), "splash");
-        let unpaired = DeviceConfig { device_token: None, ..paired.clone() };
+        let unpaired = DeviceConfig {
+            device_token: None,
+            ..paired.clone()
+        };
         assert_eq!(start_page(&unpaired), "connect");
         assert_eq!(start_page(&DeviceConfig::default()), "connect");
+    }
+
+    #[test]
+    fn the_paired_servers_pages_may_call_the_pos_commands_but_never_choose_the_server() {
+        assert!(
+            REMOTE_COMMANDS.contains(&"get_device_config"),
+            "the POS screens read it first"
+        );
+        assert!(!REMOTE_COMMANDS.contains(&"set_server_url"));
+        assert!(!REMOTE_COMMANDS.contains(&"open_server"));
+        assert_eq!(
+            remote_permission("get_device_config"),
+            "allow-get-device-config"
+        );
+        // Every command the server's pages may call is one the app declares (build.rs) and the bundled pages have.
+        let default = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/capabilities/default.json"
+        ))
+        .unwrap();
+        for command in REMOTE_COMMANDS {
+            assert!(
+                default.contains(&format!("\"{}\"", remote_permission(command))),
+                "{command} isn't declared"
+            );
+        }
     }
 
     #[test]

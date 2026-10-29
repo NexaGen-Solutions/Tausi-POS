@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { api, type ApprovalKind } from '../../shared/api/client';
+import { api, apiUrl, type ApprovalKind } from '../../shared/api/client';
 import type { Brand, DeviceInfo, Me } from '../../shared/api/types';
 import { OfflineBanner } from '../../shared/connection/OfflineBanner';
 import { isOffline } from '../../shared/connection/status';
 import { useConnection } from '../../shared/connection/useConnection';
+import { useLogout } from '../useLogout';
 import { usePosRules } from '../../shared/device/usePosRules';
 import { formatAmount, formatMoney } from '../../shared/format/money';
 import { t } from '../../shared/i18n/i18n';
@@ -81,6 +82,7 @@ export function OrderPage() {
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [choosing, setChoosing] = useState<PosItem | null>(null);
   const [leaving, setLeaving] = useState<null | (() => void)>(null);
@@ -100,6 +102,11 @@ export function OrderPage() {
   const categories = menu.data?.categories ?? [];
   const category = categories.find((c) => c.id === categoryId) ?? categories[0] ?? null;
   const items = query.trim() && menu.data ? search(menu.data, query) : (category?.items ?? []);
+  // A category with items per page shows them a page at a time; search results all scroll.
+  const perPage = query.trim() ? null : (category?.itemsPerPage ?? null);
+  const pages = perPage ? Math.max(1, Math.ceil(items.length / perPage)) : 1;
+  const currentPage = Math.min(page, pages - 1);
+  const shown = perPage ? items.slice(currentPage * perPage, (currentPage + 1) * perPage) : items;
   const lines = order.lines;
   const newCount = lines.filter((l) => l.status === 'New').length;
   const counted = lines.filter((l) => l.status !== 'Voided');
@@ -113,6 +120,7 @@ export function OrderPage() {
   // Settling can't be approved for someone else: only Allowed counts.
   const canSettle = permission('ticket.settle') === 'Allowed';
   const rules = usePosRules();
+  const logout = useLogout();
   const canVoid = permission('order.void') !== 'NotAllowed';
   const canGift = permission('order.gift') !== 'NotAllowed';
   const canDiscount = permission('order.discount') !== 'NotAllowed';
@@ -125,9 +133,14 @@ export function OrderPage() {
   };
 
   const act = (run: () => Promise<unknown>) => run().catch(order.fail);
-  const print = () => order.write('/print', 'POST');
-  const send = () => order.write('/send', 'POST');
-  const printBill = () => order.write('/print-bill', 'POST');
+  // pos.logoutAfterPrint: once the slips are queued, back to the PIN pad.
+  const printed = async (path: string) => {
+    const detail = await order.write(path, 'POST');
+    if (detail && rules.logoutAfterPrint) await logout();
+  };
+  const print = () => printed('/print');
+  const send = () => printed('/send');
+  const printBill = () => printed('/print-bill');
   // With a supervisor elsewhere, the approval pad can send a reprint request instead.
   const reprint = () =>
     order.write('/reprint-bill', 'POST', undefined, {
@@ -481,7 +494,12 @@ export function OrderPage() {
             <Button
               size="lg"
               disabled={
-                disabled || order.pending > 0 || !ticket || !canReprint || ticket.billNumber === 0
+                disabled ||
+                order.pending > 0 ||
+                !ticket ||
+                !canReprint ||
+                ticket.billNumber === 0 ||
+                newCount > 0
               }
               onClick={() => void act(reprint)}
             >
@@ -512,6 +530,7 @@ export function OrderPage() {
               onClick={() => {
                 setCategoryId(c.id);
                 setQuery('');
+                setPage(0);
               }}
             >
               {c.name}
@@ -545,18 +564,28 @@ export function OrderPage() {
               enterKeyHint="search"
               placeholder={t('pos.order.searchPlaceholder')}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(0);
+              }}
             />
           </label>
           <div className="order-items">
-            {items.map((item) => (
+            {shown.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className="order-item"
+                className={`order-item${item.imageFileId ? ' order-item--picture' : ''}`}
                 disabled={disabled}
                 onClick={() => tapItem(item)}
               >
+                {item.imageFileId && (
+                  <img
+                    className="order-item__image"
+                    src={apiUrl(`/files/${item.imageFileId}`)}
+                    alt=""
+                  />
+                )}
                 <span className="order-item__name">{item.name}</span>
                 <span className="order-item__price">{formatMoney(item.price, currency)}</span>
               </button>
@@ -565,6 +594,27 @@ export function OrderPage() {
               <p className="order-empty">{t('pos.order.noMatch')}</p>
             )}
           </div>
+          {pages > 1 && (
+            <div className="order-pages" role="group" aria-label={t('pos.order.pages')}>
+              <Button
+                size="lg"
+                disabled={currentPage === 0}
+                onClick={() => setPage(currentPage - 1)}
+              >
+                {t('pos.order.pagePrevious')}
+              </Button>
+              <span className="order-pages__of" aria-live="polite">
+                {t('pos.order.pageOf', { page: currentPage + 1, pages })}
+              </span>
+              <Button
+                size="lg"
+                disabled={currentPage === pages - 1}
+                onClick={() => setPage(currentPage + 1)}
+              >
+                {t('pos.order.pageNext')}
+              </Button>
+            </div>
+          )}
           <p className="order-hint">{t('pos.order.optionsHint')}</p>
         </section>
       </div>

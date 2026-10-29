@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../app/routes';
+import { setDeviceForTests } from '../shared/device/device';
 import { fakeServer, json, renderRoutes } from '../test/render';
 import type { LicenceStatus, SetupStatus, StepKey } from './types';
 
@@ -354,6 +355,13 @@ describe('Setup wizard', () => {
       server: 'POS-SERVER\\SQLEXPRESS',
       windowsLogin: true,
     });
+    expect(posts('/api/admin/menu/import/sambapos/preview')[0].body).toMatchObject({
+      options: { firstPriceOnly: true },
+    });
+
+    // Changing it clears the preview: the items it shows depend on it.
+    await userEvent.click(screen.getByLabelText(/One price per item/));
+    expect(screen.queryByRole('group', { name: 'What to bring across' })).not.toBeInTheDocument();
   });
 
   it('step 6 says why a key is refused and starts the trial', async () => {
@@ -421,6 +429,26 @@ describe('Setup wizard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin'));
   });
+
+  it('a paired terminal says setup is finished on the server, then goes to its PIN screen', async () => {
+    setDeviceForTests({ serverUrl: 'http://pos-server:5080', deviceToken: 'token' });
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign, pathname: '/setup' });
+    try {
+      current = status({ business: 'Done' }, { unlocked: false });
+      renderRoutes(routes, '/setup');
+      expect(
+        await screen.findByRole('heading', { name: "Setup isn't finished yet" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText('Setup token')).not.toBeInTheDocument();
+      expect(assign).not.toHaveBeenCalled();
+
+      current = status({}, { complete: true, unlocked: false });
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/pos'), { timeout: 7000 });
+    } finally {
+      setDeviceForTests({});
+    }
+  }, 10000);
 
   it('says setup is complete once it is', async () => {
     current = status({}, { complete: true, unlocked: false });

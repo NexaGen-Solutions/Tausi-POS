@@ -87,8 +87,12 @@ export function SettingField({ entry, edit, changed, error, onChange, labelValue
           maxLength={entry.maxLength || undefined}
           placeholder={entry.help}
           aria-invalid={error ? true : undefined}
+          aria-describedby={`${id}-hint`}
           onChange={(e) => onChange(e.target.value)}
         />
+        <span id={`${id}-hint`} className="nx-field__hint">
+          {t('admin.settings.footerHint')}
+        </span>
         {error && <span className="nx-field__error">{error}</span>}
       </div>
     );

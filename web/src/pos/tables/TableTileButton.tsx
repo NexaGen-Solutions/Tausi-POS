@@ -45,7 +45,7 @@ export function TableTileButton({
     >
       <span className="map-tile__top">
         <span className="map-tile__name">{table.name}</span>
-        {state.kind !== 'free' && (
+        {state.kind !== 'free' && !state.hidden && (
           <span className="map-tile__total">{formatAmount(state.total)}</span>
         )}
       </span>

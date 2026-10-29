@@ -176,7 +176,8 @@ public sealed record AfterApproval(List<Ticket> Changed, List<Guid> MergedAway, 
 /// </summary>
 public sealed class CreateApprovalRequest(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, ITicketDatabase tickets,
-    ApprovalActions actions, Approvers approvers, IAuditLog audit, IPosEvents events, TicketEvents ticketEvents, TimeProvider clock)
+    ApprovalActions actions, Approvers approvers, TicketAccess access, IAuditLog audit, IPosEvents events, TicketEvents ticketEvents,
+    TimeProvider clock)
 {
     public async Task<ApprovalRequestDto> Execute(CreateApprovalRequestDto dto, CancellationToken ct)
     {
@@ -200,7 +201,15 @@ public sealed class CreateApprovalRequest(
         var day = await WorkPeriods.Current(db, ct) ?? throw new DomainException("The day isn't open.");
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
-        await tickets.LockRows(ApprovalActions.TicketIds(dto.Kind, dto.TicketId, payload), ct);
+        var ticketIds = ApprovalActions.TicketIds(dto.Kind, dto.TicketId, payload);
+        await tickets.LockRows(ticketIds, ct);
+        // Only for tickets the requester may work on (their own, or any with ticket.others).
+        foreach (var affected in await db.Tickets.AsNoTracking().Where(k => ticketIds.Contains(k.Id)).ToListAsync(ct))
+            await access.EnsureMayChange(user, affected, ct);
+        if (dto.Kind == ApprovalKind.Move
+            && ApprovalActions.Payload<MoveTicketRequest>(payload) is { } move
+            && await db.Tables.AsNoTracking().FirstOrDefaultAsync(t => t.Id == move.ToTableId, ct) is { } to)
+            await access.EnsureTableFree(user, to.Id, to.Name, dto.TicketId, ct);
         var summary = await actions.Check(dto.Kind, dto.TicketId, dto.LineId, payload, terminalId, ct);
         await PendingRequests.EnsureNone(db, dto.TicketId, summary.LineId, dto.Kind, null, ct);
 

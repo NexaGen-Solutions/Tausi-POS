@@ -580,6 +580,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<bool>("Active")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("ItemsPerPage")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -619,6 +622,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<string>("ExternalRef")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ImageFileId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()

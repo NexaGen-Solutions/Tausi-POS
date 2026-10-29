@@ -80,6 +80,8 @@ public static class SettingsRegistry
     public const string PosIdleLogoutEnabled = "pos.idleLogoutEnabled";
     public const string PosIdleLogoutMinutes = "pos.idleLogoutMinutes";
     public const string PosLogoutAfterSettle = "pos.logoutAfterSettle";
+    public const string PosShowOthersTickets = "pos.showOthersTickets";
+    public const string PosLogoutAfterPrint = "pos.logoutAfterPrint";
     public const string PosTableIdleMinutes = "pos.tableIdleMinutes";
     public const string PosApprovalExpiryMinutes = "pos.approvalExpiryMinutes";
     public const string PosApprovalsFromOwnCounter = "pos.approvalsFromOwnCounter";
@@ -88,6 +90,7 @@ public static class SettingsRegistry
     public const string PrintLogoOnBill = "print.logoOnBill";
     public const string PrintPoweredByFooter = "print.poweredByFooter";
     public const string PrintShowVoidsOnReceipt = "print.showVoidsOnReceipt";
+    public const string PrintVatAmounts = "print.vatAmounts";
     public const string MoneyRounding = "money.rounding";
     public const string BooksBackdateDays = "books.backdateDays";
     public const string PrintKeepSlipTextDays = "print.keepSlipTextDays";
@@ -143,6 +146,10 @@ public static class SettingsRegistry
             "How long a terminal can sit unused before it logs out.", Min: 1, Max: 120),
         new(PosLogoutAfterSettle, SettingType.Bool, false, Sections.Pos, "Log out after settling",
             "The cashier's terminal returns to the PIN screen after each receipt."),
+        new(PosLogoutAfterPrint, SettingType.Bool, false, Sections.Pos, "Log out after printing",
+            "The waiter's terminal returns to the PIN screen after Print, Send or Print bill."),
+        new(PosShowOthersTickets, SettingType.Bool, true, Sections.Pos, "Waiters see other waiters' tables",
+            "The amount and waiter's name on their tables, and their tickets read-only. Off: a waiter sees others' tables only as taken."),
         new(PosTableIdleMinutes, SettingType.Int, 30, Sections.Pos, "Table idle warning (minutes)",
             "A table with an open ticket shows as idle after this long without activity.", Min: 1, Max: MaxMinutes),
         new(PosApprovalExpiryMinutes, SettingType.Int, 30, Sections.Pos, "Approval requests expire after (minutes)",
@@ -154,6 +161,8 @@ public static class SettingsRegistry
             "Prints the logo at the top when one is uploaded."),
         new(PrintPoweredByFooter, SettingType.Bool, false, Sections.Printing, "\"Powered by Tausi POS\" footer",
             "Adds the line at the foot of bills and receipts."),
+        new(PrintVatAmounts, SettingType.Bool, true, Sections.Printing, "VAT amounts on bills and receipts",
+            "Prints \"Total includes VAT 16%\" with the amount. Off: one line, \"Inclusive of VAT\"."),
         new(PrintKeepSlipTextDays, SettingType.Int, 365, Sections.Printing, "Keep printed slip text (days)",
             "The ticket detail shows exactly what each slip printed; older slip text is cleared each night.", Min: 7, Max: 3650,
             ReloadsTerminals: false),

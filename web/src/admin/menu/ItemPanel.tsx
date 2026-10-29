@@ -6,6 +6,7 @@ import { formatMoneyCents } from '../../shared/format/money';
 import { vatIncluded } from '../../shared/format/vat';
 import { t } from '../../shared/i18n/i18n';
 import { Button, Field, Modal, SelectField } from '../../shared/ui';
+import { ItemPicture } from './ItemPicture';
 import {
   parsePrice,
   type AdminMenu,
@@ -21,6 +22,8 @@ export interface ItemPanelProps {
   onSaved: () => void;
   onStale: () => void;
   onCancel: () => void;
+  /** The picture was changed (saved at once): refresh the list, keep the panel open. */
+  onPicture?: () => void;
 }
 
 type Errors = Partial<Record<string, string>>;
@@ -29,12 +32,15 @@ type Errors = Partial<Record<string, string>>;
  * Add or edit an item. Details and prices are saved with separate calls (details need menu.edit,
  * prices menu.edit_prices), behind one Save button.
  */
-export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelProps) {
+export function ItemPanel({ menu, item, onSaved, onStale, onCancel, onPicture }: ItemPanelProps) {
   const lists = menu.priceLists.filter((l) => l.active || item?.prices[l.id] !== undefined);
   const defaultList = menu.priceLists.find((l) => l.isDefault)!;
   const activeCategories = menu.categories.filter((c) => c.active || c.id === item?.categoryId);
 
   const [name, setName] = useState(item?.name ?? '');
+  // A picture change saves at once and moves the item's row version on.
+  const [rowVersion, setRowVersion] = useState(item?.rowVersion ?? 0);
+  const [picture, setPicture] = useState(item?.imageFileId ?? null);
   const [shortName, setShortName] = useState(item?.shortName ?? '');
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? activeCategories[0]?.id ?? '');
   const [vatMode, setVatMode] = useState<'default' | 'zero' | 'exempt' | 'custom'>(
@@ -122,9 +128,7 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
     setConfirmZero(false);
     setBusy(true);
     try {
-      let ref: SavedRef | undefined = item
-        ? { id: item.id, rowVersion: item.rowVersion }
-        : undefined;
+      let ref: SavedRef | undefined = item ? { id: item.id, rowVersion } : undefined;
       if (menu.canEdit) {
         const body = {
           name: name.trim(),
@@ -135,7 +139,7 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
           active,
           erpItemCode: erpCode.trim() || null,
           groupIds,
-          rowVersion: item?.rowVersion ?? 0,
+          rowVersion,
         };
         ref = await api<SavedRef>(
           item ? `/api/admin/menu/items/${item.id}` : '/api/admin/menu/items',
@@ -192,6 +196,18 @@ export function ItemPanel({ menu, item, onSaved, onStale, onCancel }: ItemPanelP
         error={errors.shortName}
         disabled={readOnly}
       />
+      {item && (
+        <ItemPicture
+          itemId={item.id}
+          imageFileId={picture}
+          disabled={readOnly}
+          onChanged={(ref, imageFileId) => {
+            setRowVersion(ref.rowVersion);
+            setPicture(imageFileId);
+            onPicture?.();
+          }}
+        />
+      )}
       <SelectField
         label={t('admin.menu.category')}
         value={categoryId}

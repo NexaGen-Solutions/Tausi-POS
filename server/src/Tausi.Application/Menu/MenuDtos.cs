@@ -4,7 +4,7 @@ namespace Tausi.Application.Menu;
 
 // ---- Admin view ----
 
-public sealed record AdminCategoryDto(Guid Id, string Name, int SortOrder, bool Active, int ActiveItems, long RowVersion);
+public sealed record AdminCategoryDto(Guid Id, string Name, int SortOrder, bool Active, int ActiveItems, long RowVersion, int? ItemsPerPage = null);
 
 public sealed record AdminItemDto(
     Guid Id,
@@ -19,7 +19,8 @@ public sealed record AdminItemDto(
     IReadOnlyList<Guid> OwnGroupIds,
     IReadOnlyList<Guid> InheritedGroupIds,
     long RowVersion,
-    bool VatExempt);
+    bool VatExempt,
+    Guid? ImageFileId = null);
 
 public sealed record AdminPriceListDto(Guid Id, string Name, bool Active, bool IsDefault, long RowVersion);
 
@@ -67,7 +68,7 @@ public sealed record SavedRef(Guid Id, long RowVersion);
 // them is rejected (400) rather than silently ignored. Prices have their own endpoints.
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record CategoryRequest(string Name, bool Active = true, long RowVersion = 0);
+public sealed record CategoryRequest(string Name, bool Active = true, long RowVersion = 0, int? ItemsPerPage = null);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ReorderRequest(IReadOnlyList<Guid> Ids);
@@ -121,9 +122,10 @@ public sealed record PosOptionDto(Guid Id, string Name, decimal PriceAddOn, bool
 public sealed record PosGroupDto(Guid Id, string Name, int MinSelect, int MaxSelect, IReadOnlyList<PosOptionDto> Options);
 
 public sealed record PosItemDto(
-    Guid Id, string Name, string ShortName, decimal Price, decimal VatRate, IReadOnlyList<PosGroupDto> Groups);
+    Guid Id, string Name, string ShortName, decimal Price, decimal VatRate, IReadOnlyList<PosGroupDto> Groups, Guid? ImageFileId = null);
 
-public sealed record PosCategoryDto(Guid Id, string Name, IReadOnlyList<PosItemDto> Items);
+/// <param name="ItemsPerPage">The order screen pages the items this many at a time; null: one scrolling page.</param>
+public sealed record PosCategoryDto(Guid Id, string Name, IReadOnlyList<PosItemDto> Items, int? ItemsPerPage = null);
 
 /// <summary>The menu as one terminal sells it. <c>MenuVersion</c> changes whenever anything in it does.</summary>
 public sealed record PosMenuDto(string MenuVersion, Guid PriceListId, string PriceListName, IReadOnlyList<PosCategoryDto> Categories);
@@ -131,6 +133,9 @@ public sealed record PosMenuDto(string MenuVersion, Guid PriceListId, string Pri
 public static class MenuCodes
 {
     public const string NameTaken = "name_taken";
+    public const string ItemsPerPage = "items_per_page";
+    public const string ImageType = "image_type";
+    public const string ImageSize = "image_size";
     public const string NameInvalid = "name_invalid";
     public const string ShortNameTooLong = "short_name_too_long";
     public const string VatInvalid = "vat_invalid";

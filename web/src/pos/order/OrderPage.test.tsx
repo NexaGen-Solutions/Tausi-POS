@@ -571,6 +571,68 @@ describe('order screen', () => {
     expect(writes('/print')).toHaveLength(1);
   });
 
+  it('a category with items per page shows them a page at a time, with pictures on tiles', async () => {
+    const user = userEvent.setup();
+    const soft = menu.categories[2];
+    menu.categories[2] = {
+      ...soft,
+      itemsPerPage: 1,
+      items: [
+        ...soft.items,
+        { ...soft.items[0], id: 'm-water', name: 'Water 1L', imageFileId: 'f-water' },
+      ],
+    };
+    try {
+      await open();
+      await openSoftDrinks(user);
+      const pages = screen.getByRole('group', { name: 'Pages of items' });
+      expect(within(pages).getByText('Page 1 of 2')).toBeInTheDocument();
+      expect(within(pages).getByRole('button', { name: 'Previous' })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: /^Water 1L/ })).not.toBeInTheDocument();
+
+      await user.click(within(pages).getByRole('button', { name: 'Next' }));
+      const water = screen.getByRole('button', { name: /^Water 1L/ });
+      expect(water.querySelector('img')).toHaveAttribute(
+        'src',
+        expect.stringContaining('/files/f-water'),
+      );
+      expect(within(pages).getByText('Page 2 of 2')).toBeInTheDocument();
+
+      // Search shows every match on one page.
+      await user.type(screen.getByPlaceholderText(/Search/), 'o');
+      expect(screen.queryByRole('group', { name: 'Pages of items' })).not.toBeInTheDocument();
+    } finally {
+      menu.categories[2] = soft;
+    }
+  });
+
+  it('Reprint bill is off while new items wait: Print sends them with the bill', async () => {
+    ticket = ticketWith([line('l1', { status: 'Printed' }), line('l2')], { billNumber: 1 });
+    renderRoutes(routes, '/pos/ticket/k1?table=t-7');
+
+    expect(await screen.findByRole('button', { name: 'Print (1 new)' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Reprint bill' })).toBeDisabled();
+  });
+
+  it('with log out after printing on, Print goes back to the PIN pad', async () => {
+    const user = userEvent.setup();
+    rules = {
+      approvalsFromOwnCounter: true,
+      recordBroughtBy: true,
+      mpesaCodeRequired: true,
+      closeVoidedWithoutReceipt: true,
+      returnOnVoidIfNotServed: true,
+      approvalChime: true,
+      logoutAfterPrint: true,
+    };
+    const router = await open();
+
+    await user.click(await screen.findByRole('button', { name: 'Print (1 new)' }));
+    await waitFor(() => expect(writes('/auth/logout')).toHaveLength(1));
+    expect(writes('/print')).toHaveLength(1);
+    await waitFor(() => expect(router.state.location.pathname).not.toMatch(/^\/pos\/ticket/));
+  });
+
   it('without ticket.reprint, Reprint says it needs a supervisor and is disabled', async () => {
     permissions['ticket.reprint'] = 'NotAllowed';
     ticket = ticketWith([line('l1', { status: 'Printed' })], { billNumber: 1 });

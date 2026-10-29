@@ -69,7 +69,7 @@ docs/           design.md, wireframes/, DECISIONS.md, RUNNING.md
 
 ## Permission keys (use these exact strings)
 
-`order.add`, `order.cancel_unprinted`, `order.void`, `order.gift`, `order.discount`, `order.change_price`, `ticket.print`, `ticket.reprint`, `ticket.move`, `ticket.merge`, `ticket.settle`, `menu.edit`, `menu.edit_prices`, `stock.receive`, `stock.waste`, `stock.count`, `stock.adjust`, `cash.expense`, `cash.book`, `reports.own`, `reports.all`, `day.open_close`, `staff.manage`, `permissions.manage`, `devices.manage`, `settings.manage`, `erp.manage`.
+`order.add`, `order.cancel_unprinted`, `order.void`, `order.gift`, `order.discount`, `order.change_price`, `ticket.print`, `ticket.reprint`, `ticket.move`, `ticket.merge`, `ticket.settle`, `ticket.others`, `menu.edit`, `menu.edit_prices`, `stock.receive`, `stock.waste`, `stock.count`, `stock.adjust`, `cash.expense`, `cash.book`, `reports.own`, `reports.all`, `day.open_close`, `staff.manage`, `permissions.manage`, `devices.manage`, `settings.manage`, `erp.manage`.
 
 ## Live updates (SignalR)
 

@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using Tausi.Api.Platform;
+using Tausi.Domain.People;
 using Tausi.Infrastructure.Legacy;
 using Tausi.Infrastructure.Persistence;
 using Tausi.Infrastructure.Seeding;
@@ -51,7 +53,17 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         await using var scope = scopes.CreateAsyncScope();
         foreach (var user in await scope.ServiceProvider.GetRequiredService<Seeder>().SeedDemo(AdminPassword, CancellationToken.None))
             Pins[user.Name] = user.Pin;
+        if (WaitersOnAnyTicket)
+            Db(db => db.RolePermissions
+                .Where(p => p.Role!.SystemKey == RoleKeys.Waiter && p.PermissionKey == PermissionKeys.TicketOthers)
+                .ExecuteUpdate(u => u.SetProperty(p => p.Value, PermissionValue.Allowed)));
     }
+
+    /// <summary>
+    /// The tests written before ticket.others have waiters helping on each other's tickets; the
+    /// tests of the rule itself (<see cref="OwnTicketsApp"/>) keep the default, Not allowed.
+    /// </summary>
+    protected virtual bool WaitersOnAnyTicket => true;
 
     /// <summary>A new database on the test PostgreSQL; returns its connection string.</summary>
     protected virtual async Task<string> CreateDatabase()
@@ -258,6 +270,12 @@ public sealed class DayApp : TausiApp;
 /// <summary>Its own server and database for tickets: it opens the day and changes permissions.</summary>
 public sealed class TicketsApp : TausiApp;
 
+/// <summary>Waiters with the default ticket.others (Not allowed): each works on their own tickets only.</summary>
+public sealed class OwnTicketsApp : TausiApp
+{
+    protected override bool WaitersOnAnyTicket => false;
+}
+
 [CollectionDefinition(Name)]
 public sealed class TicketsCollection : ICollectionFixture<TicketsApp>
 {
@@ -293,3 +311,9 @@ public sealed class FreshApp : TausiApp
 
 /// <summary>Its own server and database, for the SambaPOS import (it adds items, tables and staff).</summary>
 public sealed class ImportApp : TausiApp;
+
+[CollectionDefinition(Name)]
+public sealed class OwnTicketsCollection : ICollectionFixture<OwnTicketsApp>
+{
+    public const string Name = "own-tickets";
+}

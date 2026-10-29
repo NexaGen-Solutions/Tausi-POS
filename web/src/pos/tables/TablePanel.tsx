@@ -13,6 +13,8 @@ export function TablePanel({
   canAdd,
   canMove,
   canMerge,
+  canOthers,
+  myId,
   disabled,
   onChoose,
   onOpen,
@@ -27,6 +29,9 @@ export function TablePanel({
   canAdd: boolean;
   canMove: boolean;
   canMerge: boolean;
+  /** ticket.others: may work on other waiters' tickets and add tickets to their tables. */
+  canOthers: boolean;
+  myId: string | null;
   disabled: boolean;
   onChoose: (ticket: TicketSummary) => void;
   onOpen: (ticket: TicketSummary) => void;
@@ -44,6 +49,9 @@ export function TablePanel({
 
   const label = tableLabel(table.name);
   const tickets = table.tickets;
+  const mayChange = (ticket: TicketSummary) => canOthers || ticket.openedById === myId;
+  // One waiter per table: without ticket.others, only the waiter whose table it is adds tickets.
+  const othersTable = tickets.find((ticket) => !mayChange(ticket)) ?? null;
   return (
     <aside className="map-panel" aria-label={t('pos.map.selected', { table: label })}>
       <p className="map-panel__eyebrow">{t('pos.map.selected', { table: label })}</p>
@@ -73,14 +81,17 @@ export function TablePanel({
                     type="button"
                     className={`map-panel__ticket${chosen?.id === ticket.id ? ' map-panel__ticket--chosen' : ''}`}
                     aria-pressed={chosen?.id === ticket.id}
+                    disabled={ticket.private}
                     onClick={() => onChoose(ticket)}
                   >
-                    {t('pos.map.ticketLine', {
-                      number: ticket.number,
-                      waiter: ticket.openedBy,
-                      total: formatMoney(ticket.total, currency),
-                      age: age(ticket.openedAt, now),
-                    })}
+                    {ticket.private
+                      ? t('pos.map.ticketTaken', { age: age(ticket.openedAt, now) })
+                      : t('pos.map.ticketLine', {
+                          number: ticket.number,
+                          waiter: ticket.openedBy,
+                          total: formatMoney(ticket.total, currency),
+                          age: age(ticket.openedAt, now),
+                        })}
                   </button>
                 </li>
               ))}
@@ -90,15 +101,22 @@ export function TablePanel({
             variant="primary"
             size="lg"
             block
-            disabled={disabled || !chosen}
+            disabled={disabled || !chosen || chosen.private}
             onClick={() => chosen && onOpen(chosen)}
           >
             {t('pos.map.openTheTicket')}
           </Button>
-          {canAdd && (
+          {canAdd && !othersTable && (
             <Button size="lg" block disabled={disabled} onClick={onNew}>
               {t('pos.map.newOnTable')}
             </Button>
+          )}
+          {othersTable && (
+            <p className="map-panel__note">
+              {othersTable.private
+                ? t('pos.map.othersTableHidden')
+                : t('pos.map.othersTable', { waiter: othersTable.openedBy })}
+            </p>
           )}
           {canMerge && tickets.length >= 2 && (
             <Button size="lg" block disabled={disabled} onClick={onMerge}>
@@ -109,7 +127,7 @@ export function TablePanel({
             <Button
               size="lg"
               block
-              disabled={disabled || !chosen}
+              disabled={disabled || !chosen || !mayChange(chosen)}
               onClick={() => chosen && onMove(chosen)}
             >
               {t('pos.map.move')}

@@ -12,6 +12,8 @@ public enum TextStyle
     Center = 4,
     /// <summary>The printer's smaller font (font B), e.g. "This is not a receipt".</summary>
     Small = 8,
+    /// <summary>Double-width characters: half as many fit on a line. With <see cref="DoubleHeight"/>, double size.</summary>
+    DoubleWidth = 16,
 }
 
 /// <summary>
@@ -50,11 +52,12 @@ public sealed class ReceiptBuilder
     public ReceiptBuilder Text(string text, TextStyle style = TextStyle.None)
     {
         SetStyle(style);
-        foreach (var line in Wrap(text, Columns))
+        var wide = style.HasFlag(TextStyle.DoubleWidth);
+        foreach (var line in Wrap(text, wide ? Columns / 2 : Columns))
         {
             WriteText(line);
             Write(0x0A);
-            _text.AppendLine(style.HasFlag(TextStyle.Center) ? CenterPad(line) : line);
+            _text.AppendLine(style.HasFlag(TextStyle.Center) ? CenterPad(line, wide) : line);
         }
         SetStyle(TextStyle.None);
         return this;
@@ -63,7 +66,7 @@ public sealed class ReceiptBuilder
     /// <summary>Left text and right text on one line, e.g. an item and its amount.</summary>
     public ReceiptBuilder Columns2(string left, string right, TextStyle style = TextStyle.None)
     {
-        style &= ~TextStyle.Center;
+        style &= ~(TextStyle.Center | TextStyle.DoubleWidth);
         var room = Columns - right.Length - 1;
         if (room < 8)
             return Text(left, style).Text(right.PadLeft(Columns), style);
@@ -174,12 +177,13 @@ public sealed class ReceiptBuilder
     {
         Write(0x1B, 0x61, (byte)(style.HasFlag(TextStyle.Center) ? 1 : 0));
         Write(0x1B, 0x45, (byte)(style.HasFlag(TextStyle.Bold) ? 1 : 0));
-        Write(0x1D, 0x21, (byte)(style.HasFlag(TextStyle.DoubleHeight) ? 0x01 : 0x00));
+        Write(0x1D, 0x21, (byte)((style.HasFlag(TextStyle.DoubleHeight) ? 0x01 : 0x00) | (style.HasFlag(TextStyle.DoubleWidth) ? 0x10 : 0x00)));
         Write(0x1B, 0x4D, (byte)(style.HasFlag(TextStyle.Small) ? 1 : 0));
     }
 
-    private string CenterPad(string line) =>
-        new string(' ', Math.Max(0, (Columns - line.Length) / 2)) + line;
+    /// <summary>The preview's centring; a wide line takes twice its length on paper.</summary>
+    private string CenterPad(string line, bool wide = false) =>
+        new string(' ', Math.Max(0, (Columns - line.Length * (wide ? 2 : 1)) / 2)) + line;
 
     private void WriteText(string line) => Write(ToPrinterBytes(line));
 
@@ -197,7 +201,11 @@ public sealed class ReceiptBuilder
         return Encoding.ASCII.GetBytes(plain.ToString());
     }
 
-    internal static IEnumerable<string> Wrap(string text, int width)
+    /// <summary>Wraps at spaces to the width; a line break in the text starts a new line.</summary>
+    internal static IEnumerable<string> Wrap(string text, int width) =>
+        text.Replace("\r\n", "\n").Split('\n').SelectMany(part => WrapLine(part, width));
+
+    private static IEnumerable<string> WrapLine(string text, int width)
     {
         if (text.Length == 0)
         {

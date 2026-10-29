@@ -13,9 +13,9 @@ public class SettingsRegistryTests
     [
         "business.name", "business.logo", "business.address", "business.phone", "business.vatRate", "business.currency",
         "business.timeZone", "business.receiptFooter",
-        "pos.idleLogoutEnabled", "pos.idleLogoutMinutes", "pos.logoutAfterSettle", "pos.tableIdleMinutes",
+        "pos.idleLogoutEnabled", "pos.idleLogoutMinutes", "pos.logoutAfterSettle", "pos.showOthersTickets", "pos.logoutAfterPrint", "pos.tableIdleMinutes",
         "pos.approvalExpiryMinutes", "pos.approvalsFromOwnCounter", "pos.approvalChime",
-        "print.mode", "print.logoOnBill", "print.poweredByFooter", "print.showVoidsOnReceipt",
+        "print.mode", "print.logoOnBill", "print.poweredByFooter", "print.vatAmounts", "print.showVoidsOnReceipt",
         "money.rounding", "payments.mpesaCodeRequired", "payments.recordBroughtBy", "tickets.closeVoidedWithoutReceipt",
         "cash.defaultFloat", "cash.denominations", "cashup.blind", "stock.returnOnVoidIfNotServed", "books.backdateDays", "print.keepSlipTextDays",
     ];
