@@ -177,10 +177,21 @@ public static class Slips
         return b;
     }
 
-    /// <summary>The business's footer, then "Powered by Tausi POS" when switched on.</summary>
+    /// <summary>
+    /// The business's footer, then "Powered by Tausi POS" when switched on. The footer is centred, line by
+    /// line as typed; a line starting with <c>[bold]</c> or <c>[big]</c> prints that way ("[bold]Buy Goods").
+    /// </summary>
     private static ReceiptBuilder WriteFooter(ReceiptBuilder b, BusinessInfo business, SlipStyle style)
     {
-        if (!string.IsNullOrWhiteSpace(business.Footer)) b.Separator().Text(business.Footer, TextStyle.Center);
+        if (!string.IsNullOrWhiteSpace(business.Footer))
+        {
+            b.Separator();
+            foreach (var line in business.Footer.Trim().Replace("\r\n", "\n").Split('\n'))
+            {
+                var (text, tags) = ReceiptTemplate.Styled(line.Trim());
+                b.Text(text.Trim(), tags | TextStyle.Center);
+            }
+        }
         if (style.PoweredBy) b.Feed().Text(PoweredByText, TextStyle.Center);
         return b;
     }

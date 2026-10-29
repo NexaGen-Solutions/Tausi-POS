@@ -175,7 +175,11 @@ public sealed class ReceiptBuilder
         return Encoding.ASCII.GetBytes(plain.ToString());
     }
 
-    internal static IEnumerable<string> Wrap(string text, int width)
+    /// <summary>Wraps at spaces to the width; a line break in the text starts a new line.</summary>
+    internal static IEnumerable<string> Wrap(string text, int width) =>
+        text.Replace("\r\n", "\n").Split('\n').SelectMany(part => WrapLine(part, width));
+
+    private static IEnumerable<string> WrapLine(string text, int width)
     {
         if (text.Length == 0)
         {

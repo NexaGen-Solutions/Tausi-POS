@@ -55,6 +55,15 @@ public class ReceiptBuilderTests
     }
 
     [Fact]
+    public void A_line_break_in_the_text_starts_a_new_line()
+    {
+        var doc = new ReceiptBuilder(42).Text("Buy Goods\r\n4235672", TextStyle.Center).Build();
+
+        Lines(doc).Should().Equal(new string(' ', 16) + "Buy Goods", new string(' ', 17) + "4235672");
+        Contains(doc.EscPos, (byte)'?').Should().BeFalse("the break is not sent to the printer as a character");
+    }
+
+    [Fact]
     public void Two_columns_align_the_amount_to_the_right_edge()
     {
         var doc = new ReceiptBuilder(42).Columns2("2 x Tusker Lager (Cold)", "500").Build();

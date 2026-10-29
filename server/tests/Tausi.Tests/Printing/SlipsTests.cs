@@ -236,6 +236,22 @@ public class SlipsTests
         Golden($"bill-no-footer-powered-by-{columns}",
             Slips.Bill(SampleBill(business: Demo with { Footer = null }), new SlipStyle(columns, true, null, PoweredBy: true)));
 
+    [Fact]
+    public void The_footer_is_centred_line_by_line_and_a_line_can_be_bold_or_big()
+    {
+        var footer = "[bold]Buy Goods\n[bold][big]4235672\nThank you";
+        var doc = Slips.Bill(SampleBill(business: Demo with { Footer = footer }), new SlipStyle(42, true, null));
+
+        var text = doc.Text.Split(Environment.NewLine);
+        text.Should().Contain(new string(' ', 16) + "Buy Goods")
+            .And.Contain(new string(' ', 17) + "4235672")
+            .And.Contain(new string(' ', 16) + "Thank you")
+            .And.NotContain(l => l.Contains("[bold]") || l.Contains("[big]") || l.Contains('?'));
+        var escPos = System.Text.Encoding.Latin1.GetString(doc.EscPos);
+        escPos.Should().Contain("\u001ba\u0001\u001bE\u0001\u001d!\0\u001bM\0Buy Goods", "Buy Goods is bold and centred")
+            .And.Contain("\u001ba\u0001\u001bE\u0001\u001d!\u0001\u001bM\0" + "4235672", "the number is bold and double height");
+    }
+
     [Theory]
     [InlineData(42)]
     [InlineData(32)]
