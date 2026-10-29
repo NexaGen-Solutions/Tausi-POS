@@ -118,6 +118,21 @@ admin site in its own window (Microsoft Edge, without tabs or an address bar).
 The terminal starts by itself when Windows starts, full screen, and can't be closed with Alt+F4
 (**kiosk mode**). The pairing is kept encrypted for that Windows user.
 
+**After a power cut**: the terminal starts when someone signs in to Windows, not before. So that a
+counter PC comes back to the PIN pad on its own, give it a standard (not administrator) Windows user
+that signs in automatically: Microsoft's free **Sysinternals Autologon** (keeps the password
+encrypted), or Win+R → `netplwiz` → untick "Users must enter a user name and password" (on Windows 11
+first switch off Settings → Accounts → Sign-in options → "only allow Windows Hello sign-in").
+
+**The server PC as a counter too**: install the terminal there as well, with the address
+`http://localhost:5080`. It counts as a terminal for the licence, and kiosk mode covers the server PC's
+desktop (leave kiosk mode on that PC to reach Windows).
+
+**Pairing from another PC fails** while the same PC pairs fine: Windows has probably marked the
+server's network **Public**, and the installer's firewall rule is for private networks. On the server
+PC: Settings → Network & internet → the connection → Network profile type → **Private network**.
+Check from the counter PC with `http://<server>:5080/api/health` in a browser.
+
 **Silent install**: `TausiPOS-Setup.exe /S SERVER=http://192.168.1.10:5080` installs without questions
 and fills in the server address on the first screen.
 
