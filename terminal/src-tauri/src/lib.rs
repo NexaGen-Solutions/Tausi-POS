@@ -27,6 +27,27 @@ use tausi_print::{PrintError, PrintRequest};
 use url::Url;
 
 const STORE_FILE: &str = "tausi.json";
+
+/// The app commands the paired server's pages may call (the POS screens read the device config, print
+/// via the terminal, leave kiosk mode, move to a new server, update). Choosing the server and opening it
+/// stay with the bundled setup screen.
+pub const REMOTE_COMMANDS: &[&str] = &[
+    "get_device_config",
+    "save_device_config",
+    "print_raw",
+    "list_printers",
+    "check_printer",
+    "kiosk_set",
+    "kiosk_exit",
+    "move_server",
+    "update_check",
+    "update_install",
+];
+
+/// `allow-get-device-config` for `get_device_config`: the permission tauri-build makes for an app command.
+pub fn remote_permission(command: &str) -> String {
+    format!("allow-{}", command.replace('_', "-"))
+}
 const MAIN_WINDOW_TITLE: &str = "Tausi POS";
 
 /// Before the rename to Tausi POS the app had another identifier, so another app-data folder, and
@@ -445,16 +466,18 @@ pub fn run() {
 
             // Only the paired server's pages may call the app's commands.
             if let Some(origin) = &server_origin {
-                app.add_capability(
-                    CapabilityBuilder::new("paired-server")
-                        .remote(format!("{origin}/*"))
-                        .window(MAIN_WINDOW)
-                        .permission("core:default")
-                        .permission("store:default")
-                        // The order screen gives back its ticket's edit lock when the window
-                        // closes, then closes the window itself.
-                        .permission("core:window:allow-destroy"),
-                )?;
+                let mut capability = CapabilityBuilder::new("paired-server")
+                    .remote(format!("{origin}/*"))
+                    .window(MAIN_WINDOW)
+                    .permission("core:default")
+                    .permission("store:default")
+                    // The order screen gives back its ticket's edit lock when the window
+                    // closes, then closes the window itself.
+                    .permission("core:window:allow-destroy");
+                for command in REMOTE_COMMANDS {
+                    capability = capability.permission(remote_permission(command));
+                }
+                app.add_capability(capability)?;
             }
             app.manage(AllowedServer(Mutex::new(server_origin)));
 
@@ -644,6 +667,19 @@ mod tests {
         let unpaired = DeviceConfig { device_token: None, ..paired.clone() };
         assert_eq!(start_page(&unpaired), "connect");
         assert_eq!(start_page(&DeviceConfig::default()), "connect");
+    }
+
+    #[test]
+    fn the_paired_servers_pages_may_call_the_pos_commands_but_never_choose_the_server() {
+        assert!(REMOTE_COMMANDS.contains(&"get_device_config"), "the POS screens read it first");
+        assert!(!REMOTE_COMMANDS.contains(&"set_server_url"));
+        assert!(!REMOTE_COMMANDS.contains(&"open_server"));
+        assert_eq!(remote_permission("get_device_config"), "allow-get-device-config");
+        // Every command the server's pages may call is one the app declares (build.rs) and the bundled pages have.
+        let default = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities/default.json")).unwrap();
+        for command in REMOTE_COMMANDS {
+            assert!(default.contains(&format!("\"{}\"", remote_permission(command))), "{command} isn't declared");
+        }
     }
 
     #[test]
