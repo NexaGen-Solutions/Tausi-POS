@@ -832,7 +832,7 @@
       "logoType": "The logo must be a PNG or JPG picture.",
       "logoSize": "The logo must be smaller than 2 MB.",
       "range": "From {min} to {max}",
-      "footerHint": "Printed centred on bills and receipts, line by line as typed. Start a line with [bold] or [big] to make it stand out, e.g. [bold][big]4235672",
+      "footerHint": "Printed centred on bills and receipts, line by line as typed. Start a line with [bold], [big] (double height) or [wide] (double width) to make it stand out, e.g. [bold][big][wide]4235672",
       "listHint": "Note values, separated by commas, e.g. 1000, 500, 200",
       "leaveTitle": "Leave without saving?",
       "leaveText": "Your changes to the settings are not saved yet.",

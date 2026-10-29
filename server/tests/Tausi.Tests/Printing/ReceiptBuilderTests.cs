@@ -64,6 +64,15 @@ public class ReceiptBuilderTests
     }
 
     [Fact]
+    public void Double_width_text_wraps_at_half_the_columns_and_uses_the_size_command()
+    {
+        var doc = new ReceiptBuilder(42).Text("Paybill 4235672 Account 77", TextStyle.DoubleWidth | TextStyle.DoubleHeight | TextStyle.Center).Build();
+
+        Contains(doc.EscPos, 0x1D, 0x21, 0x11).Should().BeTrue("double width and height");
+        Lines(doc).Should().Equal(new string(' ', 6) + "Paybill 4235672", new string(' ', 11) + "Account 77");
+    }
+
+    [Fact]
     public void Two_columns_align_the_amount_to_the_right_edge()
     {
         var doc = new ReceiptBuilder(42).Columns2("2 x Tusker Lager (Cold)", "500").Build();

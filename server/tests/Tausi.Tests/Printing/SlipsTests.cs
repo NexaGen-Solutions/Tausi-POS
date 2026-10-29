@@ -92,9 +92,9 @@ public class SlipsTests
     [Theory]
     [InlineData(42)]
     [InlineData(32)]
-    public void A_void_slip_has_the_header_item_options_reason_and_who(int columns) =>
+    public void A_void_slip_has_the_header_the_item_as_on_the_bill_with_a_minus_amount_reason_and_who(int columns) =>
         Golden($"void-{columns}", Slips.Void(new VoidSlip("Counter A", "Table 7", 1042, At,
-            [Line(1, "Guiness", 300m, "Cold", shortName: "Guiness")], "Wrong item", "edna", "SAM"), new SlipStyle(columns, true, null)));
+            [Line(1, "Guinness Foreign Extra Stout 500ml", 300m, "Cold", shortName: "Guinness")], "Wrong item", "edna", "SAM"), new SlipStyle(columns, true, null)));
 
     /// <summary>
     /// Bill 3 after a void (1 of 2 Tusker), a gift (1 Guiness) and a 10% discount, built the way the
@@ -235,6 +235,27 @@ public class SlipsTests
     public void Without_a_footer_and_with_powered_by(int columns) =>
         Golden($"bill-no-footer-powered-by-{columns}",
             Slips.Bill(SampleBill(business: Demo with { Footer = null }), new SlipStyle(columns, true, null, PoweredBy: true)));
+
+    [Fact]
+    public void Without_vat_amounts_the_bill_and_receipt_say_inclusive_of_vat()
+    {
+        var style = new SlipStyle(42, true, null, VatAmounts: false);
+        var bill = Slips.Bill(SampleBill(), style).Text;
+        var receipt = Slips.Receipt(Receipt([new("Cash", 5690m, 6000m, 310m, null, "edna")]), style).Text;
+
+        foreach (var text in new[] { bill, receipt })
+        {
+            text.Should().Contain(Slips.InclusiveOfVatText).And.NotContain("includes VAT").And.NotContain("Includes VAT");
+            text.Should().Contain("VAT exempt:", "exempt items are still shown as exempt");
+        }
+    }
+
+    [Fact]
+    public void A_wide_footer_line_prints_double_width()
+    {
+        var doc = Slips.Bill(SampleBill(business: Demo with { Footer = "[bold][big][wide]4235672" }), new SlipStyle(42, true, null));
+        System.Text.Encoding.Latin1.GetString(doc.EscPos).Should().Contain("\u001ba\u0001\u001bE\u0001\u001d!\u0011\u001bM\0" + "4235672");
+    }
 
     [Fact]
     public void The_footer_is_centred_line_by_line_and_a_line_can_be_bold_or_big()

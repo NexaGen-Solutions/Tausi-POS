@@ -48,7 +48,7 @@ public sealed class ReceiptPreview(
     {
         var print = PrintSettings.From(values);
         var currency = values.String(BusinessCurrency);
-        var style = new SlipStyle(columns, true, logo, currency, print.PoweredByFooter);
+        var style = new SlipStyle(columns, true, logo, currency, print.PoweredByFooter, print.VatAmounts);
         var business = new BusinessInfo(
             values.String(BusinessName), values.String(BusinessAddress), values.String(BusinessPhone), values.String(BusinessReceiptFooter));
         var lines = Slips.SampleLines(values.Decimal(BusinessVatRate));

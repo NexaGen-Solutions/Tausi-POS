@@ -35,7 +35,7 @@ public sealed class TestPrint(
         var document = Slips.Test(
             new TestSlip(business?.Name ?? "", printer.Name, printer.ConnectionText(printer.OwningTerminal?.Name),
                 printer.PaperWidthMm, business?.VatRate ?? 16m, await businessClock.Now(ct)),
-            SlipStyle.For(printer, logo, business?.Currency ?? "KES", settings.PoweredByFooter));
+            SlipStyle.For(printer, logo, business?.Currency ?? "KES", settings));
 
         var job = queue.Enqueue(printer, PrintJobKind.Test, document);
         audit.Write(new AuditRecord(

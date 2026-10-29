@@ -9,7 +9,7 @@ namespace Tausi.Application.Printing;
 /// @cut                      cut the paper
 /// @feed 3                   blank lines
 /// ---                       separator line (=== for a double one)
-/// [center][bold][big]Text   styled text; tags can be combined, in any order
+/// [center][bold][big]Text   styled text; tags can be combined, in any order ([wide]: double width)
 /// Left text || Right text   two columns, the right one aligned to the edge
 /// </code>
 /// <c>{{name}}</c> is replaced from the data. Values are inserted as plain text, so data cannot
@@ -60,8 +60,8 @@ public static partial class ReceiptTemplate
     }
 
     /// <summary>
-    /// Takes the <c>[center]</c>, <c>[bold]</c> and <c>[big]</c> tags off the start of a line, e.g.
-    /// "[bold][big]4235672" is "4235672" in bold, double height. The receipt footer uses it too.
+    /// Takes the <c>[center]</c>, <c>[bold]</c>, <c>[big]</c> and <c>[wide]</c> tags off the start of a line,
+    /// e.g. "[bold][big][wide]4235672" is "4235672" in bold, double size. The receipt footer uses it too.
     /// </summary>
     public static (string Text, TextStyle Style) Styled(string line)
     {
@@ -74,6 +74,7 @@ public static partial class ReceiptTemplate
                 "center" => TextStyle.Center,
                 "bold" => TextStyle.Bold,
                 "big" => TextStyle.DoubleHeight,
+                "wide" => TextStyle.DoubleWidth,
                 _ => TextStyle.None,
             };
             line = line[match.Length..];
@@ -85,7 +86,7 @@ public static partial class ReceiptTemplate
     private static string Fill(string text, IReadOnlyDictionary<string, string> data) =>
         PlaceholderPattern().Replace(text, m => data.TryGetValue(m.Groups[1].Value, out var v) ? v : "");
 
-    [GeneratedRegex(@"^\[(center|bold|big)\]")]
+    [GeneratedRegex(@"^\[(center|bold|big|wide)\]")]
     private static partial Regex TagPattern();
 
     [GeneratedRegex(@"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")]

@@ -88,6 +88,7 @@ public static class SettingsRegistry
     public const string PrintLogoOnBill = "print.logoOnBill";
     public const string PrintPoweredByFooter = "print.poweredByFooter";
     public const string PrintShowVoidsOnReceipt = "print.showVoidsOnReceipt";
+    public const string PrintVatAmounts = "print.vatAmounts";
     public const string MoneyRounding = "money.rounding";
     public const string BooksBackdateDays = "books.backdateDays";
     public const string PrintKeepSlipTextDays = "print.keepSlipTextDays";
@@ -154,6 +155,8 @@ public static class SettingsRegistry
             "Prints the logo at the top when one is uploaded."),
         new(PrintPoweredByFooter, SettingType.Bool, false, Sections.Printing, "\"Powered by Tausi POS\" footer",
             "Adds the line at the foot of bills and receipts."),
+        new(PrintVatAmounts, SettingType.Bool, true, Sections.Printing, "VAT amounts on bills and receipts",
+            "Prints \"Total includes VAT 16%\" with the amount. Off: one line, \"Inclusive of VAT\"."),
         new(PrintKeepSlipTextDays, SettingType.Int, 365, Sections.Printing, "Keep printed slip text (days)",
             "The ticket detail shows exactly what each slip printed; older slip text is cleared each night.", Min: 7, Max: 3650,
             ReloadsTerminals: false),
