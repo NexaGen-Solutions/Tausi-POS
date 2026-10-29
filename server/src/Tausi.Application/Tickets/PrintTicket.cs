@@ -224,7 +224,7 @@ public sealed class TicketPrints(
             receiptPayments,
             OpenDrawer: !copy && printer.OpenDrawerOnReceipt && payments.Any(p => p.Type == PaymentType.Cash),
             ShowBroughtBy: PaymentSettings.From(values).RecordBroughtBy);
-        var document = Slips.Receipt(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
+        var document = Slips.Receipt(slip, SlipStyle.For(printer, logo, business.Currency, settings));
         return queue.Enqueue(printer, PrintJobKind.Receipt, document, ticket.Id,
             copy ? $"Receipt {ticket.ReceiptNumber} · copy" : $"Receipt {ticket.ReceiptNumber}", reprint: copy);
     }
@@ -253,7 +253,7 @@ public sealed class TicketPrints(
             BusinessClock.ToLocal(now, BusinessTimeZone.Find(business.TimeZone)),
             ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList(),
             corrected, DiscountLabel(ticket));
-        var document = Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings.PoweredByFooter));
+        var document = Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings));
         var label = reprint ? $"Bill {ticket.BillNumber} · reprint" : corrected ? $"Corrected bill {ticket.BillNumber}" : $"Bill {ticket.BillNumber}";
         return queue.Enqueue(printer, PrintJobKind.Bill, document, ticket.Id, label, reprint);
     }

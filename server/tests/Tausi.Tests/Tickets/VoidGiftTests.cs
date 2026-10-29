@@ -100,7 +100,7 @@ public class VoidGiftTests : ApprovalsFixtureBase
 
         var slip = Jobs(ticket.Id).Single(j => j.Kind == PrintJobKind.Void);
         slip.Printer!.Name.Should().Be("Ticket Printer 1");
-        slip.TextPreview.Should().Contain("VOID").And.Contain("1 x Guiness").And.Contain("COLD")
+        slip.TextPreview.Should().Contain("VOID").And.Contain("1 x Guiness (Cold)").And.MatchRegex(@"\(Cold\) +-\d")
             .And.Contain("Reason: Wrong item").And.Contain("By: SAM · Approved: SAM").And.Contain("Table 7 · #1001");
     }
 

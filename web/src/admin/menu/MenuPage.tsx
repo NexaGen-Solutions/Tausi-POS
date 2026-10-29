@@ -8,6 +8,7 @@ import { Banner, Button, Field, Table, type Column } from '../../shared/ui';
 import { CategoriesPanel } from './CategoriesPanel';
 import { GroupsPanel } from './GroupsPanel';
 import { ImportDialog } from './ImportDialog';
+import { SambaPosDialog } from './SambaPosDialog';
 import { ItemPanel } from './ItemPanel';
 import { PriceListsPanel } from './PriceListsPanel';
 import type { AdminMenu, MenuItem } from './types';
@@ -30,6 +31,7 @@ export function MenuPage() {
   const [search, setSearch] = useState('');
   const [panel, setPanel] = useState<Panel | null>(null);
   const [importing, setImporting] = useState(false);
+  const [sambaPos, setSambaPos] = useState(false);
   const [stale, setStale] = useState(false);
 
   const refresh = () => queries.invalidateQueries({ queryKey: ['admin-menu'] });
@@ -152,7 +154,10 @@ export function MenuPage() {
           <h1 className="admin__title">{t('admin.menu.title')}</h1>
           <div className="menu__actions">
             {data.canEdit && (
-              <Button onClick={() => setImporting(true)}>{t('admin.menu.importCsv')}</Button>
+              <>
+                <Button onClick={() => setImporting(true)}>{t('admin.menu.importCsv')}</Button>
+                <Button onClick={() => setSambaPos(true)}>{t('admin.menu.importSambaPos')}</Button>
+              </>
             )}
             <a
               className="nx-btn nx-btn--secondary nx-btn--md"
@@ -278,6 +283,9 @@ export function MenuPage() {
       )}
       {importing && (
         <ImportDialog onClose={() => setImporting(false)} onApplied={() => void refresh()} />
+      )}
+      {sambaPos && (
+        <SambaPosDialog onClose={() => setSambaPos(false)} onApplied={() => void refresh()} />
       )}
     </main>
   );

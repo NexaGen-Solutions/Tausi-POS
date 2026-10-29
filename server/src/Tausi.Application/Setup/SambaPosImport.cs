@@ -41,7 +41,7 @@ public interface ISambaPosSource
 
 public sealed record SambaImportOptions(
     bool Menu = true, bool Prices = true, bool Modifiers = true, bool Tables = true, bool Users = true,
-    bool CategoriesFromScreenMenu = false, IReadOnlyDictionary<string, string>? UserRoles = null);
+    bool CategoriesFromScreenMenu = false, IReadOnlyDictionary<string, string>? UserRoles = null, bool FirstPriceOnly = false);
 
 public sealed record SambaImportRequest(SambaPosConnection Connection, SambaImportOptions? Options);
 
@@ -62,6 +62,9 @@ public sealed record SambaImportResult(string Summary, IReadOnlyList<NewStaffPin
 /// tag groups as modifier groups, table entities as tables in "Main", and staff by name and role
 /// (new PINs, never SambaPOS's). The SambaPOS ids are kept as ExternalRef, so importing again
 /// matches what came before and never duplicates. Everything is written in one transaction.
+/// With <see cref="SambaImportOptions.FirstPriceOnly"/> each SambaPOS item becomes one item with its
+/// plain name and one price: its first portion's main price. Importing again that way renames items
+/// an earlier import called "Item (Portion)" and hides the items it made from the other portions.
 /// </summary>
 public sealed class SambaPosImport(
     ITausiDb db, ISambaPosSource source, MenuAccess access, SetupPeople people, IAuditLog audit, IPosEvents events, TimeProvider clock)
@@ -95,7 +98,7 @@ public sealed class SambaPosImport(
         var groups = await db.ModifierGroups.Include(g => g.Options).ToListAsync(ct);
         var items = await db.MenuItems.Include(i => i.Prices).ToListAsync(ct);
         var defaultList = lists.First(l => l.IsDefault);
-        int created = 0, priceLists = 0, modifierGroups = 0, tables = 0;
+        int created = 0, priceLists = 0, modifierGroups = 0, tables = 0, renamed = 0, hidden = 0;
 
         PriceList ListFor(string? tag)
         {
@@ -144,6 +147,14 @@ public sealed class SambaPosImport(
                     created++;
                 }
                 item.ExternalRef ??= p.Reference;
+                if (p.LongName is { } longName && item.ExternalRef == p.Reference
+                    && string.Equals(item.Name, longName, StringComparison.OrdinalIgnoreCase)
+                    && !items.Any(i => i != item && string.Equals(i.Name, p.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (item.ShortName == MenuItem.DefaultShortName(item.Name)) item.ShortName = MenuItem.DefaultShortName(p.Name);
+                    item.Name = p.Name;
+                    renamed++;
+                }
                 if (!itemsByMenuItem.TryGetValue(p.MenuItemId, out var list)) itemsByMenuItem[p.MenuItemId] = list = [];
                 list.Add(item);
 
@@ -168,6 +179,13 @@ public sealed class SambaPosImport(
                 }
             }
         }
+
+        if (options.Menu)
+            foreach (var item in items.Where(i => i.Active && i.ExternalRef is { } x && plan.Skipped.Contains(x)))
+            {
+                item.Active = false;
+                hidden++;
+            }
 
         if (options.Modifiers)
         {
@@ -246,7 +264,7 @@ public sealed class SambaPosImport(
 
         audit.Write(new AuditRecord(AuditActions.MenuImported, null, null, null, new
         {
-            summary = $"SambaPOS import: {created} new items, {priceLists} price lists, {modifierGroups} modifier groups, {tables} tables",
+            summary = $"SambaPOS import: {created} new items, {priceLists} price lists, {modifierGroups} modifier groups, {tables} tables, {renamed} renamed, {hidden} hidden",
         }, grant.ApprovedByUserId));
         await MenuAccess.Save(db, ct);
 
@@ -263,16 +281,19 @@ public sealed class SambaPosImport(
         if (tables > 0) await events.Publish(PosEventNames.TablesChanged, new { }, ct);
 
         var summary = $"Imported {created} items in {plan.Categories.Count} categories, {lists.Count} price lists, " +
-                      $"{groups.Count} modifier groups, {tables} tables, {newPeople.Count} staff.";
+                      $"{groups.Count} modifier groups, {tables} tables, {newPeople.Count} staff." +
+                      (renamed + hidden > 0 ? $" Renamed {renamed} items to their plain names and hid {hidden} items from other portions." : "");
         var business = (await SettingsRegistry.Load(db, ct)).String(SettingsRegistry.BusinessName);
         return new SambaImportResult(summary, newPeople, newPeople.Count > 0 ? Convert.ToBase64String(PinSheet.Build(business, newPeople)) : null);
     }
 
     private sealed record PlannedPrice(string? Tag, decimal Price);
 
-    private sealed record PlannedPortion(int MenuItemId, string Reference, string Name, string Category, IReadOnlyList<PlannedPrice> Prices);
+    private sealed record PlannedPortion(
+        int MenuItemId, string Reference, string Name, string Category, IReadOnlyList<PlannedPrice> Prices, string? LongName = null);
 
-    private sealed record Planned(SambaPreview Preview, IReadOnlyList<PlannedPortion> Portions, IReadOnlyList<string> Categories);
+    private sealed record Planned(
+        SambaPreview Preview, IReadOnlyList<PlannedPortion> Portions, IReadOnlyList<string> Categories, IReadOnlyList<string> Skipped);
 
     private async Task<Planned> Plan(SambaPosData data, SambaImportOptions options, CancellationToken ct)
     {
@@ -282,9 +303,16 @@ public sealed class SambaPosImport(
             : string.IsNullOrWhiteSpace(m.GroupCode) ? "Other" : m.GroupCode.Trim();
 
         var portions = new List<PlannedPortion>();
+        var skipped = new List<string>();
         foreach (var item in data.Items)
         {
-            var mine = data.Portions.Where(p => p.MenuItemId == item.Id).OrderBy(p => p.Id).ToList();
+            var all = data.Portions.Where(p => p.MenuItemId == item.Id).OrderBy(p => p.Id).ToList();
+            var mine = all;
+            if (options.FirstPriceOnly && all.Count > 1)
+            {
+                mine = [all.FirstOrDefault(p => data.Prices.Any(x => x.PortionId == p.Id && x.Price > 0)) ?? all[0]];
+                skipped.AddRange(all.Except(mine).Select(p => $"sambapos:portion:{p.Id}"));
+            }
             foreach (var portion in mine)
             {
                 // One portion: the item's own name. Several: "Item (Portion)".
@@ -292,7 +320,10 @@ public sealed class SambaPosImport(
                 if (name.Length > MenuItem.MaxNameLength) name = name[..MenuItem.MaxNameLength].TrimEnd();
                 var prices = data.Prices.Where(p => p.PortionId == portion.Id && p.Price > 0)
                     .Select(p => new PlannedPrice(string.IsNullOrWhiteSpace(p.PriceTag) ? null : p.PriceTag.Trim(), p.Price)).ToList();
-                portions.Add(new PlannedPortion(item.Id, $"sambapos:portion:{portion.Id}", name, CategoryOf(item), prices));
+                if (options.FirstPriceOnly && prices.Count > 1) prices = [prices.FirstOrDefault(p => p.Tag is null) ?? prices[0]];
+                // The name an import without the option gave it, renamed now.
+                var longName = all.Count > 1 && mine.Count == 1 ? $"{item.Name.Trim()} ({portion.Name.Trim()})" : null;
+                portions.Add(new PlannedPortion(item.Id, $"sambapos:portion:{portion.Id}", name, CategoryOf(item), prices, longName));
             }
         }
 
@@ -327,7 +358,7 @@ public sealed class SambaPosImport(
             options.Tables ? data.Tables.Select(t => t.Name).ToList() : [], users,
             previewItems.Count(i => i.Status == "New"), previewItems.Count(i => i.Status == "Existing"), newTables,
             users.Count(u => u.Status == "New"), data.Problems);
-        return new Planned(preview, portions, categories);
+        return new Planned(preview, portions, categories, skipped);
     }
 
     /// <summary>SambaPOS role names to ours; anything else is left for the owner to choose.</summary>

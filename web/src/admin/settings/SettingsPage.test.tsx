@@ -184,7 +184,7 @@ describe('Settings', () => {
       screen.getByRole('switch', { name: 'Log out after 10 minutes idle' }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Receipt footer')).toHaveAccessibleDescription(
-      /Start a line with \[bold\] or \[big\]/,
+      /Start a line with \[bold\], \[big\] \(double height\) or \[wide\]/,
     );
 
     await user.clear(screen.getByLabelText('Idle logout (minutes)'));
