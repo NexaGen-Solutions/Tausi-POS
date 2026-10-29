@@ -35,6 +35,9 @@ public class MenuItem : VersionedEntity
     /// <summary>The item's code in ERPNext, for the optional sync.</summary>
     public string? ErpItemCode { get; set; }
 
+    /// <summary>The picture on the order screen's tile (a PNG at most 512 px), or null for none.</summary>
+    public Guid? ImageFileId { get; set; }
+
     public List<MenuItemPrice> Prices { get; set; } = [];
 
     public static string DefaultShortName(string name)

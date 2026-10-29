@@ -177,6 +177,10 @@
       "search": "Search the menu",
       "searchPlaceholder": "Search",
       "noMatch": "Nothing matches.",
+      "pages": "Pages of items",
+      "pagePrevious": "Previous",
+      "pageNext": "Next",
+      "pageOf": "Page {page} of {pages}",
       "optionsHint": "Items with a choice, like Cold or Warm, ask before they are added.",
       "retry": "Retry",
       "billNotPrinted": "Bill not printed on {printer}",
@@ -633,6 +637,16 @@
         "rename": "Rename",
         "activeLabel": "Active"
       },
+      "picture": {
+        "label": "Picture",
+        "none": "No picture",
+        "add": "Add picture",
+        "change": "Change picture",
+        "remove": "Remove picture",
+        "hint": "PNG or JPG, up to 2 MB. Shown on the item's tile on the order screen. Saved at once.",
+        "type": "The picture must be a PNG or JPG image.",
+        "size": "The picture must be smaller than 2 MB."
+      },
       "categories": {
         "title": "Manage categories",
         "newName": "New category",
@@ -643,7 +657,11 @@
         "confirmItems": "{name} has {count} active items. Deactivate them too? Inactive items don't show on terminals.",
         "withItems": "Deactivate category and items",
         "onlyCategory": "Only the category",
-        "confirmPlain": "Deactivate {name}? Nothing is deleted; you can reactivate it later."
+        "confirmPlain": "Deactivate {name}? Nothing is deleted; you can reactivate it later.",
+        "perPage": "Items per page",
+        "perPageShort": "{count} a page",
+        "perPageTitle": "Items per page: {name}",
+        "perPageHint": "4 to 60. The order screen shows this many at a time with Previous and Next. Leave empty to show them all on one page that scrolls."
       },
       "import": {
         "title": "Import menu from CSV",

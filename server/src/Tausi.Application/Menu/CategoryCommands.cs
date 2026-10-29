@@ -24,7 +24,7 @@ public sealed class SaveCategory(ITausiDb db, MenuAccess access, IAuditLog audit
             category = await db.Categories.FirstOrDefaultAsync(c => c.Id == existing, ct)
                 ?? throw new NotFoundException("Category not found.");
             MenuAccess.CheckVersion(category, request.RowVersion, (DbContext)db);
-            before = new { category.Name, category.Active };
+            before = new { category.Name, category.Active, category.ItemsPerPage };
         }
         else
         {
@@ -32,15 +32,20 @@ public sealed class SaveCategory(ITausiDb db, MenuAccess access, IAuditLog audit
             category = new Category { SortOrder = last + 10 };
             db.Categories.Add(category);
         }
+        if (request.ItemsPerPage is { } perPage and (< Category.MinItemsPerPage or > Category.MaxItemsPerPage))
+            throw new DomainException(
+                $"Items per page must be from {Category.MinItemsPerPage} to {Category.MaxItemsPerPage}, or empty for one scrolling page.",
+                MenuCodes.ItemsPerPage);
         category.Name = name;
         category.Active = request.Active;
+        category.ItemsPerPage = request.ItemsPerPage;
 
         audit.Write(new AuditRecord(AuditActions.MenuCategoryChanged, nameof(Category), category.Id.ToString(),
-            before, new { category.Name, category.Active }, grant.ApprovedByUserId));
+            before, new { category.Name, category.Active, category.ItemsPerPage }, grant.ApprovedByUserId));
         await MenuAccess.Save(db, ct);
         await access.Changed(ct);
         return new AdminCategoryDto(category.Id, category.Name, category.SortOrder, category.Active,
-            await db.MenuItems.CountAsync(i => i.CategoryId == category.Id && i.Active, ct), category.RowVersion);
+            await db.MenuItems.CountAsync(i => i.CategoryId == category.Id && i.Active, ct), category.RowVersion, category.ItemsPerPage);
     }
 }
 

@@ -569,6 +569,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<bool>("Active")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("ItemsPerPage")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -608,6 +611,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<string>("ExternalRef")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("ImageFileId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
