@@ -48,20 +48,7 @@ public static partial class ReceiptTemplate
                 continue;
             }
 
-            var style = TextStyle.None;
-            var match = TagPattern().Match(line);
-            while (match.Success && match.Index == 0)
-            {
-                style |= match.Groups[1].Value switch
-                {
-                    "center" => TextStyle.Center,
-                    "bold" => TextStyle.Bold,
-                    "big" => TextStyle.DoubleHeight,
-                    _ => TextStyle.None,
-                };
-                line = line[match.Length..];
-                match = TagPattern().Match(line);
-            }
+            (line, var style) = Styled(line);
 
             var split = line.IndexOf("||", StringComparison.Ordinal);
             if (split >= 0)
@@ -70,6 +57,29 @@ public static partial class ReceiptTemplate
                 builder.Text(Fill(line, data), style);
         }
         return builder.Build();
+    }
+
+    /// <summary>
+    /// Takes the <c>[center]</c>, <c>[bold]</c> and <c>[big]</c> tags off the start of a line, e.g.
+    /// "[bold][big]4235672" is "4235672" in bold, double height. The receipt footer uses it too.
+    /// </summary>
+    public static (string Text, TextStyle Style) Styled(string line)
+    {
+        var style = TextStyle.None;
+        var match = TagPattern().Match(line);
+        while (match.Success && match.Index == 0)
+        {
+            style |= match.Groups[1].Value switch
+            {
+                "center" => TextStyle.Center,
+                "bold" => TextStyle.Bold,
+                "big" => TextStyle.DoubleHeight,
+                _ => TextStyle.None,
+            };
+            line = line[match.Length..];
+            match = TagPattern().Match(line);
+        }
+        return (line, style);
     }
 
     private static string Fill(string text, IReadOnlyDictionary<string, string> data) =>
