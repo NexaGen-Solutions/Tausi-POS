@@ -39,13 +39,13 @@ public sealed class GetAdminMenu(ITausiDb db, MenuAccess access)
 
         return new AdminMenuDto(
             categories.Select(c => new AdminCategoryDto(c.Id, c.Name, c.SortOrder, c.Active,
-                items.Count(i => i.CategoryId == c.Id && i.Active), c.RowVersion)).ToList(),
+                items.Count(i => i.CategoryId == c.Id && i.Active), c.RowVersion, c.ItemsPerPage)).ToList(),
             items.OrderBy(i => categoryOrder.GetValueOrDefault(i.CategoryId)).ThenBy(i => i.SortOrder).ThenBy(i => i.Name)
                 .Select(i =>
                 {
                     var (own, inherited) = MenuRules.GroupsOf(i, assignments);
                     return new AdminItemDto(i.Id, i.Name, i.ShortName, i.CategoryId, i.SortOrder, i.VatRate, i.Active,
-                        i.ErpItemCode, i.Prices.ToDictionary(p => p.PriceListId, p => p.Price), own, inherited, i.RowVersion, i.VatExempt);
+                        i.ErpItemCode, i.Prices.ToDictionary(p => p.PriceListId, p => p.Price), own, inherited, i.RowVersion, i.VatExempt, i.ImageFileId);
                 }).ToList(),
             lists.Select(l => new AdminPriceListDto(l.Id, l.Name, l.Active, l.IsDefault, l.RowVersion)).ToList(),
             groups.Select(g => new AdminGroupDto(g.Id, g.Name, g.MinSelect, g.MaxSelect, g.SortOrder, g.Active,
@@ -131,9 +131,9 @@ public sealed class GetPosMenu(ITausiDb db, ICurrentSession session)
                 var (own, inherited) = MenuRules.GroupsOf(i, assignments);
                 var effective = inherited.Concat(own).Select(Group).OfType<PosGroupDto>()
                     .OrderBy(g => groups[g.Id].SortOrder).ThenBy(g => g.Name).ToList();
-                sold.Add(new PosItemDto(i.Id, i.Name, i.ShortName, price.Value, i.EffectiveVatRate(businessVat), effective));
+                sold.Add(new PosItemDto(i.Id, i.Name, i.ShortName, price.Value, i.EffectiveVatRate(businessVat), effective, i.ImageFileId));
             }
-            if (sold.Count > 0) result.Add(new PosCategoryDto(c.Id, c.Name, sold));
+            if (sold.Count > 0) result.Add(new PosCategoryDto(c.Id, c.Name, sold, c.ItemsPerPage));
         }
 
         var version = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Json.Serialize(new { list.Id, result }))))[..16];

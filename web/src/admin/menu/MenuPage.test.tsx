@@ -335,6 +335,25 @@ describe('Menu and prices', () => {
     expect(within(dialog).getByLabelText(/One price per item/)).toBeChecked();
   });
 
+  it('sets the items per page of a category', async () => {
+    serve(menu(), { 'PUT /api/admin/menu/categories/c-beer': () => json(200, {}) });
+    renderRoutes(routes, '/admin/menu');
+    await userEvent.click(await screen.findByRole('button', { name: 'Manage categories' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Items per page: Beers' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Items per page: Beers' });
+    await userEvent.type(within(dialog).getByLabelText('Items per page'), '12');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(requests).toContainEqual({
+        method: 'PUT',
+        path: '/api/admin/menu/categories/c-beer',
+        body: { name: 'Beers', active: true, rowVersion: 1, itemsPerPage: 12 },
+      }),
+    );
+  });
+
   it('deactivating a category with items offers to deactivate them too', async () => {
     serve(menu(), {
       'POST /api/admin/menu/categories/c-beer/deactivate': () => json(200, { itemsDeactivated: 2 }),

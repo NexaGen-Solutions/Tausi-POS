@@ -169,7 +169,7 @@ public static class Slips
     {
         if (!style.VatAmounts)
         {
-            if (lines.Any(l => !l.VatExempt && !l.IsGift && l.VatRate > 0)) b.Text(InclusiveOfVatText);
+            if (lines.Any(l => !l.VatExempt && !l.IsGift)) b.Text(InclusiveOfVatText);
             if (lines.Any(l => l.VatExempt && !l.IsGift))
                 b.Columns2("VAT exempt:", MoneyCents(lines.Where(l => l.VatExempt).Sum(l => l.Amount - l.Discount), style.Currency));
             return b;

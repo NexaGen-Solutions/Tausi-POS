@@ -34,6 +34,12 @@ public static class MenuEndpoints
 
         menu.MapPost("/items", (ItemRequest r, SaveItem save, CancellationToken ct) => save.Execute(null, r, ct));
         menu.MapPut("/items/{id:guid}", (Guid id, ItemRequest r, SaveItem save, CancellationToken ct) => save.Execute(id, r, ct));
+        menu.MapPost("/items/{id:guid}/image", async (Guid id, IFormFile file, ItemImages images, CancellationToken ct) =>
+        {
+            await using var stream = file.OpenReadStream();
+            return await images.Upload(id, new ItemImageUpload(file.FileName, file.ContentType, file.Length, stream), ct);
+        }).DisableAntiforgery();
+        menu.MapDelete("/items/{id:guid}/image", (Guid id, ItemImages images, CancellationToken ct) => images.Remove(id, ct));
         menu.MapPut("/items/{id:guid}/prices", async (Guid id, ItemPricesRequest r, SetItemPrices set, CancellationToken ct) =>
             new { changed = await set.Execute(id, r, ct) });
 

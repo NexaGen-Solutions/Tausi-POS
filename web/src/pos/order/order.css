@@ -258,6 +258,15 @@
   background: var(--color-disabled);
   color: var(--color-text-muted);
 }
+/* A picture on the tile: across the top, cropped to fill, on cream while it loads. */
+.order-item__image {
+  display: block;
+  width: 100%;
+  height: 72px;
+  border-radius: calc(var(--radius) / 2);
+  background: var(--color-ground-brand);
+  object-fit: cover;
+}
 .order-item__name {
   font-size: 17px;
   font-weight: 600;
@@ -269,6 +278,16 @@
 }
 .order-item:disabled .order-item__price {
   color: var(--color-text-muted);
+}
+.order-pages {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.order-pages__of {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
 }
 .order-empty,
 .order-hint {

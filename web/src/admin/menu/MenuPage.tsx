@@ -263,6 +263,7 @@ export function MenuPage() {
               onSaved={saved}
               onStale={() => setStale(true)}
               onCancel={() => setPanel(null)}
+              onPicture={changed}
             />
           )}
           {panel.kind === 'groups' && (

@@ -4,7 +4,7 @@ import { t } from '../../shared/i18n/i18n';
 import { Button, Field, Modal } from '../../shared/ui';
 import type { AdminMenu, MenuCategory } from './types';
 
-/** Add, rename, reorder (drag, or the arrows) and (de)activate categories. */
+/** Add, rename, reorder (drag, or the arrows), (de)activate categories, and set items per page. */
 export function CategoriesPanel({
   menu,
   onChanged,
@@ -17,6 +17,7 @@ export function CategoriesPanel({
   const [order, setOrder] = useState(menu.categories.map((c) => c.id));
   const [newName, setNewName] = useState('');
   const [confirming, setConfirming] = useState<MenuCategory | null>(null);
+  const [paging, setPaging] = useState<{ category: MenuCategory; value: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dragged = useRef<string | null>(null);
   const byId = new Map(menu.categories.map((c) => [c.id, c]));
@@ -101,9 +102,24 @@ export function CategoriesPanel({
           >
             <span>
               <strong>{c.name}</strong> <small>({c.activeItems})</small>
+              {c.itemsPerPage && (
+                <small>
+                  {' '}
+                  · {t('admin.menu.categories.perPageShort', { count: c.itemsPerPage })}
+                </small>
+              )}
             </span>
             {menu.canEdit && (
               <span className="menu-list__actions">
+                <Button
+                  variant="link"
+                  aria-label={`${t('admin.menu.categories.perPage')}: ${c.name}`}
+                  onClick={() =>
+                    setPaging({ category: c, value: c.itemsPerPage?.toString() ?? '' })
+                  }
+                >
+                  {t('admin.menu.categories.perPage')}
+                </Button>
                 <Button
                   aria-label={`${t('common.up')}: ${c.name}`}
                   disabled={i === 0}
@@ -134,7 +150,12 @@ export function CategoriesPanel({
                       void run(() =>
                         api(`/api/admin/menu/categories/${c.id}`, {
                           method: 'PUT',
-                          body: { name: c.name, active: true, rowVersion: c.rowVersion },
+                          body: {
+                            name: c.name,
+                            active: true,
+                            rowVersion: c.rowVersion,
+                            itemsPerPage: c.itemsPerPage,
+                          },
                         }),
                       )
                     }
@@ -151,6 +172,47 @@ export function CategoriesPanel({
         <p className="menu-panel__error" role="alert">
           {error}
         </p>
+      )}
+      {paging && (
+        <Modal
+          title={t('admin.menu.categories.perPageTitle', { name: paging.category.name })}
+          onClose={() => setPaging(null)}
+        >
+          <form
+            className="menu-confirm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const { category, value } = paging;
+              setPaging(null);
+              void run(() =>
+                api(`/api/admin/menu/categories/${category.id}`, {
+                  method: 'PUT',
+                  body: {
+                    name: category.name,
+                    active: category.active,
+                    rowVersion: category.rowVersion,
+                    itemsPerPage: value.trim() ? Number(value) : null,
+                  },
+                }),
+              );
+            }}
+          >
+            <Field
+              label={t('admin.menu.categories.perPage')}
+              hint={t('admin.menu.categories.perPageHint')}
+              inputMode="numeric"
+              value={paging.value}
+              onChange={(e) => setPaging({ ...paging, value: e.target.value.replace(/\D/g, '') })}
+              autoFocus
+            />
+            <Button type="submit" variant="primary" size="lg" block>
+              {t('common.save')}
+            </Button>
+            <Button block onClick={() => setPaging(null)}>
+              {t('common.cancel')}
+            </Button>
+          </form>
+        </Modal>
       )}
       {confirming && (
         <Modal

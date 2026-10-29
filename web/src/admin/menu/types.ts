@@ -5,6 +5,8 @@ export interface MenuCategory {
   active: boolean;
   activeItems: number;
   rowVersion: number;
+  /** The order screen pages this category's items this many at a time; null: one scrolling page. */
+  itemsPerPage?: number | null;
 }
 
 export interface MenuItem {
@@ -22,6 +24,8 @@ export interface MenuItem {
   ownGroupIds: string[];
   inheritedGroupIds: string[];
   rowVersion: number;
+  /** The order screen tile's picture (/files/{id}), or null. */
+  imageFileId?: string | null;
 }
 
 export interface PriceList {

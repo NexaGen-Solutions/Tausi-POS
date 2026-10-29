@@ -251,6 +251,13 @@ public class SlipsTests
     }
 
     [Fact]
+    public void Inclusive_of_vat_prints_whatever_the_rate_even_0_percent()
+    {
+        var bill = SampleBill() with { Lines = [Line(2, "Tusker Lager", 250m, rate: 0m)] };
+        Slips.Bill(bill, new SlipStyle(42, true, null, VatAmounts: false)).Text.Should().Contain(Slips.InclusiveOfVatText);
+    }
+
+    [Fact]
     public void A_wide_footer_line_prints_double_width()
     {
         var doc = Slips.Bill(SampleBill(business: Demo with { Footer = "[bold][big][wide]4235672" }), new SlipStyle(42, true, null));

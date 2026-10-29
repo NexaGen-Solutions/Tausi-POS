@@ -58,6 +58,21 @@ public class MenuTests : IAsyncLifetime
         PosItem(await PosMenu(_f.CounterA), "Viceroy 375ml").Groups.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Items_per_page_is_from_4_to_60_or_empty_and_reaches_the_terminal_menu()
+    {
+        var beers = _f.Category("Beers");
+        var save = _f.Get<SaveCategory>();
+
+        var tooFew = () => save.Execute(beers.Id, new CategoryRequest("Beers", true, beers.RowVersion, 3), CancellationToken.None);
+        (await tooFew.Should().ThrowAsync<DomainException>()).Which.Code.Should().Be(MenuCodes.ItemsPerPage);
+        var saved = await save.Execute(beers.Id, new CategoryRequest("Beers", true, beers.RowVersion, 12), CancellationToken.None);
+
+        saved.ItemsPerPage.Should().Be(12);
+        (await PosMenu(_f.CounterA)).Categories.Single(c => c.Name == "Beers").ItemsPerPage.Should().Be(12);
+        (await PosMenu(_f.CounterA)).Categories.Single(c => c.Name == "Spirits").ItemsPerPage.Should().BeNull("one scrolling page");
+    }
+
     // ---- Permissions ----
 
     [Fact]

@@ -128,6 +128,7 @@ public static class DependencyInjection
         services.AddScoped<ReorderCategories>();
         services.AddScoped<DeactivateCategory>();
         services.AddScoped<SaveItem>();
+        services.AddScoped<ItemImages>();
         services.AddScoped<SetItemPrices>();
         services.AddScoped<SaveGroup>();
         services.AddScoped<SetOptionPrices>();

@@ -28,6 +28,8 @@ export interface PosRules {
   closeVoidedWithoutReceipt: boolean;
   returnOnVoidIfNotServed: boolean;
   approvalChime: boolean;
+  /** pos.logoutAfterPrint: back to the PIN pad after Print, Send or Print bill. */
+  logoutAfterPrint: boolean;
 }
 
 /** The rules a terminal follows until /api/device has answered (the defaults). */
@@ -38,6 +40,7 @@ export const defaultPosRules: PosRules = {
   closeVoidedWithoutReceipt: true,
   returnOnVoidIfNotServed: true,
   approvalChime: true,
+  logoutAfterPrint: false,
 };
 
 /** Where this terminal prints, and which print buttons the order screen shows. */

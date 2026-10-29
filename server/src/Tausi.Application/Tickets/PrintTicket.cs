@@ -19,6 +19,7 @@ public static class PrintCodes
     public const string NothingNew = "nothing_new";
     public const string NoPrinter = "no_printer";
     public const string SendAndBillMode = "send_and_bill_mode";
+    public const string NewItemsFirst = "new_items_first";
 }
 
 /// <summary>
@@ -57,9 +58,14 @@ public sealed class PrintTicket(
             : await Run(id, bill: true, dispense: false, ct);
     }
 
+    /// <summary>
+    /// The last bill again. Not while items are waiting to be sent: a bill with them on it and no
+    /// dispense slip would leave the bar without them, so Print (or Send) goes first.
+    /// </summary>
     public async Task<TicketDetailDto> Reprint(Guid id, CancellationToken ct)
     {
         await using var edit = await editing.Open(id, ct);
+        TicketPrints.EnsureNothingNew(edit.Ticket);
         var grant = await permissions.Require(edit.User, PermissionKeys.TicketReprint, approval.ApprovalToken, ct);
         await prints.Reprint(edit.Ticket, edit.TerminalId, grant.ApprovedByUserId, ct);
         await db.SaveChangesAsync(ct);
@@ -140,9 +146,17 @@ public sealed class PrintTicket(
 public sealed class TicketPrints(
     ITausiDb db, PrintQueue queue, ILogoProvider logos, IAuditLog audit, TimeProvider clock, BusinessClock businessClock)
 {
+    /// <summary>A reprint (asked for here or approved later) waits until new items have been sent.</summary>
+    public static void EnsureNothingNew(Ticket ticket)
+    {
+        if (ticket.Lines.Any(l => l.Status == OrderLineStatus.New))
+            throw new ConflictException("Print the new items first: they haven't gone to the bar yet.", PrintCodes.NewItemsFirst);
+    }
+
     /// <summary>The bill again, marked REPRINT, on this terminal's receipt printer.</summary>
     public async Task<PrintJob> Reprint(Ticket ticket, Guid terminalId, Guid? approvedBy, CancellationToken ct)
     {
+        EnsureNothingNew(ticket);
         if (!ticket.Lines.Any(l => l.Counts)) throw new DomainException("There is nothing on this ticket to bill.");
         var terminal = await TerminalWithPrinters(terminalId, ct);
         var receipt = Usable(terminal.ReceiptPrinter, terminal.Name, "receipt");

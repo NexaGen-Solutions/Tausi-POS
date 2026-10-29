@@ -165,6 +165,22 @@ public class PrintTicketTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_reprint_waits_until_new_items_have_gone_to_the_bar()
+    {
+        var ticket = await Table4();
+        await Print(ticket.Id);
+        await _f.SetPermission("Waiter", PermissionKeys.TicketReprint, PermissionValue.Allowed);
+        await _f.Add(ticket.Id, "Pineapple Punch");
+
+        var reprint = () => Reprint(ticket.Id);
+
+        (await reprint.Should().ThrowAsync<ConflictException>()).Which.Code.Should().Be(PrintCodes.NewItemsFirst);
+        Jobs(ticket.Id).Should().HaveCount(2, "no bill without the dispense slip for the new item");
+        await Print(ticket.Id);
+        Jobs(ticket.Id).Count(j => j.Kind == PrintJobKind.Dispense).Should().Be(2, "Print sends the new item to the bar with the bill");
+    }
+
+    [Fact]
     public async Task A_reprint_prints_only_the_bill_with_the_next_number_marked_reprint_and_is_audited()
     {
         var ticket = await Table4();

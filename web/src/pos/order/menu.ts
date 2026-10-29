@@ -21,12 +21,16 @@ export interface PosItem {
   price: number;
   vatRate: number;
   groups: PosGroup[];
+  /** The tile's picture (/files/{id}), or null for none. */
+  imageFileId?: string | null;
 }
 
 export interface PosCategory {
   id: string;
   name: string;
   items: PosItem[];
+  /** The order screen shows this many items at a time with page buttons; null: one scrolling page. */
+  itemsPerPage?: number | null;
 }
 
 export interface PosMenu {
