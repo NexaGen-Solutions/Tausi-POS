@@ -250,7 +250,11 @@ public sealed class PurchasesReport : ReportBase
         _ => payment.ToString(),
     };
 
-    public sealed record PayablesMove(Guid Supplier, DateOnly Date, string Kind, decimal Amount);
+    /// <param name="Detail">How the supplier statement names it: "Invoice INV-204", "Bank · ref 7781".</param>
+    /// <param name="Reversal">The reversal of an earlier delivery, payment or opening balance.</param>
+    /// <param name="At">When it was posted, to order a day's moves.</param>
+    public sealed record PayablesMove(
+        Guid Supplier, DateOnly Date, string Kind, decimal Amount, string Detail = "", bool Reversal = false, DateTimeOffset At = default);
 
     /// <summary>
     /// Every change to what suppliers are owed up to a date, from the journal: the Supplier payables
@@ -264,9 +268,9 @@ public sealed class PurchasesReport : ReportBase
         var lines = await (from l in c.Db.JournalLines.AsNoTracking()
                            join e in c.Db.JournalEntries.AsNoTracking() on l.JournalEntryId equals e.Id
                            where l.AccountId == payables && e.BusinessDate <= to
-                           select new { e.SourceType, e.SourceId, e.BusinessDate, l.Credit, l.Debit })
+                           select new { e.SourceType, e.SourceId, e.BusinessDate, e.CreatedAt, l.Credit, l.Debit })
             .ToListAsync(ct);
-        var deliveries = await c.Db.Deliveries.AsNoTracking().ToDictionaryAsync(d => d.Id, d => d.SupplierId, ct);
+        var deliveries = await c.Db.Deliveries.AsNoTracking().ToDictionaryAsync(d => d.Id, d => new { d.SupplierId, d.InvoiceNumber }, ct);
         var documents = await c.Db.MoneyDocuments.AsNoTracking()
             .Where(d => d.Kind == MoneyDocumentKind.SupplierPayment || d.Kind == MoneyDocumentKind.OpeningBalances)
             .ToDictionaryAsync(d => d.Id, ct);
@@ -276,17 +280,24 @@ public sealed class PurchasesReport : ReportBase
             var (source, sourceId, date) = entry.Key;
             if (date is not { } day || sourceId is null || !Guid.TryParse(sourceId.Split(':')[0], out var id)) continue;
             var amount = entry.Sum(l => l.Credit - l.Debit);
-            if (source == DeliveryCommands.LedgerSource && deliveries.TryGetValue(id, out var supplier))
-                moves.Add(new PayablesMove(supplier, day, "delivery", amount));
+            var reversal = sourceId.EndsWith(":reversal", StringComparison.Ordinal);
+            var at = entry.Min(l => l.CreatedAt);
+            if (source == DeliveryCommands.LedgerSource && deliveries.TryGetValue(id, out var delivery))
+                moves.Add(new PayablesMove(delivery.SupplierId, day, "delivery", amount,
+                    string.IsNullOrWhiteSpace(delivery.InvoiceNumber) ? "" : $"Invoice {delivery.InvoiceNumber}", reversal, at));
             else if (source == MoneyActions.LedgerSource && documents.TryGetValue(id, out var doc))
             {
                 if (doc.Kind == MoneyDocumentKind.SupplierPayment && doc.SupplierId is { } paid)
-                    moves.Add(new PayablesMove(paid, day, "payment", amount));
+                {
+                    var from = doc.From is { } account ? MoneyActions.AccountName(account) : "";
+                    var detail = string.IsNullOrWhiteSpace(doc.Reference) ? from : $"{from} · ref {doc.Reference}";
+                    moves.Add(new PayablesMove(paid, day, "payment", amount, detail, reversal, at));
+                }
                 else
                 {
-                    var sign = sourceId.EndsWith(":reversal", StringComparison.Ordinal) ? -1 : 1;
+                    var sign = reversal ? -1 : 1;
                     moves.AddRange(doc.OpeningLines.Where(o => o.SupplierId is not null)
-                        .Select(o => new PayablesMove(o.SupplierId!.Value, day, "opening", sign * o.Amount)));
+                        .Select(o => new PayablesMove(o.SupplierId!.Value, day, "opening", sign * o.Amount, "", reversal, at)));
                 }
             }
         }
