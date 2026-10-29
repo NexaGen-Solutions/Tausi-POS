@@ -46,7 +46,8 @@ public static class DependencyInjection
                  {
                      typeof(Reports.SalesByUserReport), typeof(Reports.SalesByItemReport), typeof(Reports.PaymentsReport), typeof(Reports.VoidsReport),
                      typeof(Reports.PriceChangesReport), typeof(Reports.StockOnHandReport), typeof(Reports.StockVarianceReport),
-                     typeof(Reports.PurchasesReport), typeof(Reports.DailySummaryReport), typeof(Reports.VatReport), typeof(Reports.TicketsReport),
+                     typeof(Reports.PurchasesReport), typeof(Reports.SupplierStatementReport), typeof(Reports.PayablesAgingReport),
+                     typeof(Reports.DailySummaryReport), typeof(Reports.VatReport), typeof(Reports.TicketsReport),
                      typeof(Reports.UsersReport), typeof(Reports.AuditReport),
                  })
             services.AddScoped(typeof(Reports.IReport), report);
