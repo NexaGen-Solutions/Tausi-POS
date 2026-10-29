@@ -29,6 +29,8 @@ public static class PermissionCatalog
         new(TicketMove, "Tickets", "Move a ticket", "To another table.", true),
         new(TicketMerge, "Tickets", "Merge tickets", "Puts two tickets together on one table.", true),
         new(TicketSettle, "Tickets", "Settle and take payment", "Only cashiers settle; it can't be approved for someone else.", false),
+        new(TicketOthers, "Tickets", "Work on other waiters' tickets",
+            "Add to, print, void or settle a ticket another waiter opened, and start a ticket on their table. Without it, others' tickets open read-only.", false),
 
         new(MenuEdit, "Menu", "Edit the menu", "Items, categories, options and price lists on the admin site.", false),
         new(MenuEditPrices, "Menu", "Edit menu prices", "Change prices on the admin site.", false),

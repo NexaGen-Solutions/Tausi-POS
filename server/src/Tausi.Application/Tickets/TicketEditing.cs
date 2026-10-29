@@ -17,9 +17,10 @@ public sealed record EditableTicket(Ticket Ticket, SessionUser User, Guid Termin
 /// <summary>
 /// Every change to a ticket goes through here: a transaction with the ticket row locked (rule 8),
 /// the ticket still open, and this terminal holding its edit lock (Task 5), so two terminals never
-/// change one ticket at the same time.
+/// change one ticket at the same time. Only the waiter who opened it, or someone with
+/// ticket.others, changes it.
 /// </summary>
-public sealed class TicketEditing(ITausiDb db, ICurrentSession session, ITicketDatabase tickets, TicketLocks locks)
+public sealed class TicketEditing(ITausiDb db, ICurrentSession session, ITicketDatabase tickets, TicketLocks locks, TicketAccess access)
 {
     public const string NotLockedCode = "ticket_not_locked";
 
@@ -37,6 +38,7 @@ public sealed class TicketEditing(ITausiDb db, ICurrentSession session, ITicketD
                 .FirstOrDefaultAsync(k => k.Id == id, ct)
                 ?? throw new NotFoundException("Ticket not found.");
             if (!ticket.IsOpen) throw new DomainException($"#{ticket.Number} is no longer open.");
+            await access.EnsureMayChange(user, ticket, ct);
 
             var holder = await locks.Holder(ticket, ct);
             if (holder is null)

@@ -29,7 +29,7 @@ public sealed record MergeTicketsRequest(IReadOnlyList<Guid> TicketIds, Guid Int
 /// </summary>
 public sealed class StartTicket(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    ITicketDatabase tickets, MenuPricing pricing, TicketEvents events, TimeProvider clock)
+    ITicketDatabase tickets, MenuPricing pricing, TicketAccess access, TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketDetailDto> Execute(StartTicketRequest request, CancellationToken ct)
     {
@@ -48,6 +48,7 @@ public sealed class StartTicket(
             table = await db.Tables.Include(t => t.Area).FirstOrDefaultAsync(t => t.Id == tableId, ct);
             if (table is null || !table.Active || table.Area?.Active != true)
                 throw new DomainException("That table is not in use.");
+            await access.EnsureTableFree(user, table.Id, table.Name, null, ct);
         }
         var customer = request.CustomerName?.Trim();
         if (customer is { Length: > Ticket.MaxCustomerNameLength })
@@ -88,7 +89,7 @@ public sealed class StartTicket(
 /// </summary>
 public sealed class MoveTicket(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    ITicketDatabase tickets, TicketLocks locks, IAuditLog audit, TicketEvents events, TimeProvider clock)
+    ITicketDatabase tickets, TicketLocks locks, TicketAccess access, IAuditLog audit, TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketSummaryDto> Execute(Guid id, MoveTicketRequest request, CancellationToken ct)
     {
@@ -97,6 +98,7 @@ public sealed class MoveTicket(
         await tickets.LockRows([id], ct);
         var ticket = await Load(id, ct);
         var to = await Check(ticket, request, user.TerminalId, ct);
+        await EnsureAllowed(user, ticket, to, ct);
         await PendingRequests.EnsureNone(db, ticket.Id, null, ApprovalKind.Move, null, ct);
         var grant = await permissions.Require(user, PermissionKeys.TicketMove, approval.ApprovalToken, ct);
         var from = Apply(ticket, to, user.UserId, user.TerminalId, grant.ApprovedByUserId);
@@ -104,6 +106,13 @@ public sealed class MoveTicket(
         await tx.CommitAsync(ct);
         await Announce(ticket, from, ct);
         return Summary(ticket, user);
+    }
+
+    /// <summary>Whose ticket and whose table: also checked when a move request is made.</summary>
+    public async Task EnsureAllowed(SessionUser user, Ticket ticket, DiningTable to, CancellationToken ct)
+    {
+        await access.EnsureMayChange(user, ticket, ct);
+        await access.EnsureTableFree(user, to.Id, to.Name, ticket.Id, ct);
     }
 
     public async Task<Ticket> Load(Guid id, CancellationToken ct) =>
@@ -152,7 +161,7 @@ public sealed class MoveTicket(
 /// </summary>
 public sealed class MergeTickets(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    ITicketDatabase tickets, TicketLocks locks, IAuditLog audit, TicketEvents events, TimeProvider clock)
+    ITicketDatabase tickets, TicketLocks locks, TicketAccess access, IAuditLog audit, TicketEvents events, TimeProvider clock)
 {
     public async Task<TicketSummaryDto> Execute(MergeTicketsRequest request, CancellationToken ct)
     {
@@ -162,6 +171,7 @@ public sealed class MergeTickets(
         await tickets.LockRows(ids, ct);
         var found = await Load(ids, ct);
         await Check(found, request, user.TerminalId, ct);
+        await EnsureAllowed(user, found, ct);
         await PendingRequests.EnsureNone(db, request.IntoTicketId, null, ApprovalKind.Merge, null, ct);
         var grant = await permissions.Require(user, PermissionKeys.TicketMerge, approval.ApprovalToken, ct);
         var (into, others) = Apply(found, request, user.UserId, user.TerminalId, grant.ApprovedByUserId);
@@ -171,6 +181,12 @@ public sealed class MergeTickets(
         await Announce(into, others, ct);
         await ApprovalExpiry.Publish(events.Events, expired, ct);
         return MoveTicket.Summary(into, user);
+    }
+
+    /// <summary>Every ticket merged must be one the user may change: also checked when a merge request is made.</summary>
+    public async Task EnsureAllowed(SessionUser user, IEnumerable<Ticket> found, CancellationToken ct)
+    {
+        foreach (var ticket in found) await access.EnsureMayChange(user, ticket, ct);
     }
 
     public static List<Guid> Ids(MergeTicketsRequest request)

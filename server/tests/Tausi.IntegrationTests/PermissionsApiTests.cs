@@ -25,7 +25,7 @@ public class PermissionsApiTests(TausiApp app)
     {
         var admin = await app.AdminClient();
         var grid = await (await admin.GetAsync("/api/admin/permissions")).Json();
-        grid.GetProperty("keys").GetArrayLength().Should().Be(27);
+        grid.GetProperty("keys").GetArrayLength().Should().Be(28);
         grid.GetProperty("roles").EnumerateArray().Take(4).Select(r => r.GetProperty("name").GetString())
             .Should().Equal("Waiter", "Cashier", "Supervisor", "Admin");
         grid.GetProperty("keys").EnumerateArray().Single(k => k.GetProperty("key").GetString() == "ticket.settle")

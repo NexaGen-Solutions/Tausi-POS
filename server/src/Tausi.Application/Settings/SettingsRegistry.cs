@@ -80,6 +80,7 @@ public static class SettingsRegistry
     public const string PosIdleLogoutEnabled = "pos.idleLogoutEnabled";
     public const string PosIdleLogoutMinutes = "pos.idleLogoutMinutes";
     public const string PosLogoutAfterSettle = "pos.logoutAfterSettle";
+    public const string PosShowOthersTickets = "pos.showOthersTickets";
     public const string PosLogoutAfterPrint = "pos.logoutAfterPrint";
     public const string PosTableIdleMinutes = "pos.tableIdleMinutes";
     public const string PosApprovalExpiryMinutes = "pos.approvalExpiryMinutes";
@@ -147,6 +148,8 @@ public static class SettingsRegistry
             "The cashier's terminal returns to the PIN screen after each receipt."),
         new(PosLogoutAfterPrint, SettingType.Bool, false, Sections.Pos, "Log out after printing",
             "The waiter's terminal returns to the PIN screen after Print, Send or Print bill."),
+        new(PosShowOthersTickets, SettingType.Bool, true, Sections.Pos, "Waiters see other waiters' tables",
+            "The amount and waiter's name on their tables, and their tickets read-only. Off: a waiter sees others' tables only as taken."),
         new(PosTableIdleMinutes, SettingType.Int, 30, Sections.Pos, "Table idle warning (minutes)",
             "A table with an open ticket shows as idle after this long without activity.", Min: 1, Max: MaxMinutes),
         new(PosApprovalExpiryMinutes, SettingType.Int, 30, Sections.Pos, "Approval requests expire after (minutes)",

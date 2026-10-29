@@ -9,12 +9,13 @@ namespace Tausi.Application.Settings;
 /// <see cref="TableIdleMinutes"/> is how long a table's open ticket can go without activity before the
 /// table map shows it as unpaid and idle. <see cref="ApprovalExpiryMinutes"/> is how long an approval
 /// request waits before it expires. With <see cref="IdleLogoutEnabled"/> off, sessions never go idle;
-/// the 12-hour limit still applies.
+/// the 12-hour limit still applies. <see cref="ShowOthersTickets"/> off hides other waiters' tickets
+/// from users without ticket.others (see <c>TicketAccess</c>).
 /// </summary>
 public sealed record PosSettings(
     int IdleLogoutMinutes, bool LogoutAfterSettle, int TableIdleMinutes = PosSettings.DefaultTableIdleMinutes,
     int ApprovalExpiryMinutes = PosSettings.DefaultApprovalExpiryMinutes, bool IdleLogoutEnabled = true,
-    bool ApprovalsFromOwnCounter = true, bool ApprovalChime = true)
+    bool ApprovalsFromOwnCounter = true, bool ApprovalChime = true, bool ShowOthersTickets = true)
 {
     public const int DefaultApprovalExpiryMinutes = 30;
     public const int DefaultIdleLogoutMinutes = 10;
@@ -34,7 +35,7 @@ public sealed record PosSettings(
 
     public static PosSettings From(SettingValues v) => new(
         v.Int(PosIdleLogoutMinutes), v.Bool(PosLogoutAfterSettle), v.Int(PosTableIdleMinutes), v.Int(PosApprovalExpiryMinutes),
-        v.Bool(PosIdleLogoutEnabled), v.Bool(PosApprovalsFromOwnCounter), v.Bool(PosApprovalChime));
+        v.Bool(PosIdleLogoutEnabled), v.Bool(PosApprovalsFromOwnCounter), v.Bool(PosApprovalChime), v.Bool(PosShowOthersTickets));
 
     /// <summary>From an OtherJson document alone (the business details don't matter here).</summary>
     public static PosSettings From(string? otherJson) => From(SettingsRegistry.Read(new BusinessSettings { OtherJson = otherJson ?? "" }));

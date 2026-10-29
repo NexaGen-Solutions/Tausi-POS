@@ -274,6 +274,8 @@ export function TablesPage() {
             canAdd={canAdd && dayOpen}
             canMove={can('ticket.move')}
             canMerge={can('ticket.merge')}
+            canOthers={permission('ticket.others') === 'Allowed'}
+            myId={session?.user.id ?? null}
             disabled={offline || busy || moving !== null}
             onChoose={(ticket) => setChosenId(ticket.id)}
             onOpen={openTicket}

@@ -23,6 +23,8 @@ export interface TicketSummary {
   paid?: number;
   /** "Part paid · KSh 370 left": what's left when some of it is paid. */
   left?: number | null;
+  /** Another waiter's, hidden from this user (pos.showOthersTickets off): only that it's there. */
+  private?: boolean;
 }
 
 export interface Area {

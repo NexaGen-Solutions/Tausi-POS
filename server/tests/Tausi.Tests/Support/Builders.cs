@@ -17,6 +17,10 @@ public static class Builders
             var role = new Role { Name = name, SystemKey = roleKey, CanUseAdminSite = adminSite };
             foreach (var key in PermissionKeys.All)
                 role.Permissions.Add(new RolePermission { PermissionKey = key, Value = DefaultPermissions.For(name, key) });
+            // The tests written before ticket.others have waiters helping on each other's tickets;
+            // the tests of the rule itself (TicketOwnershipTests) set it back to Not allowed.
+            if (name == DefaultPermissions.Waiter)
+                role.Permissions.Single(p => p.PermissionKey == PermissionKeys.TicketOthers).Value = PermissionValue.Allowed;
             db.Roles.Add(role);
             roles[name] = role;
         }

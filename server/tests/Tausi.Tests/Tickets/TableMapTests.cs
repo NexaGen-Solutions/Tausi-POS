@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Time.Testing;
+using Tausi.Application.Security;
 using Tausi.Application.Settings;
 using Tausi.Application.Tickets;
 using Tausi.Domain.Service;
@@ -143,7 +144,7 @@ public class TableMapTests : IAsyncLifetime
     {
         var counter = new CommandCounter();
         await using var db = _f.NewContext(counter);
-        var query = new GetTableMap(db, _f.Session, new TableMapVersion(), _f.Clock);
+        var query = new GetTableMap(db, _f.Session, new TableMapVersion(), new TicketAccess(db, new PermissionService(db, _f.Clock)), _f.Clock);
         await query.Execute(null, CancellationToken.None);
         return (counter.Commands.Count, counter.Commands.Count(c => c.Contains("\"Tickets\"")));
     }

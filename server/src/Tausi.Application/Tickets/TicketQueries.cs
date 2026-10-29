@@ -27,7 +27,7 @@ public static class TableIdle
 /// The table map: active areas and tables with their open tickets, totals and edit locks.
 /// Tables and tickets come from one database query however many tables there are.
 /// </summary>
-public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVersion version, TimeProvider clock)
+public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVersion version, TicketAccess access, TimeProvider clock)
 {
     public async Task<TableMapDto> Execute(IReadOnlyCollection<Guid>? onlyTableIds, CancellationToken ct)
     {
@@ -72,9 +72,11 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
         var ordered = rows.OrderBy(r => r.AreaSort).ThenBy(r => r.AreaName).ThenBy(r => r.SortOrder)
             .ThenBy(r => r.Name, NaturalOrder.Instance).ToList();
         var areas = ordered.Select(r => new AreaDto(r.AreaId, r.AreaName, r.AreaSort)).DistinctBy(a => a.Id).ToList();
+        var hidden = await access.OthersHidden(me, ct);
         var tables = ordered.Select(r =>
         {
-            var tickets = r.Tickets.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule)).ToList();
+            var tickets = r.Tickets.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule))
+                .Select(k => hidden && k.OpenedById != me.UserId ? k.Hidden() : k).ToList();
             return new TableTileDto(r.Id, r.Name, r.AreaId, r.SortOrder, tickets,
                 tickets.Count == 0 ? null : TableIdle.Minutes(tickets.Select(k => k.LastActivityAt), now, settings.TableIdleLimit));
         }).ToList();
@@ -84,7 +86,7 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
 }
 
 /// <summary>Open takeaway tickets (no table), oldest first.</summary>
-public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, TimeProvider clock)
+public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, TicketAccess access, TimeProvider clock)
 {
     public async Task<IReadOnlyList<TicketSummaryDto>> Execute(CancellationToken ct)
     {
@@ -106,12 +108,17 @@ public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, Tim
                 k.Lines.Count(l => l.Status == OrderLineStatus.New),
                         k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList()))
             .ToListAsync(ct);
-        return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule)).ToList();
+        var hidden = await access.OthersHidden(me, ct);
+        return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule))
+            .Select(k => hidden && k.OpenedById != me.UserId ? k.Hidden() : k).ToList();
     }
 }
 
-/// <summary>One ticket with its lines, for the order screen. Any user with order.add may open any open ticket.</summary>
-public sealed class GetTicket(ITausiDb db, ICurrentSession session, TicketLocks locks)
+/// <summary>
+/// One ticket with its lines, for the order screen. Any user with order.add may view any open
+/// ticket, except another waiter's while others' tickets are hidden from them (pos.showOthersTickets).
+/// </summary>
+public sealed class GetTicket(ITausiDb db, ICurrentSession session, TicketLocks locks, TicketAccess access)
 {
     public async Task<TicketDetailDto> Execute(Guid id, CancellationToken ct)
     {
@@ -119,6 +126,8 @@ public sealed class GetTicket(ITausiDb db, ICurrentSession session, TicketLocks 
         var ticket = await db.Tickets.AsNoTracking().Include(k => k.Lines).Include(k => k.Table)
             .FirstOrDefaultAsync(k => k.Id == id, ct)
             ?? throw new NotFoundException("Ticket not found.");
+        if (ticket.OpenedByUserId != user.UserId && await access.OthersHidden(user, ct))
+            throw new ForbiddenException("This is another waiter's table.", TicketCodes.NotYours);
         return await TicketDetails.Build(db, ticket, await locks.Holder(ticket, ct), ct, user.UserId);
     }
 }

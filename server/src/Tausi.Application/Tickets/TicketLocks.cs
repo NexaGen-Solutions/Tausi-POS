@@ -55,4 +55,6 @@ public static class TicketCodes
     public const string Locked = "ticket_locked";
     public const string DayClosed = "day_closed";
     public const string TableInUse = "table_in_use";
+    public const string NotYours = "ticket_not_yours";
+    public const string TableTaken = "table_taken";
 }
