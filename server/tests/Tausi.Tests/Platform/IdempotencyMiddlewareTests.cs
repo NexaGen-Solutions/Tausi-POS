@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Tausi.Api.Platform;
+using Tausi.Domain.Platform;
 using Tausi.Infrastructure.Persistence;
 using Tausi.Tests.Support;
 
@@ -21,6 +23,7 @@ public class IdempotencyMiddlewareTests : IAsyncLifetime
     private readonly FakeTimeProvider _clock = new(DateTimeOffset.UtcNow);
     private WebApplication _app = null!;
     private HttpClient _client = null!;
+    private readonly FailingStore _store = new();
     private int _runs;
 
     public async Task InitializeAsync()
@@ -28,7 +31,7 @@ public class IdempotencyMiddlewareTests : IAsyncLifetime
         await _connection.OpenAsync();
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.Services.AddDbContext<TausiDbContext, SqliteTestDbContext>(o => o.UseSqlite(_connection));
+        builder.Services.AddDbContext<TausiDbContext, SqliteTestDbContext>(o => o.UseSqlite(_connection).AddInterceptors(_store));
         builder.Services.AddSingleton<TimeProvider>(_clock);
         builder.Services.AddProblemDetails();
         _app = builder.Build();
@@ -49,6 +52,25 @@ public class IdempotencyMiddlewareTests : IAsyncLifetime
     }
 
     private sealed record Order(string Item);
+
+    /// <summary>Fails the save of a finished key (the answer) as often as asked, as a database stall would.</summary>
+    private sealed class FailingStore : SaveChangesInterceptor
+    {
+        public int Failures;
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken ct = default)
+        {
+            var finishing = eventData.Context!.ChangeTracker.Entries<IdempotencyRecord>()
+                .Any(e => e.State == EntityState.Modified && e.Entity.Completed);
+            if (finishing && Failures > 0)
+            {
+                Failures--;
+                throw new DbUpdateException("Execution Timeout Expired.");
+            }
+            return base.SavingChangesAsync(eventData, result, ct);
+        }
+    }
 
     private Task<HttpResponseMessage> Send(string url, string? key, object? body = null)
     {
@@ -94,6 +116,31 @@ public class IdempotencyMiddlewareTests : IAsyncLifetime
         await Send("/api/fails", "k4");
 
         _runs.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task A_stall_storing_the_answer_is_tried_again()
+    {
+        _store.Failures = 2;
+        var first = await Send("/api/orders", "k6", new Order("Tusker"));
+        var second = await Send("/api/orders", "k6", new Order("Tusker"));
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        second.Headers.Contains("Idempotency-Replayed").Should().BeTrue();
+        _runs.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_request_that_ran_never_runs_again_even_if_its_answer_cant_be_stored()
+    {
+        _store.Failures = 100;
+        var first = await Send("/api/orders", "k7", new Order("Tusker"));
+        var second = await Send("/api/orders", "k7", new Order("Tusker"));
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK, "the order went through, so the caller gets its answer");
+        (await first.Content.ReadAsStringAsync()).Should().Contain("Tusker");
+        second.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        _runs.Should().Be(1);
     }
 
     [Fact]

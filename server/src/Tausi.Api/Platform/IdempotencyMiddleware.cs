@@ -15,11 +15,14 @@ namespace Tausi.Api.Platform;
 /// The first request runs and a successful (2xx) answer is stored for 24 hours; repeats get that
 /// answer back without running again. The same key with a different body, endpoint or caller is a
 /// 422. A repeat while the first is still running is a 409. Failed requests are not stored, so a
-/// retry after an error (or after getting an approval) runs again.
+/// retry after an error (or after getting an approval) runs again. A request that ran keeps its key
+/// even if its answer can't be stored, so it never runs twice.
 /// </summary>
-public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFactory scopes, TimeProvider clock)
+public sealed class IdempotencyMiddleware(
+    RequestDelegate next, IServiceScopeFactory scopes, TimeProvider clock, ILogger<IdempotencyMiddleware> log)
 {
     private const int MaxKeyLength = 100;
+    private const int StoreAttempts = 3;
     private static readonly string[] Writes = [HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete];
 
     public async Task InvokeAsync(HttpContext http, IProblemDetailsService problems)
@@ -95,7 +98,7 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFac
         var original = http.Response.Body;
         await using var buffer = new MemoryStream();
         http.Response.Body = buffer;
-        var stored = false;
+        var keep = false;
         try
         {
             await next(http);
@@ -104,21 +107,48 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IServiceScopeFac
             var type = http.Response.ContentType;
             if (http.Response.StatusCode is >= 200 and < 300 && (type is null || type.Contains("json", StringComparison.OrdinalIgnoreCase)))
             {
+                // The action is done: from here the key is never given up, or a retry would run it again.
+                keep = true;
                 record.Completed = true;
                 record.ResponseStatus = http.Response.StatusCode;
                 record.ResponseContentType = http.Response.ContentType;
                 record.ResponseBody = Redact(http, Encoding.UTF8.GetString(buffer.ToArray()));
-                await db.SaveChangesAsync(CancellationToken.None);
-                stored = true;
+                await Store(db, record);
             }
         }
         finally
         {
             http.Response.Body = original;
-            if (!stored)
+            if (!keep)
                 await db.IdempotencyRecords.Where(r => r.Id == record.Id).ExecuteDeleteAsync(CancellationToken.None);
             buffer.Position = 0;
             await buffer.CopyToAsync(original, CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the answer of a request that ran. If the database won't take it (a stall), the key stays
+    /// unfinished: the caller still gets the answer, and a repeat is a 409 instead of a second run.
+    /// </summary>
+    private async Task Store(TausiDbContext db, IdempotencyRecord record)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(CancellationToken.None);
+                return;
+            }
+            catch (Exception e) when (attempt < StoreAttempts)
+            {
+                log.LogWarning(e, "Couldn't store the answer to {Endpoint} (attempt {Attempt}); trying again", record.Endpoint, attempt);
+                await Task.Delay(TimeSpan.FromMilliseconds(200 * attempt));
+            }
+            catch (Exception e)
+            {
+                log.LogError(e, "Couldn't store the answer to {Endpoint}; a repeat of key {Key} will be refused (409)", record.Endpoint, record.Key);
+                return;
+            }
         }
     }
 
