@@ -194,7 +194,9 @@ async Task RunTicket(int t, string waiter)
     // Round 1: a new ticket on a table, printed.
     Guid ticket = default;
     long ticketNumber = 0;
-    var table = tables[random.Next(tables.Length)];
+    // One waiter per table (ticket.others): each waiter works their own section of the floor.
+    var mine = tables.Where((_, i) => i % waiters.Count == waiters.IndexOf(waiter)).ToArray();
+    var table = mine[random.Next(mine.Length)];
     var lines = Round(random.Next(2, 6));
     await OnTerminal(t, waiter, async api =>
     {
