@@ -18,6 +18,10 @@ public class IdempotencyRecord : Entity
     public string RequestHash { get; set; } = "";
 
     public bool Completed { get; set; }
+
+    /// <summary>The request's changes committed. Saved with them, so it is true only if they are in the database.</summary>
+    public bool Ran { get; set; }
+
     public int ResponseStatus { get; set; }
     public string? ResponseContentType { get; set; }
     public string? ResponseBody { get; set; }

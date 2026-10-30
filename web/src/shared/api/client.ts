@@ -82,6 +82,13 @@ export type ApprovalHandler = (
 let approvalHandler: ApprovalHandler | null = null;
 let baseUrl = '';
 
+/** Called when a write turns out to have gone through already, so the screens fetch what's true now. */
+let alreadyDoneHandler: (() => void) | null = null;
+
+export function setAlreadyDoneHandler(handler: (() => void) | null): void {
+  alreadyDoneHandler = handler;
+}
+
 export function setApprovalHandler(handler: ApprovalHandler | null): void {
   approvalHandler = handler;
 }
@@ -111,17 +118,54 @@ export interface RequestOptions {
   approval?: ApprovalContext;
 }
 
+/** How long pressing the same action again counts as a repeat of one that ended in a fault. */
+const UNKNOWN_OUTCOME_MS = 5 * 60_000;
+
+/** Writes that ended in a server fault or lost the connection: they may or may not have gone through. */
+const unknownOutcomes = new Map<string, { key: string; at: number }>();
+
+/** Identifies an action for pressing it again. Sign-in and ticket locks start afresh each time. */
+function actionOf(path: string, method: string, body: unknown): string | null {
+  if (body instanceof FormData || path.startsWith('/api/auth') || path.endsWith('/lock'))
+    return null;
+  return `${method} ${path} ${JSON.stringify(body) ?? ''}`;
+}
+
+function keyFor(action: string | null): string {
+  const unknown = action ? unknownOutcomes.get(action) : undefined;
+  if (action && unknown && Date.now() - unknown.at > UNKNOWN_OUTCOME_MS)
+    unknownOutcomes.delete(action);
+  return unknown && Date.now() - unknown.at <= UNKNOWN_OUTCOME_MS ? unknown.key : newRequestId();
+}
+
+/** For tests. */
+export function forgetUnknownOutcomes(): void {
+  unknownOutcomes.clear();
+}
+
 /**
  * Calls the API. Adds the device token, the PIN session and, on writes, an Idempotency-Key.
  * When the server answers "approval required", opens the approval pad, then repeats the request
- * once with the approval token (and the same Idempotency-Key).
+ * once with the approval token (and the same Idempotency-Key). A write that ends in a server fault
+ * or a lost connection may have gone through, so pressing the same action again sends the same key:
+ * the server runs it if it didn't, and answers "already done" if it did.
  */
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET';
-  const idempotencyKey =
-    method === 'GET' || options.readOnly ? undefined : (options.idempotencyKey ?? newRequestId());
+  const isWrite = method !== 'GET' && !options.readOnly;
+  const action = isWrite ? actionOf(path, method, options.body) : null;
+  const idempotencyKey = isWrite ? (options.idempotencyKey ?? keyFor(action)) : undefined;
+  const remember = () => {
+    if (action) unknownOutcomes.set(action, { key: idempotencyKey!, at: Date.now() });
+  };
 
-  let response = await send(path, method, options, idempotencyKey, options.approvalToken);
+  let response: Response;
+  try {
+    response = await send(path, method, options, idempotencyKey, options.approvalToken);
+  } catch (error) {
+    if (error instanceof OfflineError) remember();
+    throw error;
+  }
   if (response.status === 403) {
     const problem = await readProblem(response);
     if (
@@ -133,14 +177,23 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       const answer = await approvalHandler(problem.permission, options.approval);
       if (!answer) throw new ApiError(problem);
       if (typeof answer !== 'string') throw new RequestSentError(answer.requested);
-      response = await send(path, method, options, idempotencyKey, answer);
+      try {
+        response = await send(path, method, options, idempotencyKey, answer);
+      } catch (error) {
+        if (error instanceof OfflineError) remember();
+        throw error;
+      }
     } else {
       throw new ApiError(problem);
     }
   }
 
+  if (response.status >= 500) remember();
+  else if (action) unknownOutcomes.delete(action);
+
   if (!response.ok) {
     const problem = await readProblem(response);
+    if (problem.status === 409 && problem.code === 'already_done') alreadyDoneHandler?.();
     // A new install answers only the setup wizard until it is set up.
     if (
       problem.status === 423 &&

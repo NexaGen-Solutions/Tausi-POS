@@ -1279,6 +1279,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool>("Ran")
+                        .HasColumnType("bit");
+
                     b.Property<string>("RequestHash")
                         .IsRequired()
                         .HasMaxLength(64)

@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setDeviceForTests } from '../device/device';
 import { setPinSession } from '../session/session';
-import { ApiError, RequestSentError, api, setApprovalHandler } from './client';
+import {
+  ApiError,
+  OfflineError,
+  RequestSentError,
+  api,
+  forgetUnknownOutcomes,
+  setAlreadyDoneHandler,
+  setApprovalHandler,
+} from './client';
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -35,11 +43,87 @@ describe('api client', () => {
   afterEach(() => {
     fetchMock.mockReset();
     setApprovalHandler(null);
+    setAlreadyDoneHandler(null);
+    forgetUnknownOutcomes();
     setPinSession(null);
     vi.unstubAllGlobals();
   });
 
   const headersOf = (call: number) => fetchMock.mock.calls[call][1]!.headers as Headers;
+
+  const addLine = () => api('/api/pos/tickets/1/lines', { method: 'POST', body: { item: 'a' } });
+
+  it('uses a new key for each press after a clean answer', async () => {
+    fetchMock.mockImplementation(async () => json(200, {}));
+
+    await addLine();
+    await addLine();
+
+    expect(headersOf(1).get('Idempotency-Key')).not.toBe(headersOf(0).get('Idempotency-Key'));
+  });
+
+  it('sends the same key when the same action is pressed again after a server fault', async () => {
+    fetchMock.mockImplementationOnce(async () => json(503, { code: 'server_busy' }));
+    fetchMock.mockImplementationOnce(async () => json(200, {}));
+    fetchMock.mockImplementation(async () => json(200, {}));
+
+    await expect(addLine()).rejects.toBeInstanceOf(ApiError);
+    await addLine();
+    await addLine();
+
+    expect(headersOf(1).get('Idempotency-Key')).toBe(headersOf(0).get('Idempotency-Key'));
+    expect(headersOf(2).get('Idempotency-Key')).not.toBe(headersOf(1).get('Idempotency-Key'));
+  });
+
+  it('sends the same key after a lost connection', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('failed'));
+    fetchMock.mockImplementation(async () => json(200, {}));
+
+    await expect(addLine()).rejects.toBeInstanceOf(OfflineError);
+    await addLine();
+
+    expect(headersOf(1).get('Idempotency-Key')).toBe(headersOf(0).get('Idempotency-Key'));
+  });
+
+  it('starts afresh for a refusal, for another action, and for sign-in and ticket locks', async () => {
+    fetchMock.mockImplementation(async () => json(500, {}));
+    const twice = async (send: () => Promise<unknown>) => {
+      const from = fetchMock.mock.calls.length;
+      await send().catch(() => {});
+      await send().catch(() => {});
+      return [headersOf(from).get('Idempotency-Key'), headersOf(from + 1).get('Idempotency-Key')];
+    };
+
+    const [pinA, pinB] = await twice(() =>
+      api('/api/auth/pin', { method: 'POST', body: { pin: '1234' } }),
+    );
+    const [lockA, lockB] = await twice(() => api('/api/pos/tickets/1/lock', { method: 'POST' }));
+    await addLine().catch(() => {});
+    const faulted = headersOf(fetchMock.mock.calls.length - 1).get('Idempotency-Key');
+    await api('/api/pos/tickets/1/lines', { method: 'POST', body: { item: 'b' } }).catch(() => {});
+
+    expect(pinB).not.toBe(pinA);
+    expect(lockB).not.toBe(lockA);
+    expect(headersOf(fetchMock.mock.calls.length - 1).get('Idempotency-Key')).not.toBe(faulted);
+
+    fetchMock.mockImplementation(async () => json(400, {}));
+    await addLine().catch(() => {});
+    await addLine().catch(() => {});
+    const calls = fetchMock.mock.calls.length;
+    expect(headersOf(calls - 1).get('Idempotency-Key')).not.toBe(
+      headersOf(calls - 2).get('Idempotency-Key'),
+    );
+  });
+
+  it('tells the screens to refresh when the server says it already went through', async () => {
+    const refresh = vi.fn();
+    setAlreadyDoneHandler(refresh);
+    fetchMock.mockImplementation(async () => json(409, { code: 'already_done', detail: 'Done' }));
+
+    await expect(addLine()).rejects.toBeInstanceOf(ApiError);
+
+    expect(refresh).toHaveBeenCalledOnce();
+  });
 
   it('sends the device token and the session on every request', async () => {
     fetchMock.mockResolvedValue(json(200, { ok: true }));

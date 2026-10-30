@@ -1274,6 +1274,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("Ran")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("RequestHash")
                         .IsRequired()
                         .HasMaxLength(64)
