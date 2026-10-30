@@ -98,8 +98,16 @@ var items = menu.GetProperty("categories").EnumerateArray().SelectMany(c => c.Ge
         .Select(g => (g.GetProperty("options").EnumerateArray().FirstOrDefault(o => o.GetProperty("isDefault").GetBoolean()) is { ValueKind: JsonValueKind.Object } d
             ? d : g.GetProperty("options")[0]).GetProperty("id").GetGuid()).ToArray()))
     .ToArray();
-var tables = (await terminals[0].Get("/api/pos/tables")).GetProperty("tables").EnumerateArray()
-    .Select(t => t.GetProperty("id").GetGuid()).ToArray();
+var tableMap = (await terminals[0].Get("/api/pos/tables")).GetProperty("tables").EnumerateArray().ToArray();
+var tables = tableMap.Select(t => t.GetProperty("id").GetGuid()).ToArray();
+// One waiter per table (ticket.others): each waiter works their own section of the floor. A table
+// someone already has a ticket on (the demo's open tickets) is theirs, or left out if they don't wait here.
+var heldBy = tableMap.Where(t => t.GetProperty("tickets").GetArrayLength() > 0)
+    .ToDictionary(t => t.GetProperty("id").GetGuid(), t => t.GetProperty("tickets")[0].GetProperty("openedBy").GetString());
+var free = tables.Where(t => !heldBy.ContainsKey(t)).ToArray();
+var sections = waiters.Select((w, i) => free.Where((_, k) => k % waiters.Count == i)
+    .Concat(heldBy.Where(h => h.Value == w).Select(h => h.Key)).ToArray()).ToArray();
+if (sections.Any(s => s.Length == 0)) throw new InvalidOperationException("Not enough free tables for a section per waiter.");
 Console.WriteLine($"Ready: {terminals.Count} terminals, {waiters.Count} waiters, {items.Length} menu items, {tables.Length} tables.");
 
 var before = await Database.Snapshot(options);
@@ -194,8 +202,7 @@ async Task RunTicket(int t, string waiter)
     // Round 1: a new ticket on a table, printed.
     Guid ticket = default;
     long ticketNumber = 0;
-    // One waiter per table (ticket.others): each waiter works their own section of the floor.
-    var mine = tables.Where((_, i) => i % waiters.Count == waiters.IndexOf(waiter)).ToArray();
+    var mine = sections[waiters.IndexOf(waiter)];
     var table = mine[random.Next(mine.Length)];
     var lines = Round(random.Next(2, 6));
     await OnTerminal(t, waiter, async api =>
