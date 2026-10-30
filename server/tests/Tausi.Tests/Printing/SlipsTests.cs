@@ -283,7 +283,7 @@ public class SlipsTests
     [Theory]
     [InlineData(42)]
     [InlineData(32)]
-    public void A_dispense_slip_has_no_prices_short_names_options_and_notes(int columns) =>
+    public void A_dispense_slip_has_amounts_short_names_options_and_notes(int columns) =>
         Golden($"dispense-{columns}", Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1042, At,
             [new DispenseGroup("edna", [
                 Line(2, "Tusker Lager", 250m, "Cold", shortName: "Tusker"),
@@ -320,6 +320,28 @@ public class SlipsTests
 
         Lines(doc).Should().Contain(l => l.Trim() == Slips.NotAReceiptText);
         doc.EscPos.AsSpan().IndexOf([(byte)0x1B, (byte)0x4D, (byte)0x01]).Should().BeGreaterThan(0, "the small font is switched on");
+    }
+
+    [Fact]
+    public void Dispense_items_are_the_size_of_the_bills_with_their_amounts_and_only_the_header_is_large()
+    {
+        var doc = Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1042, At,
+            [new DispenseGroup("edna", [Line(2, "Tusker Lager", 250m, "Cold", shortName: "Tusker")])]), new SlipStyle(42, true, null));
+
+        doc.Text.Split('\n').Should().Contain(l => l.StartsWith("2 x Tusker") && l.EndsWith("500"));
+        var large = new byte[] { 0x1D, 0x21, 0x01 };
+        var bytes = doc.EscPos.AsSpan();
+        var first = bytes.IndexOf(large);
+        first.Should().BeGreaterThanOrEqualTo(0, "the header is still large");
+        bytes[(first + large.Length)..].IndexOf(large).Should().Be(-1, "the items print at normal size");
+    }
+
+    [Fact]
+    public void No_slip_prints_question_marks_for_its_separators()
+    {
+        Slips.Bill(SampleBill(), new SlipStyle(42, true, null)).EscPos.Should().NotContain((byte)'?');
+        Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1042, At, [new DispenseGroup("edna", Slips.SampleLines(16m))]),
+            new SlipStyle(42, true, null)).EscPos.Should().NotContain((byte)'?');
     }
 
     [Fact]

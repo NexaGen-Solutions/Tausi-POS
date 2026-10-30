@@ -209,7 +209,7 @@ public static class Slips
         return b;
     }
 
-    /// <summary>For the bar: no prices, short names in large text, options and notes underneath.</summary>
+    /// <summary>For the bar: short names at the bill's size with their amounts, options and notes underneath.</summary>
     public static PrintDocument Dispense(DispenseSlip d, SlipStyle style) => WriteDispense(new ReceiptBuilder(style.Columns, style.Cut), d).Cut().Build();
 
     private static ReceiptBuilder WriteDispense(ReceiptBuilder b, DispenseSlip d)
@@ -221,7 +221,7 @@ public static class Slips
             b.Separator().Text($"By: {group.Waiter}", TextStyle.Bold);
             foreach (var line in group.Lines)
             {
-                b.Text($"{Qty(line.Quantity)} x {line.ShortName ?? line.Name}", TextStyle.Bold | TextStyle.DoubleHeight);
+                b.Columns2($"{Qty(line.Quantity)} x {line.ShortName ?? line.Name}", Amount(line.Amount));
                 if (line.Options is { Length: > 0 } options) b.Text("   " + options.ToUpperInvariant());
                 if (line.Note is { Length: > 0 } note) b.Text("   Note: " + note);
             }
