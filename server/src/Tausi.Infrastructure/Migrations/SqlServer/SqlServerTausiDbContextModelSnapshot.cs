@@ -1405,9 +1405,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("PrinterId");
 
-                    b.HasIndex("TicketId");
-
                     b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("TicketId", "Status", "CreatedAt");
 
                     b.ToTable("PrintJobs");
                 });

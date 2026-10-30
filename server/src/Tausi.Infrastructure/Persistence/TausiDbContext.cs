@@ -256,7 +256,9 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.LastError).HasMaxLength(1000);
             e.Property(x => x.DiscardReason).HasMaxLength(500);
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
-            e.HasIndex(x => x.TicketId);
+            // A ticket's jobs, and its failed ones, oldest first: on SQL Server an index on TicketId alone let the
+            // planner walk the CreatedAt index instead, reading every job on each ticket fetch.
+            e.HasIndex(x => new { x.TicketId, x.Status, x.CreatedAt });
             // The nightly clean-up of old slip text.
             e.HasIndex(x => x.CreatedAt);
             e.Property(x => x.Label).HasMaxLength(120);

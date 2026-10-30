@@ -1400,9 +1400,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("PrinterId");
 
-                    b.HasIndex("TicketId");
-
                     b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("TicketId", "Status", "CreatedAt");
 
                     b.ToTable("PrintJobs");
                 });
