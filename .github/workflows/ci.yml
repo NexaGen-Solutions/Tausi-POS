@@ -350,19 +350,36 @@ jobs:
       - name: Build the web app
         run: npm ci && npm run build
         working-directory: web
-      - name: Publish the server (win-x64, self-contained) three times
+      # Each run's versions are higher than the last run's, so the installer it uploads upgrades an
+      # earlier build. Windows Installer doesn't upgrade a version to the same version.
+      - name: Choose this run's versions
+        id: versions
         shell: pwsh
         run: |
-          foreach ($v in '0.15.1', '0.15.2') {
+          $first = [int]$env:GITHUB_RUN_NUMBER * 3 + 2
+          "first=0.15.$first" >> $env:GITHUB_OUTPUT
+          "upgrade=0.15.$($first + 1)" >> $env:GITHUB_OUTPUT
+          "broken=0.15.$($first + 2)" >> $env:GITHUB_OUTPUT
+      - name: Publish the server (win-x64, self-contained) three times
+        shell: pwsh
+        env:
+          FIRST: ${{ steps.versions.outputs.first }}
+          UPGRADE: ${{ steps.versions.outputs.upgrade }}
+        run: |
+          foreach ($v in $env:FIRST, $env:UPGRADE) {
             dotnet publish server/src/Tausi.Api -c Release -r win-x64 --self-contained true -p:Version=$v -o out/server-$v
             if ($LASTEXITCODE -ne 0) { exit 1 }
           }
       - name: Build the installers (a first version, an upgrade, and a broken upgrade)
         shell: pwsh
+        env:
+          FIRST: ${{ steps.versions.outputs.first }}
+          UPGRADE: ${{ steps.versions.outputs.upgrade }}
+          BROKEN: ${{ steps.versions.outputs.broken }}
         run: |
-          installer/windows/build.ps1 -Version 0.15.1 -Server out/server-0.15.1 -Out out/a
-          installer/windows/build.ps1 -Version 0.15.2 -Server out/server-0.15.2 -Out out/b
-          installer/windows/build.ps1 -Version 0.15.3 -Server out/server-0.15.2 -Out out/c -FailMigration
+          installer/windows/build.ps1 -Version $env:FIRST -Server out/server-$env:FIRST -Out out/a
+          installer/windows/build.ps1 -Version $env:UPGRADE -Server out/server-$env:UPGRADE -Out out/b
+          installer/windows/build.ps1 -Version $env:BROKEN -Server out/server-$env:UPGRADE -Out out/c -FailMigration
       - uses: actions/download-artifact@v7
         with:
           name: tausi-terminal-windows
@@ -370,7 +387,11 @@ jobs:
       - name: Test the installers
         shell: pwsh
         timeout-minutes: 50
-        run: installer/windows/test-install.ps1 -First out/a/TausiPOS-Server-Setup-0.15.1.exe -Upgrade out/b/TausiPOS-Server-Setup-0.15.2.exe -Broken out/c/TausiPOS-Server-Setup-0.15.3.exe -Terminal out/terminal/TausiPOS-Setup.exe
+        env:
+          FIRST: ${{ steps.versions.outputs.first }}
+          UPGRADE: ${{ steps.versions.outputs.upgrade }}
+          BROKEN: ${{ steps.versions.outputs.broken }}
+        run: installer/windows/test-install.ps1 -First out/a/TausiPOS-Server-Setup-$env:FIRST.exe -Upgrade out/b/TausiPOS-Server-Setup-$env:UPGRADE.exe -Broken out/c/TausiPOS-Server-Setup-$env:BROKEN.exe -Terminal out/terminal/TausiPOS-Setup.exe
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -382,6 +403,6 @@ jobs:
         if: always()
         with:
           name: tausi-server-windows
-          path: out/a/TausiPOS-Server-Setup-0.15.1.exe
+          path: out/a/TausiPOS-Server-Setup-${{ steps.versions.outputs.first }}.exe
           if-no-files-found: ignore
           retention-days: 14
