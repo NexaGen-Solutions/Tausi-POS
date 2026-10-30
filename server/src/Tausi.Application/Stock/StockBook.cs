@@ -50,10 +50,17 @@ public sealed class StockBook(ITausiDb db, IStockDatabase stockDb, TimeProvider 
             tracked.OnHand += quantity;
             return;
         }
-        var updated = await db.StockLevels.Where(l => l.StockItemId == itemId && l.LocationId == locationId)
-            .ExecuteUpdateAsync(u => u.SetProperty(l => l.OnHand, l => l.OnHand + quantity), ct);
+        // Found first, then updated by its key: an update through the (item, location) index also locks
+        // that index entry, and on SQL Server two prints moving the same item twice deadlocked on it.
+        var levelId = tracked?.Id ?? await db.StockLevels.Where(l => l.StockItemId == itemId && l.LocationId == locationId)
+            .Select(l => (Guid?)l.Id).FirstOrDefaultAsync(ct);
+        if (levelId is not { } id)
+        {
+            db.StockLevels.Add(new StockLevel { StockItemId = itemId, LocationId = locationId, OnHand = quantity });
+            return;
+        }
+        await db.StockLevels.Where(l => l.Id == id).ExecuteUpdateAsync(u => u.SetProperty(l => l.OnHand, l => l.OnHand + quantity), ct);
         if (tracked is not null) tracked.OnHand += quantity;
-        if (updated == 0) db.StockLevels.Add(new StockLevel { StockItemId = itemId, LocationId = locationId, OnHand = quantity });
     }
 
     /// <summary>Makes sure every item has a level row at every location (so updates never race to insert).</summary>
