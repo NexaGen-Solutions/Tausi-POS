@@ -40,7 +40,7 @@ public sealed class ReportService(
     public static readonly string[] Order =
     [
         "sales-by-user", "sales-by-item", "payments", "voids", "price-changes", "stock-on-hand", "stock-variance",
-        "purchases", "daily-summary", "vat", "tickets", "users", "audit",
+        "purchases", "daily-summary", "vat", "tickets", "users", "audit", "supplier-statement", "payables-aging",
     ];
 
     private IEnumerable<IReport> Ordered => reports.OrderBy(r => Array.IndexOf(Order, r.Definition.Key) is var i and >= 0 ? i : int.MaxValue);

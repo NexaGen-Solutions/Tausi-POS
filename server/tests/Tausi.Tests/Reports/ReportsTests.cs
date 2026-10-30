@@ -277,6 +277,36 @@ public class ReportsTests : StockTestBase
     }
 
     [Fact]
+    public async Task The_supplier_statement_lists_each_move_with_a_running_balance_that_ends_at_the_ledger()
+    {
+        await BusyDay();
+        var statement = await Run("supplier-statement", new ReportFilters { SupplierId = Supplier() });
+        var payables = LedgerNet(LedgerAccountCodes.SupplierPayables);
+
+        var kbl = statement.Tables[0].Groups.Should().ContainSingle().Which;
+        kbl.Title.Should().Be("KBL");
+        kbl.Rows.Select(r => (string?)r.Cells[1]).Should().Equal("Brought forward", "Delivery on credit", "Delivery reversed", "Delivery on credit");
+        kbl.Rows.Select(r => (string?)r.Cells[2]).Skip(1).Should().Equal("Invoice D1", "Invoice D1", "Invoice D2");
+        ((decimal)kbl.Rows[2].Cells[4]!).Should().Be((decimal)kbl.Rows[1].Cells[3]!, "the reversal takes off what the delivery added");
+        ((decimal)kbl.Rows[^1].Cells[5]!).Should().Be(payables, "the running balance ends at the ledger");
+        kbl.Footer!.Single().Should().Be($"Owed at the end: KSh {ReportFormat.Money(payables)}");
+    }
+
+    [Fact]
+    public void Payables_aging_puts_what_is_left_of_each_delivery_in_its_bucket_after_paying_the_oldest_first()
+    {
+        var supplier = Guid.NewGuid();
+        var asAt = new DateOnly(2026, 10, 30);
+        PurchasesReport.PayablesMove Move(int daysAgo, decimal amount) => new(supplier, asAt.AddDays(-daysAgo), "x", amount);
+
+        // 1,000 at 100 days, 500 at 70, 300 at 40, 200 at 5; 1,200 paid: the 100-day one and 200 of the 70-day one.
+        var aged = PayablesAgingReport.Age([Move(100, 1000), Move(70, 500), Move(40, 300), Move(5, 200), Move(2, -1200)], asAt);
+        aged.Should().Equal(200m, 300m, 300m, 0m, 800m);
+
+        PayablesAgingReport.Age([Move(10, 100), Move(1, -150)], asAt).Should().Equal(new[] { -50m, 0m, 0m, 0m, -50m }, "paid ahead shows under Current");
+    }
+
+    [Fact]
     public async Task My_sales_for_each_user_equals_their_group_in_sales_by_user()
     {
         await BusyDay();
