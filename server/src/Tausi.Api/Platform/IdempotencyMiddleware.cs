@@ -15,14 +15,18 @@ namespace Tausi.Api.Platform;
 /// The first request runs and a successful (2xx) answer is stored for 24 hours; repeats get that
 /// answer back without running again. The same key with a different body, endpoint or caller is a
 /// 422. A repeat while the first is still running is a 409. Failed requests are not stored, so a
-/// retry after an error (or after getting an approval) runs again. A request that ran keeps its key
-/// even if its answer can't be stored, so it never runs twice.
+/// retry after an error (or after getting an approval) runs again. A request whose changes committed
+/// keeps its key even if it then fails or its answer can't be stored, so it never runs twice: a repeat
+/// is a 409 with the code <c>already_done</c>. An unfinished key that committed nothing can be run again
+/// after <see cref="StaleAfter"/> (its first run ended without clearing it, in a stall or a crash).
 /// </summary>
 public sealed class IdempotencyMiddleware(
     RequestDelegate next, IServiceScopeFactory scopes, TimeProvider clock, ILogger<IdempotencyMiddleware> log)
 {
     private const int MaxKeyLength = 100;
     private const int StoreAttempts = 3;
+    public const string AlreadyDoneCode = "already_done";
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(2);
     private static readonly string[] Writes = [HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete];
 
     public async Task InvokeAsync(HttpContext http, IProblemDetailsService problems)
@@ -83,6 +87,18 @@ public sealed class IdempotencyMiddleware(
         }
         if (!existing.Completed)
         {
+            if (existing.Ran)
+            {
+                await WriteProblem(http, problems, 409, "That already went through. Check the screen before doing it again.", AlreadyDoneCode);
+                return;
+            }
+            var now = clock.GetUtcNow();
+            if (now - existing.CreatedAt > StaleAfter && await Claim(db, existing, now, http.RequestAborted))
+            {
+                db.Attach(existing);
+                await RunAndStore(http, db, existing);
+                return;
+            }
             await WriteProblem(http, problems, 409, "The first request with this Idempotency-Key is still being processed.");
             return;
         }
@@ -93,12 +109,24 @@ public sealed class IdempotencyMiddleware(
         if (existing.ResponseBody is not null) await http.Response.WriteAsync(existing.ResponseBody, http.RequestAborted);
     }
 
+    /// <summary>Takes over a stale key; only one repeat can.</summary>
+    private static async Task<bool> Claim(TausiDbContext db, IdempotencyRecord record, DateTimeOffset now, CancellationToken ct)
+    {
+        var was = record.CreatedAt;
+        var claimed = await db.IdempotencyRecords.Where(r => r.Id == record.Id && r.CreatedAt == was && !r.Ran && !r.Completed)
+            .ExecuteUpdateAsync(u => u.SetProperty(r => r.CreatedAt, now), ct);
+        record.CreatedAt = now;
+        return claimed == 1;
+    }
+
     private async Task RunAndStore(HttpContext http, TausiDbContext db, IdempotencyRecord record)
     {
+        http.RequestServices.GetService<IdempotencyMark>()?.RecordId = record.Id;
         var original = http.Response.Body;
         await using var buffer = new MemoryStream();
         http.Response.Body = buffer;
         var keep = false;
+        var fault = false;
         try
         {
             await next(http);
@@ -115,14 +143,37 @@ public sealed class IdempotencyMiddleware(
                 record.ResponseBody = Redact(http, Encoding.UTF8.GetString(buffer.ToArray()));
                 await Store(db, record);
             }
+            fault = !keep && http.Response.StatusCode >= 500;
+        }
+        catch (Exception e) when (!ProblemMapping.IsRefusal(e))
+        {
+            fault = true;
+            throw;
         }
         finally
         {
             http.Response.Body = original;
-            if (!keep)
-                await db.IdempotencyRecords.Where(r => r.Id == record.Id).ExecuteDeleteAsync(CancellationToken.None);
+            if (!keep) await Release(db, record, fault);
             buffer.Position = 0;
             await buffer.CopyToAsync(original, CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Gives the key up so a retry runs again, unless a fault came after the request's changes committed.
+    /// In a stall even this can fail: the key then stays, and <see cref="StaleAfter"/> frees it if nothing ran.
+    /// </summary>
+    private async Task Release(TausiDbContext db, IdempotencyRecord record, bool fault)
+    {
+        try
+        {
+            if (fault && await db.IdempotencyRecords.AsNoTracking().Where(r => r.Id == record.Id).Select(r => r.Ran).FirstOrDefaultAsync(CancellationToken.None))
+                return;
+            await db.IdempotencyRecords.Where(r => r.Id == record.Id).ExecuteDeleteAsync(CancellationToken.None);
+        }
+        catch (Exception e) when (fault)
+        {
+            log.LogWarning(e, "Couldn't check the key of a failed request to {Endpoint}; it stays until it goes stale", record.Endpoint);
         }
     }
 
@@ -173,13 +224,11 @@ public sealed class IdempotencyMiddleware(
         return Convert.ToHexString(sha.GetHashAndReset());
     }
 
-    private static async Task WriteProblem(HttpContext http, IProblemDetailsService problems, int status, string detail)
+    private static async Task WriteProblem(HttpContext http, IProblemDetailsService problems, int status, string detail, string? code = null)
     {
         http.Response.StatusCode = status;
-        await problems.WriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = http,
-            ProblemDetails = new ProblemDetails { Status = status, Title = "Idempotency-Key problem", Detail = detail },
-        });
+        var problem = new ProblemDetails { Status = status, Title = "Idempotency-Key problem", Detail = detail };
+        if (code is not null) problem.Extensions["code"] = code;
+        await problems.WriteAsync(new ProblemDetailsContext { HttpContext = http, ProblemDetails = problem });
     }
 }

@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { Providers } from './app/Providers';
 import { routes } from './app/routes';
 import { setApiBase } from './shared/api/client';
+import { setAlreadyDoneHandler } from './shared/api/client';
 import { createQueryClient } from './shared/api/queryClient';
 import { isBundledTerminalPage, loadDevice } from './shared/device/device';
 import { StartFailed } from './app/StartFailed';
@@ -20,6 +21,7 @@ try {
 
   const router = createBrowserRouter(routes);
   const queryClient = createQueryClient();
+  setAlreadyDoneHandler(() => void queryClient.invalidateQueries());
 
   root.render(
     <StrictMode>

@@ -29,16 +29,17 @@ public static class DependencyInjection
         var provider = config.GetSection("Database").Get<DatabaseOptions>()?.Provider ?? DatabaseProvider.Postgres;
         var connection = Platform.MachineSecrets.UnprotectConnectionString(config.GetConnectionString(TausiOptions.ConnectionStringName)
             ?? throw new InvalidOperationException("ConnectionStrings:Tausi is not set."));
+        services.AddScoped<IdempotencyMark>();
         switch (provider)
         {
             case DatabaseProvider.SqlServer:
                 services.AddDbContext<SqlServerTausiDbContext>((sp, o) => o.UseSqlServer(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
-                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>()));
+                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>(), sp.GetRequiredService<IdempotencyMark>()));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
                 break;
             default:
                 services.AddDbContext<PostgresTausiDbContext>((sp, o) => o.UseNpgsql(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
-                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>()));
+                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>(), sp.GetRequiredService<IdempotencyMark>()));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<PostgresTausiDbContext>());
                 break;
         }

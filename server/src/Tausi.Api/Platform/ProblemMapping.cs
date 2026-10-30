@@ -59,6 +59,12 @@ public sealed class ProblemMapping(IProblemDetailsService problems, ILogger<Prob
             : Problem(503, "Server busy", "The server can't reach its database. Retrying…", ("code", reason));
     }
 
+    /// <summary>A refusal the server gave on purpose (a 4xx), as opposed to a fault while it worked.</summary>
+    public static bool IsRefusal(Exception exception) => exception is ApprovalRequiredException or PermissionDeniedException
+        or LoginLockedException or LoginRejectedException or UnauthenticatedException or NotFoundException
+        or Tausi.Application.Day.OpenTicketsException or FieldErrorsException or ConflictException or ForbiddenException
+        or DbUpdateConcurrencyException or DomainException or BadHttpRequestException;
+
     private static ProblemDetails Locked(HttpContext http, LoginLockedException e)
     {
         var seconds = Math.Max(1, (int)Math.Ceiling((e.Until - DateTimeOffset.UtcNow).TotalSeconds));
