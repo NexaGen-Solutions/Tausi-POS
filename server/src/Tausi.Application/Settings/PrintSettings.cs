@@ -9,14 +9,18 @@ namespace Tausi.Application.Settings;
 /// <c>PoweredByFooter</c> adds "Powered by Tausi POS" at the foot of bills and receipts. It is off by
 /// default: customer slips carry the business's own name, not ours. <c>ShowVoidsOnReceipt</c> lists
 /// voided items on the receipt at 0, marked VOID. <c>VatAmounts</c> off prints "Inclusive of VAT" instead of
-/// the VAT amount per rate.
+/// the VAT amount per rate. <c>DispenseBold</c>, <c>DispenseAmounts</c> and <c>DispenseTotal</c> shape the
+/// dispense slip: bold items, each item's amount, and the slip's total.
 /// </summary>
-public sealed record PrintSettings(bool LogoOnBill, bool PoweredByFooter = false, bool ShowVoidsOnReceipt = false, bool VatAmounts = true)
+public sealed record PrintSettings(
+    bool LogoOnBill, bool PoweredByFooter = false, bool ShowVoidsOnReceipt = false, bool VatAmounts = true,
+    bool DispenseBold = true, bool DispenseAmounts = true, bool DispenseTotal = false)
 {
     public static readonly PrintSettings Default = From(SettingsRegistry.Read(null));
 
     public static PrintSettings From(SettingValues v) =>
-        new(v.Bool(PrintLogoOnBill), v.Bool(PrintPoweredByFooter), v.Bool(PrintShowVoidsOnReceipt), v.Bool(PrintVatAmounts));
+        new(v.Bool(PrintLogoOnBill), v.Bool(PrintPoweredByFooter), v.Bool(PrintShowVoidsOnReceipt), v.Bool(PrintVatAmounts),
+            v.Bool(PrintDispenseBold), v.Bool(PrintDispenseAmounts), v.Bool(PrintDispenseTotal));
 
     public static PrintSettings From(string? otherJson) => From(SettingsRegistry.Read(new BusinessSettings { OtherJson = otherJson ?? "" }));
 

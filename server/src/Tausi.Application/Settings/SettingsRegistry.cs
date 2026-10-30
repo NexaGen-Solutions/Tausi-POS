@@ -91,6 +91,9 @@ public static class SettingsRegistry
     public const string PrintPoweredByFooter = "print.poweredByFooter";
     public const string PrintShowVoidsOnReceipt = "print.showVoidsOnReceipt";
     public const string PrintVatAmounts = "print.vatAmounts";
+    public const string PrintDispenseBold = "print.dispenseBold";
+    public const string PrintDispenseAmounts = "print.dispenseAmounts";
+    public const string PrintDispenseTotal = "print.dispenseTotal";
     public const string MoneyRounding = "money.rounding";
     public const string BooksBackdateDays = "books.backdateDays";
     public const string PrintKeepSlipTextDays = "print.keepSlipTextDays";
@@ -163,6 +166,12 @@ public static class SettingsRegistry
             "Adds the line at the foot of bills and receipts."),
         new(PrintVatAmounts, SettingType.Bool, true, Sections.Printing, "VAT amounts on bills and receipts",
             "Prints \"Total includes VAT 16%\" with the amount. Off: one line, \"Inclusive of VAT\"."),
+        new(PrintDispenseBold, SettingType.Bool, true, Sections.Printing, "Bold items on dispense slips",
+            "Items print in bold at the same size as the bill."),
+        new(PrintDispenseAmounts, SettingType.Bool, true, Sections.Printing, "Amounts on dispense slips",
+            "Prints each item's amount beside it."),
+        new(PrintDispenseTotal, SettingType.Bool, false, Sections.Printing, "Total on dispense slips",
+            "Adds the total of the items on the slip (only the new items, not the whole ticket)."),
         new(PrintKeepSlipTextDays, SettingType.Int, 365, Sections.Printing, "Keep printed slip text (days)",
             "The ticket detail shows exactly what each slip printed; older slip text is cleared each night.", Min: 7, Max: 3650,
             ReloadsTerminals: false),

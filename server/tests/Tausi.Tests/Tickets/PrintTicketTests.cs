@@ -34,6 +34,24 @@ public class PrintTicketTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_dispense_slip_follows_the_printing_settings()
+    {
+        var ticket = await Table4();
+        await Print(ticket.Id);
+        var usual = Jobs(ticket.Id).Single(j => j.Kind == PrintJobKind.Dispense).TextPreview;
+        var settings = _f.Db.BusinessSettings.Single();
+        settings.OtherJson = """{"print":{"dispenseAmounts":false,"dispenseTotal":true}}""";
+        await _f.Db.SaveChangesAsync();
+        _f.Db.ChangeTracker.Clear();
+        var other = await _f.Start("5", "Tusker Lager", 2, "Cold");
+        await Print(other.Id);
+
+        usual.Should().MatchRegex(@"2 x Tusker.* \d").And.NotContain("TOTAL");
+        var slip = Jobs(other.Id).Single(j => j.Kind == PrintJobKind.Dispense).TextPreview;
+        slip.Should().MatchRegex(@"TOTAL\s+KSh \d").And.NotMatchRegex(@"2 x Tusker.* \d");
+    }
+
+    [Fact]
     public async Task Print_queues_the_bill_with_every_line_first_then_the_dispense_slip_with_only_new_lines()
     {
         var ticket = await Table4();
