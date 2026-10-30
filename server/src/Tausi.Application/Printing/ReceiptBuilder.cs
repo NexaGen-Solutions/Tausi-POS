@@ -189,17 +189,31 @@ public sealed class ReceiptBuilder
 
     private void Write(params byte[] data) => _bytes.Write(data);
 
-    /// <summary>Printers use a single-byte code page; accents are dropped and other symbols become '?'.</summary>
+    /// <summary>
+    /// Printers use a single-byte code page: accents are dropped, the punctuation slips use becomes its
+    /// plain equivalent ("·" prints as "-"), and anything else becomes '?'.
+    /// </summary>
     internal static byte[] ToPrinterBytes(string text)
     {
         var plain = new StringBuilder(text.Length);
         foreach (var ch in text.Normalize(NormalizationForm.FormD))
         {
             if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark) continue;
-            plain.Append(ch is >= ' ' and <= '~' ? ch : '?');
+            plain.Append(Plain(ch));
         }
         return Encoding.ASCII.GetBytes(plain.ToString());
     }
+
+    private static char Plain(char ch) => ch switch
+    {
+        >= ' ' and <= '~' => ch,
+        '\u00B7' or '\u2022' or '\u2013' or '\u2014' => '-', // middle dot, bullet, en and em dashes
+        '\u2018' or '\u2019' => '\'',
+        '\u201C' or '\u201D' => '"',
+        '\u00D7' => 'x',
+        '\u00A0' => ' ',
+        _ => '?',
+    };
 
     /// <summary>Wraps at spaces to the width; a line break in the text starts a new line.</summary>
     internal static IEnumerable<string> Wrap(string text, int width) =>

@@ -92,6 +92,13 @@ public class ReceiptBuilderTests
     }
 
     [Fact]
+    public void The_punctuation_on_slips_prints_as_plain_characters_not_question_marks()
+    {
+        ReceiptBuilder.ToPrinterBytes("BILL 12 \u00B7 Ticket #1042").Should().Equal("BILL 12 - Ticket #1042"u8.ToArray());
+        ReceiptBuilder.ToPrinterBytes("\u201CDad\u2019s\u201D \u2013 2\u00D73").Should().Equal("\"Dad's\" - 2x3"u8.ToArray());
+    }
+
+    [Fact]
     public void Accents_are_dropped_for_the_printer_code_page()
     {
         ReceiptBuilder.ToPrinterBytes("Café").Should().Equal("Cafe"u8.ToArray());
