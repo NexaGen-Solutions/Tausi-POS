@@ -59,6 +59,9 @@ string NewPin()
     while (true)
     {
         var pin = random.Next(1000, 10000).ToString();
+        // The server refuses runs up or down (1234, 9876).
+        var steps = pin.Zip(pin.Skip(1), (x, y) => y - x).Distinct().ToArray();
+        if (steps is [1] or [-1]) continue;
         if (used.Add(pin) && pin.Distinct().Count() > 2) return pin;
     }
 }
