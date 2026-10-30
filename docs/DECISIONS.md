@@ -395,6 +395,7 @@ Each entry: date, decision, reason.
 | 2026-10-30 | **Print jobs are indexed by (TicketId, Status, CreatedAt)**, replacing the index on TicketId alone. Fixed on main as release-15-v12. | On SQL Server the failed-jobs query on every ticket fetch settled on a plan that walked the CreatedAt index and read every job, so adding a line slowed as jobs piled up. |
 | 2026-10-30 | **The dispense slip lists items at the bill's size with their amounts** (the header stays large; short names, options and notes as before). The printer encoder prints the punctuation slips use as plain characters ("·" as "-") instead of "?". Fixed on main as release-15-v13. | The owner's request: the slip's large text and missing amounts, and "?" beside the ticket number on bills and receipts. |
 | 2026-10-30 | **Dispense slip settings:** `print.dispenseBold` (on) prints items in bold at the bill's size, `print.dispenseAmounts` (on) prints each item's amount, and `print.dispenseTotal` (off) adds the total of the items on that slip (new items only, not the whole ticket). Fixed on main as release-15-v14. | The owner's request, so each business can choose. |
+| 2026-10-30 | **Correction to the idempotency entry above:** no action ran twice in any load run. The load test doesn't retry, and the web app doesn't repeat a failed write by itself, so the test's "more in the database than expected" counts were writes that succeeded while the caller got an error (a 503 or a 60-second timeout during a disk stall). The change stands: a caller now gets the real answer when only storing it failed. Not covered: a write that commits and then fails answers an error, and pressing again sends a new key, so it runs again (see Follow-ups). The load test's counts should treat such errors as unknown, and it now uses a thread-safe random source (a shared `Random` stuck at 0 gave 909 voids instead of about 130 and put tickets on the same tables). | Found reading the third SQL Server run. |
 
 ## After v1
 
@@ -410,6 +411,7 @@ Owner's decisions and larger items for a later version. Not in 1.0.0.
 
 ## Follow-ups
 
+- **Pressing again after an error:** the web app makes a new Idempotency-Key for each press, so if a write committed but the answer was an error, a second press repeats it (a print is safe: nothing new is refused; adding a line isn't). Decide whether a failed write should reuse its key on the next press of the same action.
 - **SQL Server recovery model:** Tausi doesn't set it, so the database copies the instance's `model` database. With FULL (the load test's Docker image; possibly an existing SQL Server) the log only ever grows, because Tausi's backups are COPY_ONLY full backups and nothing backs up the log. Decide whether the server should switch to SIMPLE when no log backups exist.
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
 - **Real-hardware check:** `print_raw` on the Windows spooler and server-side Windows share printing compile in CI but are untested against a real printer until the owner runs RUNNING.md "Testing on real hardware".

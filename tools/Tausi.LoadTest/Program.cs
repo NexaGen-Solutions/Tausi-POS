@@ -18,7 +18,8 @@ using Tausi.LoadTest;
 
 var options = Options.Parse(args);
 var stats = new Stats();
-var random = new Random(options.Seed);
+// Shared by every terminal's tasks at once: an ordinary Random isn't thread-safe and got stuck returning 0.
+var random = Random.Shared;
 Console.WriteLine($"Load test: {options.Hours} h at {options.Speed}× ({options.Hours / options.Speed * 60:0} min), {options.Server}");
 
 // ---- Setup: the admin, four paired terminals and an observer, 12 waiters, shifts ----

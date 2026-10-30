@@ -10,7 +10,7 @@ namespace Tausi.LoadTest;
 
 public sealed record Options(
     Uri Server, string AdminPassword, string SeedOutput, string Provider, string Db, string PrintOutput,
-    double Hours, double Speed, int Waiters, double TicketsPerMinute, double VoidShare, int Seed, string? Out)
+    double Hours, double Speed, int Waiters, double TicketsPerMinute, double VoidShare, string? Out)
 {
     public static Options Parse(string[] args)
     {
@@ -24,7 +24,6 @@ public sealed record Options(
             int.Parse(Arg("waiters") ?? "12"),
             double.Parse(Arg("tickets-per-minute") ?? "3", System.Globalization.CultureInfo.InvariantCulture),
             double.Parse(Arg("void-share") ?? "0.03", System.Globalization.CultureInfo.InvariantCulture),
-            int.Parse(Arg("seed") ?? "20261028"),
             Arg("out"));
     }
 }
