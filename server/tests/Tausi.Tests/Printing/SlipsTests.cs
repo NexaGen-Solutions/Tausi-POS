@@ -336,6 +336,44 @@ public class SlipsTests
         bytes[(first + large.Length)..].IndexOf(large).Should().Be(-1, "the items print at normal size");
     }
 
+    private static PrintDocument SampleDispense(SlipStyle style) => Slips.Dispense(new DispenseSlip("Counter A", "Table 7", 1042, At,
+        [new DispenseGroup("edna", [Line(2, "Tusker Lager", 250m, "Cold", shortName: "Tusker")]), new DispenseGroup("Ruth", [Line(1, "Guiness", 300m)])]), style);
+
+    [Fact]
+    public void Dispense_items_are_bold_unless_the_setting_is_off()
+    {
+        var boldOn = new byte[] { 0x1B, 0x45, 0x01 };
+        var plain = SampleDispense(new SlipStyle(42, true, null, DispenseBold: false)).EscPos.AsSpan();
+        var bold = SampleDispense(new SlipStyle(42, true, null)).EscPos.AsSpan();
+
+        Count(bold, boldOn).Should().Be(Count(plain, boldOn) + 2, "both items are bold");
+    }
+
+    private static int Count(ReadOnlySpan<byte> bytes, byte[] part)
+    {
+        var count = 0;
+        for (int at; (at = bytes.IndexOf(part)) >= 0; bytes = bytes[(at + part.Length)..]) count++;
+        return count;
+    }
+
+    [Fact]
+    public void Dispense_amounts_can_be_turned_off()
+    {
+        var text = SampleDispense(new SlipStyle(42, true, null, DispenseAmounts: false)).Text;
+
+        text.Should().Contain("2 x Tusker").And.NotContain("500").And.NotContain("300");
+    }
+
+    [Fact]
+    public void The_dispense_total_is_off_by_default_and_adds_up_the_slip_when_on()
+    {
+        SampleDispense(new SlipStyle(42, true, null)).Text.Should().NotContain("TOTAL");
+
+        foreach (var amounts in new[] { true, false })
+            SampleDispense(new SlipStyle(42, true, null, DispenseAmounts: amounts, DispenseTotal: true)).Text.Split('\n')
+                .Should().Contain(l => l.StartsWith("TOTAL") && l.EndsWith("KSh 800"));
+    }
+
     [Fact]
     public void No_slip_prints_question_marks_for_its_separators()
     {

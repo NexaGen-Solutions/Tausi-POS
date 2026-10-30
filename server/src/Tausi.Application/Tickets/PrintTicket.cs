@@ -281,7 +281,9 @@ public sealed class TicketPrints(
         var header = terminal.DispenseHeader ?? printer.DispenseHeader ?? terminal.Name;
         var at = BusinessClock.ToLocal(now, await businessClock.Zone(ct));
         var slip = new DispenseSlip(header, Where(ticket), ticket.Number, at, groups, string.IsNullOrWhiteSpace(ticket.Note) ? null : ticket.Note);
-        return queue.Enqueue(printer, PrintJobKind.Dispense, Slips.Dispense(slip, SlipStyle.For(printer, null)), ticket.Id,
+        var values = await SettingsRegistry.Load(db, ct);
+        var style = SlipStyle.For(printer, null, values.String(SettingsRegistry.BusinessCurrency), PrintSettings.From(values));
+        return queue.Enqueue(printer, PrintJobKind.Dispense, Slips.Dispense(slip, style), ticket.Id,
             $"Dispense slip · round {lines.Max(l => l.PrintRound) ?? ticket.PrintRound}");
     }
 

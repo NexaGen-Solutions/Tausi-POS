@@ -8,15 +8,22 @@ namespace Tausi.Application.Printing;
 /// How a slip is printed on a given printer. <paramref name="PoweredBy"/> adds the "Powered by Tausi POS"
 /// line to customer slips (bills and receipts), from the <c>print.poweredByFooter</c> setting;
 /// <paramref name="VatAmounts"/> off (<c>print.vatAmounts</c>) prints "Inclusive of VAT" instead of the amounts.
+/// The dispense slip's items are bold (<c>print.dispenseBold</c>) with their amounts (<c>print.dispenseAmounts</c>),
+/// and it can end with their total (<c>print.dispenseTotal</c>).
 /// </summary>
-public sealed record SlipStyle(int Columns, bool Cut, MonoBitmap? Logo, string Currency = "KES", bool PoweredBy = false, bool VatAmounts = true)
+public sealed record SlipStyle(
+    int Columns, bool Cut, MonoBitmap? Logo, string Currency = "KES", bool PoweredBy = false, bool VatAmounts = true,
+    bool DispenseBold = true, bool DispenseAmounts = true, bool DispenseTotal = false)
 {
     public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency = "KES", bool poweredBy = false, bool vatAmounts = true) =>
         new(printer.Columns, printer.CutAfterSlip, logo, currency, poweredBy, vatAmounts);
 
-    /// <summary>A customer slip (bill or receipt) with the printing settings.</summary>
+    /// <summary>A slip with the printing settings.</summary>
     public static SlipStyle For(Printer printer, MonoBitmap? logo, string currency, Settings.PrintSettings print) =>
-        For(printer, logo, currency, print.PoweredByFooter, print.VatAmounts);
+        For(printer, logo, currency, print.PoweredByFooter, print.VatAmounts) with
+        {
+            DispenseBold = print.DispenseBold, DispenseAmounts = print.DispenseAmounts, DispenseTotal = print.DispenseTotal,
+        };
 }
 
 /// <summary>
@@ -209,11 +216,15 @@ public static class Slips
         return b;
     }
 
-    /// <summary>For the bar: short names at the bill's size with their amounts, options and notes underneath.</summary>
-    public static PrintDocument Dispense(DispenseSlip d, SlipStyle style) => WriteDispense(new ReceiptBuilder(style.Columns, style.Cut), d).Cut().Build();
+    /// <summary>
+    /// For the bar: short names at the bill's size (bold, and with their amounts, by the settings), options
+    /// and notes underneath, and the slip's total if that's on.
+    /// </summary>
+    public static PrintDocument Dispense(DispenseSlip d, SlipStyle style) => WriteDispense(new ReceiptBuilder(style.Columns, style.Cut), d, style).Cut().Build();
 
-    private static ReceiptBuilder WriteDispense(ReceiptBuilder b, DispenseSlip d)
+    private static ReceiptBuilder WriteDispense(ReceiptBuilder b, DispenseSlip d, SlipStyle style)
     {
+        var item = style.DispenseBold ? TextStyle.Bold : TextStyle.None;
         b.Text(d.Header.ToUpperInvariant(), TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight)
             .Columns2($"{d.Where} · #{d.TicketNumber}", d.At.ToString("HH:mm", CultureInfo.InvariantCulture));
         foreach (var group in d.Groups)
@@ -221,12 +232,16 @@ public static class Slips
             b.Separator().Text($"By: {group.Waiter}", TextStyle.Bold);
             foreach (var line in group.Lines)
             {
-                b.Columns2($"{Qty(line.Quantity)} x {line.ShortName ?? line.Name}", Amount(line.Amount));
+                var name = $"{Qty(line.Quantity)} x {line.ShortName ?? line.Name}";
+                if (style.DispenseAmounts) b.Columns2(name, Amount(line.Amount), item);
+                else b.Text(name, item);
                 if (line.Options is { Length: > 0 } options) b.Text("   " + options.ToUpperInvariant());
                 if (line.Note is { Length: > 0 } note) b.Text("   Note: " + note);
             }
         }
         b.Separator();
+        if (style.DispenseTotal)
+            b.Columns2("TOTAL", Money(d.Groups.SelectMany(g => g.Lines).Sum(l => l.Amount - l.Discount), style.Currency), TextStyle.Bold).Separator();
         if (!string.IsNullOrWhiteSpace(d.TicketNote)) b.Text($"Ticket note: {d.TicketNote}", TextStyle.Bold);
         return b;
     }
@@ -334,7 +349,7 @@ public static class Slips
         var business = new BusinessInfo(d.Business);
         WriteBill(b, new BillSlip(business, 1, 1042, false, "Table 7", "edna", "Counter A", d.At, lines), style with { Logo = null });
         WriteFooter(b, business, style).Text(NotAReceiptText, TextStyle.Center | TextStyle.Small).Cut();
-        WriteDispense(b, new DispenseSlip("Counter A", "Table 7", 1042, d.At, [new DispenseGroup("edna", lines)]))
+        WriteDispense(b, new DispenseSlip("Counter A", "Table 7", 1042, d.At, [new DispenseGroup("edna", lines)]), style)
             .Columns2("Date", d.At.ToString("dd MMM yyyy", CultureInfo.InvariantCulture))
             .Columns2("Time", d.At.ToString("HH:mm:ss", CultureInfo.InvariantCulture))
             .Text("Test OK", TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight)
