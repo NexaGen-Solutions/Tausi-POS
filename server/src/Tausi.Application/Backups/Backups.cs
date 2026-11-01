@@ -17,6 +17,7 @@ public enum BackupReason
     Upgrade,
     BeforeRestore,
     Command,
+    Daytime,
 }
 
 /// <summary>One .tausibak in the backups folder, as the list shows it.</summary>
@@ -44,9 +45,9 @@ public sealed record BackupHealth(string State, DateTimeOffset? LastSuccessAt, s
 }
 
 /// <summary>The schedule (business time), the second-copy folder and encryption. The password itself is never sent back.</summary>
-public sealed record BackupSettingsDto(string Time, string? CopyFolder, bool Encrypt, bool HasPassword);
+public sealed record BackupSettingsDto(string Time, string? CopyFolder, bool Encrypt, bool HasPassword, string? SecondTime = null);
 
-public sealed record SaveBackupSettingsRequest(string Time, string? CopyFolder, bool Encrypt, string? Password);
+public sealed record SaveBackupSettingsRequest(string Time, string? CopyFolder, bool Encrypt, string? Password, string? SecondTime = null);
 
 /// <summary>What a backup holds, read from its manifest before restoring it.</summary>
 public sealed record BackupContents(string Business, DateTimeOffset CreatedAt, string Version, string Schema, string Provider, bool Encrypted);
@@ -129,6 +130,8 @@ public sealed class BackupAdmin(
         await Require(ct);
         var errors = new Dictionary<string, string>();
         if (!TimeOnly.TryParseExact(request.Time, "HH:mm", out _)) errors["time"] = "Enter a time like 05:00.";
+        if (!string.IsNullOrWhiteSpace(request.SecondTime) && !TimeOnly.TryParseExact(request.SecondTime.Trim(), "HH:mm", out _))
+            errors["secondTime"] = "Enter a time like 18:00, or leave it empty for no second backup.";
         if (!string.IsNullOrWhiteSpace(request.CopyFolder) && !Path.IsPathRooted(request.CopyFolder))
             errors["copyFolder"] = @"Enter a full folder path, e.g. E:\Backups or \\NAS\Tausi.";
         var old = engine.Settings();

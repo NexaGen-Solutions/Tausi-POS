@@ -400,6 +400,8 @@ Each entry: date, decision, reason.
 | 2026-10-30 | **Each CI build's installer has a higher version** (0.15.<run number × 3 + 2>, with the upgrade and broken-upgrade test builds above it). Every build was 0.15.1, and Windows Installer doesn't upgrade a version to the same version. Fixed on main as release-15-v16. | Found while looking into a failed install on a real PC. That install failed for another reason: Windows Installer wouldn't run there, with a Windows update waiting for a restart. |
 | 2026-11-01 | The full load test runs **by hand** for now, not nightly (this replaces the 2026-10-29 nightly decision); the short one still runs on every push. The release branch is merged into main with no tag, so the full runs can start. | The owner's decision: each full run takes about 2 hours per database, so keep Actions minutes down until it passes. |
 | 2026-11-01 | **A delivery corrects the cost of items sold below zero.** When total on hand is negative, the delivery revalues those units from the old average to the new one and posts the difference between Cost of sales and Stock as its own balanced entry (`DeliveryCostCorrection`), so the Stock account stays on hand × average. It applies from this version on and doesn't change earlier periods. Reversing the delivery posts no second correction: the average stays at the new cost, so the account still agrees. | The owner's decision: items sold with stock at zero made profit and stock value wrong. |
+| 2026-11-01 | **SQL Server moves to SIMPLE when nobody backs up its log.** At startup, a database in FULL that has never had a log backup switches to SIMPLE; one with a log backup stays as it is. A failed check only logs a warning and never stops the server. | The owner's decision: Tausi POS's backups are full copies, so in FULL the log only grows until the disk fills. |
+| 2026-11-01 | **A second backup each day, at 18:00 by default** (business time; can be changed, or left empty for none), kept for 7 days. It's in addition to the nightly backup and isn't counted in the nightly history. | The owner's decision: early evening rather than midday, so a lost server costs less than a full day's trading. |
 
 ## After v1
 
@@ -415,7 +417,6 @@ Owner's decisions and larger items for a later version. Not in 1.0.0.
 
 ## Follow-ups
 
-- **SQL Server recovery model:** Tausi doesn't set it, so the database copies the instance's `model` database. With FULL (the load test's Docker image; possibly an existing SQL Server) the log only ever grows, because Tausi's backups are COPY_ONLY full backups and nothing backs up the log. Decide whether the server should switch to SIMPLE when no log backups exist.
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.
 - **Real-hardware check:** `print_raw` on the Windows spooler and server-side Windows share printing compile in CI but are untested against a real printer until the owner runs RUNNING.md "Testing on real hardware".
 - **Redirect across paper widths:** a job stores its printed bytes, so a slip sent from a 58 mm printer to an 80 mm one keeps the 58 mm layout (and the other way, an 80 mm slip wraps on 58 mm paper). Rebuilding the slip for the new printer needs the slip data stored with the job; consider it with the order screen.

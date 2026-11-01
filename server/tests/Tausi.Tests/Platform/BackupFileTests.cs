@@ -138,6 +138,20 @@ public sealed class BackupFileTests : IDisposable
         keep.Should().HaveCount(14 + 12 + 2, "the last 14 days, 12 firsts of the month (1 October is older than 14 days), 2 recent others");
     }
 
+    [Fact]
+    public void Backups_during_the_day_are_kept_for_a_week()
+    {
+        var now = new DateTimeOffset(2026, 11, 20, 12, 0, 0, TimeSpan.Zero);
+        var keep = BackupEngine.Keep(
+        [
+            ("day-recent", now.AddDays(-6), BackupReason.Daytime),
+            ("day-old", now.AddDays(-8), BackupReason.Daytime),
+            ("manual", now.AddDays(-8), BackupReason.Manual),
+        ], now);
+
+        keep.Should().BeEquivalentTo("day-recent", "manual");
+    }
+
     [Theory]
     [InlineData("2026-10-25T04:59:00+03:00", null)]
     [InlineData("2026-10-25T05:00:00+03:00", "2026-10-25")]

@@ -39,6 +39,8 @@ public sealed class BackupEngine(
     public const int KeepNightly = 14;
     public const int KeepMonthly = 12;
     public static readonly TimeSpan KeepOthers = TimeSpan.FromDays(30);
+    /// <summary>The backups during the day are only for the latest days: the nightly ones are the history.</summary>
+    public static readonly TimeSpan KeepDaytime = TimeSpan.FromDays(7);
 
     private static readonly SemaphoreSlim Lock = new(1, 1);
 
@@ -65,9 +67,12 @@ public sealed class BackupEngine(
         DateTimeOffset? LastFailureAt = null,
         string? LastFailure = null,
         BackupReason? LastFailureReason = null,
-        DateOnly? LastNightlyDay = null);
+        DateOnly? LastNightlyDay = null,
+        DateOnly? LastDaytimeDay = null);
 
-    private sealed record StoredSettings(string Time = "05:00", string? CopyFolder = null, bool Encrypt = false, string? Password = null);
+    /// <summary><c>SecondTime</c>: the backup during the day, in business time; empty for none.</summary>
+    private sealed record StoredSettings(
+        string Time = "05:00", string? CopyFolder = null, bool Encrypt = false, string? Password = null, string SecondTime = "18:00");
 
     private Index ReadIndex()
     {
@@ -115,18 +120,21 @@ public sealed class BackupEngine(
     public BackupSettingsDto Settings()
     {
         var s = ReadSettings();
-        return new BackupSettingsDto(s.Time, s.CopyFolder, s.Encrypt, !string.IsNullOrEmpty(s.Password));
+        return new BackupSettingsDto(s.Time, s.CopyFolder, s.Encrypt, !string.IsNullOrEmpty(s.Password), s.SecondTime.Length == 0 ? null : s.SecondTime);
     }
 
     public void SaveSettings(SaveBackupSettingsRequest request)
     {
         var old = ReadSettings();
         var password = string.IsNullOrEmpty(request.Password) ? old.Password : MachineSecrets.Protect(request.Password);
-        WriteAtomically(SettingsPath, JsonSerializer.Serialize(new StoredSettings(request.Time, request.CopyFolder, request.Encrypt, password), BackupFile.Json));
+        WriteAtomically(SettingsPath, JsonSerializer.Serialize(new StoredSettings(request.Time, request.CopyFolder, request.Encrypt, password, request.SecondTime?.Trim() ?? ""), BackupFile.Json));
     }
 
     /// <summary>The time the nightly backup runs, in business time.</summary>
     public TimeOnly NightlyTime() => TimeOnly.TryParseExact(ReadSettings().Time, "HH:mm", out var t) ? t : new TimeOnly(5, 0);
+
+    /// <summary>The time of the backup during the day, in business time; null when there is none.</summary>
+    public TimeOnly? SecondTime() => TimeOnly.TryParseExact(ReadSettings().SecondTime, "HH:mm", out var t) ? t : null;
 
     // ---- List and health ----
 
@@ -196,6 +204,31 @@ public sealed class BackupEngine(
             {
                 // Already recorded as the last failure; the banner shows it.
                 log.LogError(e, "The nightly backup failed");
+            }
+        }
+        finally
+        {
+            Lock.Release();
+        }
+    }
+
+    /// <summary>The backup during the day, unless it already ran for this business day.</summary>
+    public async Task RunDaytime(DateOnly businessDay, CancellationToken ct)
+    {
+        await Lock.WaitAsync(ct);
+        try
+        {
+            var index = ReadIndex();
+            if (index.LastDaytimeDay >= businessDay || gate.Message is not null) return;
+            WriteIndex(index with { LastDaytimeDay = businessDay });
+            try
+            {
+                await RunLocked(BackupReason.Daytime, ct);
+            }
+            catch (Exception e) when (!ct.IsCancellationRequested)
+            {
+                // Already recorded as the last failure; the banner shows it.
+                log.LogError(e, "The daytime backup failed");
             }
         }
         finally
@@ -345,7 +378,7 @@ public sealed class BackupEngine(
         var firstMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(-(KeepMonthly - 1));
         foreach (var month in nightly.Where(b => b.CreatedAt >= firstMonth).GroupBy(b => (b.CreatedAt.Year, b.CreatedAt.Month)))
             keep.Add(month.MinBy(b => b.CreatedAt).Name);
-        foreach (var other in backups.Where(b => b.Reason != BackupReason.Nightly && now - b.CreatedAt <= KeepOthers))
+        foreach (var other in backups.Where(b => b.Reason != BackupReason.Nightly && now - b.CreatedAt <= (b.Reason == BackupReason.Daytime ? KeepDaytime : KeepOthers)))
             keep.Add(other.Name);
         return keep;
     }

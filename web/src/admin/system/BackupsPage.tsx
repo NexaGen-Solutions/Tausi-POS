@@ -134,6 +134,7 @@ export function BackupsPage() {
 
 function SettingsForm({ settings, onSaved }: { settings: BackupSettings; onSaved: () => void }) {
   const [time, setTime] = useState(settings.time);
+  const [secondTime, setSecondTime] = useState(settings.secondTime ?? '');
   const [copyFolder, setCopyFolder] = useState(settings.copyFolder ?? '');
   const [encrypt, setEncrypt] = useState(settings.encrypt);
   const [password, setPassword] = useState('');
@@ -154,7 +155,13 @@ function SettingsForm({ settings, onSaved }: { settings: BackupSettings; onSaved
     try {
       await api('/api/admin/backups/settings', {
         method: 'PUT',
-        body: { time, copyFolder: copyFolder.trim() || null, encrypt, password: password || null },
+        body: {
+          time,
+          secondTime: secondTime || null,
+          copyFolder: copyFolder.trim() || null,
+          encrypt,
+          password: password || null,
+        },
       });
       setPassword('');
       setSaved(true);
@@ -181,6 +188,14 @@ function SettingsForm({ settings, onSaved }: { settings: BackupSettings; onSaved
           value={time}
           onChange={(e) => edited(setTime)(e.target.value)}
           error={errors.time}
+        />
+        <Field
+          label={t('admin.backups.secondTime')}
+          hint={t('admin.backups.secondTimeHint')}
+          type="time"
+          value={secondTime}
+          onChange={(e) => edited(setSecondTime)(e.target.value)}
+          error={errors.secondTime}
         />
         <Field
           label={t('admin.backups.copyFolder')}
