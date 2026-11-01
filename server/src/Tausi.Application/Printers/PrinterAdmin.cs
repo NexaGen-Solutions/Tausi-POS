@@ -39,10 +39,11 @@ public static class PrinterCodes
 {
     public const string AddressRequired = "address_required";
     public const string InUse = "printer_in_use";
+    public const string DevelopmentOnly = "development_only";
 }
 
 /// <summary>Shared by the printer use cases (devices.manage).</summary>
-public sealed class PrinterAdmin(ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval)
+public sealed class PrinterAdmin(ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval, DevelopmentHost? host = null)
 {
     public Task<PermissionGrant> Require(CancellationToken ct) =>
         permissions.Require(session.RequireUser(), PermissionKeys.DevicesManage, approval.ApprovalToken, ct);
@@ -97,6 +98,11 @@ public sealed class PrinterAdmin(ITausiDb db, ICurrentSession session, IPermissi
                 if (a.Length == 0)
                     throw new DomainException("Choose the printer's name on that terminal.", PrinterCodes.AddressRequired);
                 return a;
+            case PrinterConnection.File:
+                // Writes slips to print-output/ for development; an installed server has real printers only.
+                if (host?.IsDevelopment != true)
+                    throw new DomainException("The File printer is for development only. Choose Network, Windows share or Via terminal.", PrinterCodes.DevelopmentOnly);
+                return "";
             default:
                 return "";
         }

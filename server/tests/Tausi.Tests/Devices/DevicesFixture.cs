@@ -26,9 +26,10 @@ public sealed class DevicesFixture : IAsyncDisposable
     public FastPinHasher Hasher { get; } = new();
     public User Admin { get; private set; } = null!;
 
-    private DevicesFixture()
+    private DevicesFixture(bool development)
     {
         var services = new ServiceCollection();
+        services.AddSingleton(new Tausi.Application.Common.DevelopmentHost(development));
         services.AddApplication();
         services.AddSingleton<TimeProvider>(Clock);
         services.AddSingleton(_db.Context);
@@ -41,9 +42,10 @@ public sealed class DevicesFixture : IAsyncDisposable
         _services = services.BuildServiceProvider();
     }
 
-    public static async Task<DevicesFixture> Create()
+    /// <param name="development">As a Development server (the File printer is allowed there only).</param>
+    public static async Task<DevicesFixture> Create(bool development = false)
     {
-        var f = new DevicesFixture();
+        var f = new DevicesFixture(development);
         var roles = await Builders.SeedRoles(f._db.Context);
         f._db.Context.BusinessSettings.Add(new BusinessSettings { Name = "Test" });
         await f._db.Context.SaveChangesAsync();

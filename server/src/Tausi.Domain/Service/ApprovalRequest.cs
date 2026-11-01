@@ -27,8 +27,11 @@ public enum ApprovalStatus
 /// elsewhere"). Anyone whose role has the action Allowed can decide it, never the requester.
 /// Approving runs the action on the server for the requester, in the same transaction.
 /// </summary>
-public class ApprovalRequest : VersionedEntity
+public class ApprovalRequest : VersionedEntity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MaxNoteLength = 200;
 
     public ApprovalKind Kind { get; set; }

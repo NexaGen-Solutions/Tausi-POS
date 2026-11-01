@@ -34,12 +34,12 @@ public static class DependencyInjection
         {
             case DatabaseProvider.SqlServer:
                 services.AddDbContext<SqlServerTausiDbContext>((sp, o) => o.UseSqlServer(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
-                    .AddInterceptors(sp.GetRequiredService<IdempotencyMark>()));
+                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>(), sp.GetRequiredService<IdempotencyMark>()));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<SqlServerTausiDbContext>());
                 break;
             default:
                 services.AddDbContext<PostgresTausiDbContext>((sp, o) => o.UseNpgsql(connection, x => x.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
-                    .AddInterceptors(sp.GetRequiredService<IdempotencyMark>()));
+                    .AddInterceptors(sp.GetRequiredService<PrintWakeUp>(), sp.GetRequiredService<IdempotencyMark>()));
                 services.AddScoped<TausiDbContext>(sp => sp.GetRequiredService<PostgresTausiDbContext>());
                 break;
         }
@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IPrinterTransport, WindowsShareTransport>();
         services.AddScoped<IPrinterTransport, ViaTerminalTransport>();
         services.AddScoped<IPrinterTransport, FilePrinterTransport>();
+        services.AddSingleton<PrintWakeUp>();
         services.AddScoped<PrintJobProcessor>();
         services.AddScoped<ILogoProvider, SkiaLogoProvider>();
         services.AddScoped<ILogoImages, SkiaLogoImages>();

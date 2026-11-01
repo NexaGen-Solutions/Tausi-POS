@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, api } from '../shared/api/client';
 import { saveDevice, serverUrl } from '../shared/device/device';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { LicenceBanner } from '../shared/connection/LicenceBanner';
 import { onPosEvent } from '../shared/connection/hub';
@@ -12,6 +12,7 @@ import { ApprovalsWatcher } from './approvals/ApprovalsWatcher';
 import { IdleWatcher } from './IdleWatcher';
 import { KioskExit } from './KioskExit';
 import { TerminalUpdater } from './TerminalUpdater';
+import { TrainingBand } from './TrainingBand';
 import { usePinSession } from './usePinSession';
 import './pos.css';
 
@@ -26,10 +27,18 @@ export function PosLayout() {
   const queries = useQueryClient();
   const session = usePinSession();
 
+  // Whose answers are cached: another person signing in (even without a log-out first, as after a
+  // reload) must never see the previous person's permissions or figures.
+  const cachedFor = useRef(pinSession()?.user.id ?? null);
   useEffect(
     () =>
       onPinSessionChange((session) => {
-        if (session) return;
+        if (session) {
+          if (cachedFor.current !== session.user.id) queries.clear();
+          cachedFor.current = session.user.id;
+          return;
+        }
+        cachedFor.current = null;
         queries.clear();
         navigate('/pos', { replace: true });
       }),
@@ -70,6 +79,7 @@ export function PosLayout() {
       <TerminalUpdater />
       <KioskExit />
       <ServerStateOverlay />
+      <TrainingBand />
       {session && <ApprovalsWatcher />}
       {session && <LicenceBanner admin={false} />}
       <Outlet />

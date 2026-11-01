@@ -32,4 +32,10 @@
     <Copy SourceFiles="@(WebDist)" DestinationFiles="@(WebDist->'$(PublishDir)wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
+  <!-- The licence and the third-party notices and licence texts go with every published server (and so its installers). -->
+  <ItemGroup>
+    <None Include="..\..\..\LICENSE" Link="LICENSE.txt" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="Never" />
+    <None Include="..\..\..\THIRD-PARTY-NOTICES" Link="THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="Never" />
+    <None Include="..\..\..\THIRD-PARTY-LICENSES.txt" Link="THIRD-PARTY-LICENSES.txt" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="Never" />
+  </ItemGroup>
 </Project>

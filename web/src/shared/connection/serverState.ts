@@ -1,9 +1,10 @@
 /**
  * What the server says about itself, outside any one request: its version (X-Tausi-Server-Version
- * on every answer), and whether it is restoring a backup (503 "server_restoring") or needs this
- * terminal to update before anyone logs in (426 "terminal_update_required").
+ * on every answer), and whether it is restoring a backup (503 "server_restoring"), can't reach its
+ * database for now (503 "server_busy"), or needs this terminal to update before anyone logs in
+ * (426 "terminal_update_required").
  */
-export type ServerMode = 'normal' | 'restoring' | 'updating';
+export type ServerMode = 'normal' | 'restoring' | 'updating' | 'busy';
 
 let mode: ServerMode = 'normal';
 let version: string | null = null;

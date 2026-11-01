@@ -13,6 +13,8 @@ public sealed class LedgerPostingService(ITausiDb db, ICurrentSession session, T
     public async Task<JournalEntry> Post(JournalEntryDraft draft, CancellationToken ct = default)
     {
         draft.EnsureBalanced();
+        // Training sales never reach the books: the entry is checked and handed back, not saved.
+        if (db.TrainingMode) return new JournalEntry { Date = draft.Date, Memo = draft.Memo, SourceType = draft.SourceType, SourceId = draft.SourceId };
 
         var codes = draft.Lines.Select(l => l.AccountCode).Distinct().ToList();
         var accounts = await db.LedgerAccounts

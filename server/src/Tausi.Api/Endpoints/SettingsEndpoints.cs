@@ -37,6 +37,12 @@ public static class SettingsEndpoints
         settings.MapGet("/receipt-preview", (int? width, string? values, ReceiptPreview preview, CancellationToken ct) =>
             preview.Execute(new ReceiptPreviewRequest(width ?? 42, ParseValues(values)), ct));
 
+        // Settings → Training mode: per-terminal training, and Clear training data (settings.manage, audited).
+        var training = app.MapGroup("/api/admin/training").WithTags("Settings").RequireAuthorization();
+        training.MapGet("/", (TrainingAdmin t, CancellationToken ct) => t.Status(ct));
+        training.MapPut("/terminals/{id:guid}", (Guid id, SetTrainingRequest r, TrainingAdmin t, CancellationToken ct) => t.SetTerminal(id, r, ct));
+        training.MapPost("/clear", (TrainingAdmin t, CancellationToken ct) => t.Clear(ct));
+
         app.MapGet("/files/{id:guid}", async (Guid id, TausiDbContext db, IFileStorage files, CancellationToken ct) =>
         {
             // Private files (expense receipts) are served only through their own checked endpoint.

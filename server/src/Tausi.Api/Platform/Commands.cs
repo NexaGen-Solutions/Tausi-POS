@@ -9,16 +9,45 @@ namespace Tausi.Api.Platform;
 /// Command-line tasks instead of starting the server:
 /// <c>migrate</c> brings the database up to date;
 /// <c>seed</c> adds roles, default permissions and ledger accounts;
-/// <c>seed --demo</c> also adds the demo business, staff (PINs printed once), terminals, printers and,
+/// <c>seed --demo</c> (Development only, as are the commands after it) also adds the demo business, staff (PINs printed once), terminals, printers and,
 /// when they are empty, the demo menu, tables and a few open tickets; <c>seed --demo-menu</c> adds
 /// only the demo menu; <c>require-pin-change &lt;name&gt;</c> makes that user choose a new PIN at their
-/// next login; <c>close-day</c> (Development only) closes the open day without a cash-up, for testing;
+/// next login; <c>close-day</c> closes the open day without a cash-up, for testing;
+/// <c>check</c> checks the books, settled tickets and stock agree;
 /// <c>reset --confirm</c> (Development only) empties the database so the next start is a new install.
 /// </summary>
 public static class Commands
 {
+    /// <summary>
+    /// Why a command is refused here, or null. Seeding demo data, forcing a PIN change from the command
+    /// line, closing the day without a cash-up and emptying the database are for development only: an
+    /// installed server (Production) refuses them. <c>seed</c> alone (roles, permissions, accounts) stays.
+    /// </summary>
+    public static string? RefusedOutsideDevelopment(string[] args, bool development)
+    {
+        if (development || args.Length == 0) return null;
+        var name = args[0] switch
+        {
+            "seed" when args.Contains("--demo") || args.Contains("--demo-menu") => $"seed {args.First(a => a.StartsWith("--demo", StringComparison.Ordinal))}",
+            "require-pin-change" or "close-day" or "reset" => args[0],
+            _ => null,
+        };
+        return name is null ? null : name switch
+        {
+            "close-day" => "close-day is for development only. Days are closed with the cash-up.",
+            "require-pin-change" => "require-pin-change is for development only. Reset a PIN on the admin site (Staff and PINs).",
+            _ => $"{name} is for development only. It isn't part of an installed server.",
+        };
+    }
+
     public static async Task<bool> TryRun(WebApplication app, string[] args)
     {
+        if (RefusedOutsideDevelopment(args, app.Environment.IsDevelopment()) is { } refused)
+        {
+            Console.WriteLine(refused);
+            Environment.ExitCode = 2;
+            return true;
+        }
         switch (args[0])
         {
             case "migrate":
@@ -45,6 +74,9 @@ public static class Commands
             case "require-pin-change":
                 await RequirePinChange(app, args.Skip(1).FirstOrDefault());
                 return true;
+            case "check":
+                Environment.ExitCode = await Check(app) ? 0 : 1;
+                return true;
             case "close-day":
                 await CloseDay(app);
                 return true;
@@ -62,12 +94,6 @@ public static class Commands
     /// </summary>
     private static async Task Reset(WebApplication app, bool confirmed)
     {
-        if (!app.Environment.IsDevelopment())
-        {
-            Console.WriteLine("reset is for development only.");
-            Environment.ExitCode = 1;
-            return;
-        }
         if (!confirmed)
         {
             Console.WriteLine("This deletes every ticket, user and setting in the database. Run `reset --confirm` to do it.");
@@ -120,6 +146,21 @@ public static class Commands
             Console.WriteLine("Admin site: user name 'admin' with the password from " + Seeder.AdminPasswordVariable + ".");
     }
 
+    /// <summary>
+    /// <c>check</c>: the books balance, settled tickets are paid with one sale entry each, stock matches its
+    /// movements (after a power cut, or for support). Reads only; exit code 1 when something is off.
+    /// </summary>
+    private static async Task<bool> Check(WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var report = await scope.ServiceProvider.GetRequiredService<Tausi.Application.Support.ConsistencyCheck>().Run(CancellationToken.None);
+        Console.WriteLine($"Checked {report.SettledTickets} settled tickets and {report.JournalEntries} journal entries " +
+                          $"(debit {report.TotalDebit:0.00}, credit {report.TotalCredit:0.00}).");
+        foreach (var problem in report.Problems) Console.WriteLine($"  {problem.Area}: {problem.Detail}");
+        Console.WriteLine(report.Ok ? "Everything agrees." : $"{report.Problems.Count} problem(s) found.");
+        return report.Ok;
+    }
+
     /// <summary>Demo tickets need an open day; say so when none is open.</summary>
     private static async Task DemoTicketsHint(AsyncServiceScope scope)
     {
@@ -131,12 +172,6 @@ public static class Commands
     /// <summary>Development only, until cash-up closes days: closes the open work period if no ticket is open.</summary>
     private static async Task CloseDay(WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
-        {
-            Console.WriteLine("close-day is for development only. Days are closed with the cash-up.");
-            Environment.ExitCode = 2;
-            return;
-        }
         await using var scope = app.Services.CreateAsyncScope();
         // The same rule as closing on a terminal: refused while any ticket is open (part-paid ones too).
         try

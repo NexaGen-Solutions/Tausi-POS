@@ -22,8 +22,11 @@ public enum PaymentStatus
 /// One payment towards a ticket, saved as the cashier adds it (a crash loses nothing). Taken by
 /// the cashier (from the session), brought by the waiter (or whoever brought the money).
 /// </summary>
-public partial class Payment : Entity
+public partial class Payment : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MpesaCodeLength = 10;
     public const int MaxReferenceLength = 40;
 

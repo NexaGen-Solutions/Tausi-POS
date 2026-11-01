@@ -117,6 +117,9 @@ export function SettingsPage() {
             <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/backups">
               {t('admin.backups.title')}
             </Link>
+            <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/training">
+              {t('admin.training.link')}
+            </Link>
             <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/system">
               {t('admin.system.title')}
             </Link>

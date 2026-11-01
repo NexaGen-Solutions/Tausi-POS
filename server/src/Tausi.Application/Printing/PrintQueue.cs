@@ -20,6 +20,8 @@ public sealed class PrintQueue(ITausiDb db, TimeProvider clock, Security.ICurren
     /// </summary>
     public PrintJob Enqueue(Printer printer, PrintJobKind kind, PrintDocument document, Guid? ticketId = null, string? label = null, bool reprint = false)
     {
+        // Everything a training terminal prints says so, at the top and the bottom.
+        if (db.TrainingMode) document = ReceiptBuilder.MarkTraining(document);
         var now = clock.GetUtcNow();
         // A millisecond, not a tick: databases keep microseconds (PostgreSQL) or less.
         if (now <= _last) now = _last.AddMilliseconds(1);

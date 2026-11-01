@@ -5,6 +5,7 @@ import type { Brand, Me } from '../shared/api/types';
 import { TausiMark } from '../shared/brand';
 import { LiveUpdates } from '../shared/connection/LiveUpdates';
 import { BackupBanner } from '../shared/connection/BackupBanner';
+import { DiskBanner } from '../shared/connection/DiskBanner';
 import { LicenceBanner } from '../shared/connection/LicenceBanner';
 import { ServerStateOverlay } from '../shared/connection/ServerStateOverlay';
 import { OfflineBanner } from '../shared/connection/OfflineBanner';
@@ -68,6 +69,7 @@ export function AdminLayout() {
         <OfflineBanner />
         {me.data && <LicenceBanner admin />}
         {me.data && <BackupBanner admin />}
+        {me.data && <DiskBanner />}
         <ServerStateOverlay />
         {me.data && <LiveUpdates />}
         <Outlet />

@@ -52,6 +52,9 @@
   --color-warning-tint: #fbe7da;
   --color-warning-text: #8a3708;
 
+  /* Training mode's band: orange stripes (an SVG pattern of the two warning oranges; no gradients). */
+  --pattern-training: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='24' height='24' fill='%23b34a0c'/%3E%3Cpath d='M0 24L24 0H12L0 12zM24 24V12L12 24z' fill='%238a3708'/%3E%3C/svg%3E");
+
   --color-ok: #4f9a5a;
   --color-key: #f4f4f2;
   --color-overlay: rgba(28, 28, 28, 0.55);

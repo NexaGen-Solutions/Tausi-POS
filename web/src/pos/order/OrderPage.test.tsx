@@ -407,6 +407,33 @@ describe('order screen', () => {
     );
   });
 
+  it('when the network drops mid-order, each tap arrives in order or says it was not added', async () => {
+    // Task 16, Part C.2: queued taps are never silently lost.
+    const user = userEvent.setup();
+    ticket = ticketWith([]);
+    let call = 0;
+    extra = {
+      'POST /api/pos/tickets/k1/lines': async ({ body: b }) => {
+        call++;
+        if (call === 2) throw new TypeError('Failed to fetch');
+        addLine(b as { menuItemId: string; optionIds: string[]; quantity: number });
+        return detail();
+      },
+    };
+    renderRoutes(routes, '/pos/ticket/k1?table=t-7');
+    await openSoftDrinks(user);
+    const soda = await screen.findByRole('button', { name: /^Soda 300ml\s*KSh 100/ });
+    for (let i = 0; i < 3; i++) await user.click(soda);
+
+    expect(
+      await screen.findByText(
+        'Not connected: Soda 300ml was not added. Add it again when the connection is back.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(call).toBe(3));
+    await waitFor(() => expect(lineButton(/Soda 300ml/)).toHaveTextContent(/^2/));
+  });
+
   it('10 fast taps are sent one after the other and make a quantity of 10', async () => {
     const user = userEvent.setup();
     ticket = ticketWith([]);

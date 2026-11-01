@@ -12,7 +12,8 @@ import {
 /**
  * Over everything while the server restores a backup ("Server is restoring a backup"; it checks every
  * few seconds and reloads when the server is back), or while this terminal app updates itself
- * because the server needs a newer one ("Updating, please wait").
+ * because the server needs a newer one ("Updating, please wait"), or while the server can't reach its
+ * database ("Server busy, retrying"; it clears when the database answers).
  */
 export function ServerStateOverlay() {
   const [mode, setMode] = useState<ServerMode>(serverMode());
@@ -31,6 +32,20 @@ export function ServerStateOverlay() {
         })
         .catch(() => {});
     }, 5000);
+    return () => window.clearInterval(timer);
+  }, [mode]);
+
+  // The database is back when health says so; the screens refetch by themselves.
+  useEffect(() => {
+    if (mode !== 'busy') return;
+    const timer = window.setInterval(() => {
+      void fetch('/api/health', { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((health: { database?: string } | null) => {
+          if (health?.database === 'ok') setServerMode('normal');
+        })
+        .catch(() => {});
+    }, 3000);
     return () => window.clearInterval(timer);
   }, [mode]);
 

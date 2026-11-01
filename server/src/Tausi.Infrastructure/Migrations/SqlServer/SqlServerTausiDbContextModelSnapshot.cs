@@ -56,6 +56,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
+
                     b.Property<string>("NewValueJson")
                         .HasColumnType("nvarchar(max)");
 
@@ -112,6 +115,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Note")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -145,11 +151,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("WorkPeriodId");
 
-                    b.HasIndex("CashierUserId", "Status")
+                    b.HasIndex("CashierUserId", "Status", "IsTraining")
                         .IsUnique()
                         .HasFilter("[Status] = 'Open'");
 
-                    b.HasIndex("TerminalId", "Status")
+                    b.HasIndex("TerminalId", "Status", "IsTraining")
                         .IsUnique()
                         .HasFilter("[Status] = 'Open'");
 
@@ -181,6 +187,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<string>("CategoryName")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -360,6 +369,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<Guid?>("SellsFromLocationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("TrainingMode")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
@@ -1435,6 +1447,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1586,6 +1601,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Kind")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -1646,6 +1664,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
@@ -1726,6 +1747,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsGift")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTraining")
                         .HasColumnType("bit");
 
                     b.Property<Guid?>("MenuItemId")
@@ -1846,6 +1870,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
+
                     b.Property<string>("MpesaCode")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
@@ -1892,10 +1919,6 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("BroughtByUserId");
 
-                    b.HasIndex("MpesaCode")
-                        .IsUnique()
-                        .HasFilter("[MpesaCode] IS NOT NULL");
-
                     b.HasIndex("ShiftId");
 
                     b.HasIndex("TakenByUserId");
@@ -1903,6 +1926,10 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.HasIndex("TerminalId");
 
                     b.HasIndex("WorkPeriodId");
+
+                    b.HasIndex("MpesaCode", "IsTraining")
+                        .IsUnique()
+                        .HasFilter("[MpesaCode] IS NOT NULL");
 
                     b.HasIndex("TicketId", "Status");
 
@@ -1939,6 +1966,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<decimal>("DiscountValue")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
 
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("datetimeoffset");
@@ -2016,18 +2046,18 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("MergedIntoTicketId");
 
-                    b.HasIndex("Number")
-                        .IsUnique();
-
                     b.HasIndex("OpenedByUserId");
-
-                    b.HasIndex("ReceiptNumber")
-                        .IsUnique()
-                        .HasFilter("[ReceiptNumber] IS NOT NULL");
 
                     b.HasIndex("TableId");
 
                     b.HasIndex("TerminalId");
+
+                    b.HasIndex("Number", "IsTraining")
+                        .IsUnique();
+
+                    b.HasIndex("ReceiptNumber", "IsTraining")
+                        .IsUnique()
+                        .HasFilter("[ReceiptNumber] IS NOT NULL");
 
                     b.HasIndex("Status", "TableId");
 
@@ -2054,6 +2084,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
@@ -2125,6 +2158,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<bool>("IsOpen")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("bit");
+
                     b.Property<DateTimeOffset>("OpenedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -2145,11 +2181,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("BusinessDate");
 
-                    b.HasIndex("IsOpen")
+                    b.HasIndex("OpenedAt");
+
+                    b.HasIndex("IsOpen", "IsTraining")
                         .IsUnique()
                         .HasFilter("[IsOpen] = 1");
-
-                    b.HasIndex("OpenedAt");
 
                     b.ToTable("WorkPeriods");
                 });

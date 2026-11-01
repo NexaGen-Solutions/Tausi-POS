@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ApiError, RequestSentError, api, type RequestOptions } from '../../shared/api/client';
+import {
+  ApiError,
+  OfflineError,
+  RequestSentError,
+  api,
+  type RequestOptions,
+} from '../../shared/api/client';
 import { onPosEvent } from '../../shared/connection/hub';
 import { t } from '../../shared/i18n/i18n';
 import { useToast } from '../../shared/ui';
@@ -133,10 +139,17 @@ export function useOrder(routeId: string, tableId: string | null, draftCustomer:
         saved(detail);
         return detail;
       })
-        .catch(fail)
+        .catch((error: unknown) => {
+          // No connection: say which item didn't go, so nothing is lost without anyone knowing.
+          if (error instanceof OfflineError) {
+            toast(t('pos.order.notSent', { item: item.name }), { tone: 'warning' });
+            if (idRef.current)
+              void queries.invalidateQueries({ queryKey: ticketKey(idRef.current) });
+          } else fail(error);
+        })
         .finally(() => setPending((list) => list.filter((p) => p.key !== entry.key)));
     },
-    [enqueue, fail, navigate, saved, tableId, draftCustomer],
+    [enqueue, fail, navigate, saved, tableId, draftCustomer, toast, queries],
   );
 
   /** A write on the saved ticket that returns it (line changes, printing, the note). */

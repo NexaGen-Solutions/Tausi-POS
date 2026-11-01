@@ -1,0 +1,47 @@
+/* Settings → Training mode. */
+.training {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 720px;
+}
+.training__help {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.training__panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.training__panel p {
+  margin: 0;
+}
+.training__heading {
+  margin: 0;
+  font-size: 18px;
+}
+.training__list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.training__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-primary);
+  border-bottom: 1px solid var(--color-divider);
+}
+.training__row:last-child {
+  border-bottom: 0;
+}
+.training__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}

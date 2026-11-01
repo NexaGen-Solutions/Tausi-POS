@@ -56,6 +56,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("NewValueJson")
                         .HasColumnType("text");
 
@@ -112,6 +115,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Note")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -145,11 +151,11 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("WorkPeriodId");
 
-                    b.HasIndex("CashierUserId", "Status")
+                    b.HasIndex("CashierUserId", "Status", "IsTraining")
                         .IsUnique()
                         .HasFilter("\"Status\" = 'Open'");
 
-                    b.HasIndex("TerminalId", "Status")
+                    b.HasIndex("TerminalId", "Status", "IsTraining")
                         .IsUnique()
                         .HasFilter("\"Status\" = 'Open'");
 
@@ -181,6 +187,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<string>("CategoryName")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -360,6 +369,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.Property<Guid?>("SellsFromLocationId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("TrainingMode")
+                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
@@ -1430,6 +1442,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1581,6 +1596,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Kind")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -1641,6 +1659,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
@@ -1721,6 +1742,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<bool>("IsGift")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsTraining")
                         .HasColumnType("boolean");
 
                     b.Property<Guid?>("MenuItemId")
@@ -1841,6 +1865,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("MpesaCode")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
@@ -1887,10 +1914,6 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("BroughtByUserId");
 
-                    b.HasIndex("MpesaCode")
-                        .IsUnique()
-                        .HasFilter("\"MpesaCode\" IS NOT NULL");
-
                     b.HasIndex("ShiftId");
 
                     b.HasIndex("TakenByUserId");
@@ -1898,6 +1921,10 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.HasIndex("TerminalId");
 
                     b.HasIndex("WorkPeriodId");
+
+                    b.HasIndex("MpesaCode", "IsTraining")
+                        .IsUnique()
+                        .HasFilter("\"MpesaCode\" IS NOT NULL");
 
                     b.HasIndex("TicketId", "Status");
 
@@ -1934,6 +1961,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<decimal>("DiscountValue")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("timestamp with time zone");
@@ -2011,18 +2041,18 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("MergedIntoTicketId");
 
-                    b.HasIndex("Number")
-                        .IsUnique();
-
                     b.HasIndex("OpenedByUserId");
-
-                    b.HasIndex("ReceiptNumber")
-                        .IsUnique()
-                        .HasFilter("\"ReceiptNumber\" IS NOT NULL");
 
                     b.HasIndex("TableId");
 
                     b.HasIndex("TerminalId");
+
+                    b.HasIndex("Number", "IsTraining")
+                        .IsUnique();
+
+                    b.HasIndex("ReceiptNumber", "IsTraining")
+                        .IsUnique()
+                        .HasFilter("\"ReceiptNumber\" IS NOT NULL");
 
                     b.HasIndex("Status", "TableId");
 
@@ -2049,6 +2079,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
@@ -2120,6 +2153,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<bool>("IsOpen")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsTraining")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset>("OpenedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2140,11 +2176,11 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("BusinessDate");
 
-                    b.HasIndex("IsOpen")
+                    b.HasIndex("OpenedAt");
+
+                    b.HasIndex("IsOpen", "IsTraining")
                         .IsUnique()
                         .HasFilter("\"IsOpen\"");
-
-                    b.HasIndex("OpenedAt");
 
                     b.ToTable("WorkPeriods");
                 });

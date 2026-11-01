@@ -31,8 +31,9 @@ LegacyNames.CopyOldDataDirectory(
 builder.Host.UseWindowsService(o => o.ServiceName = ServerHost.ServiceName);
 builder.Host.UseSystemd();
 
-// The tests' licence key is trusted only in Development.
+// The tests' licence key, the File printer and demo seeding are for Development only.
 builder.Services.AddSingleton(new Tausi.Application.Setup.LicenceOptions(builder.Environment.IsDevelopment()));
+builder.Services.AddSingleton(new Tausi.Application.Common.DevelopmentHost(builder.Environment.IsDevelopment()));
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTausiAuth(builder.Configuration, builder.Environment);

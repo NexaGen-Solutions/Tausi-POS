@@ -5,8 +5,9 @@ using Microsoft.Extensions.Logging;
 namespace Tausi.Infrastructure.Printing;
 
 /// <summary>Background service that keeps sending queued print jobs (see <see cref="PrintJobProcessor"/>).</summary>
-public sealed class PrintDispatcher(IServiceScopeFactory scopes, ILogger<PrintDispatcher> log) : BackgroundService
+public sealed class PrintDispatcher(IServiceScopeFactory scopes, PrintWakeUp wakeUp, ILogger<PrintDispatcher> log) : BackgroundService
 {
+    /// <summary>How long it waits with nothing to do; a commit that queues a job wakes it at once (PrintWakeUp).</summary>
     private static readonly TimeSpan Idle = TimeSpan.FromMilliseconds(500);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -29,7 +30,14 @@ public sealed class PrintDispatcher(IServiceScopeFactory scopes, ILogger<PrintDi
                 log.LogError(ex, "Print dispatcher loop failed");
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             }
-            await Task.Delay(Idle, stoppingToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            try
+            {
+                await wakeUp.WaitAsync(Idle, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 }

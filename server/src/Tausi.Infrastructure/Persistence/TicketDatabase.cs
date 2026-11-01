@@ -10,7 +10,8 @@ public sealed class TicketDatabase(TausiDbContext db) : ITicketDatabase
 
     public async Task<long> NextReceiptNumber(CancellationToken ct)
     {
-        if (await FromSequence(TausiDbContext.ReceiptNumberSequence, ct) is { } next) return next;
+        // Training receipts count on their own (the real sequence keeps no gaps); db.Tickets shows training ones only.
+        if (!db.TrainingMode && await FromSequence(TausiDbContext.ReceiptNumberSequence, ct) is { } next) return next;
         // SQLite (unit tests only), as for ticket numbers.
         var last = await db.Tickets.MaxAsync(t => t.ReceiptNumber, ct);
         var pending = db.ChangeTracker.Entries<Domain.Service.Ticket>().Select(e => e.Entity.ReceiptNumber ?? 0).DefaultIfEmpty(0).Max();
@@ -30,17 +31,17 @@ public sealed class TicketDatabase(TausiDbContext db) : ITicketDatabase
     public async Task<long> NextNumber(CancellationToken ct)
     {
         // Run as written: composing (e.g. SingleAsync) would wrap it in a subquery, where SQL Server
-        // does not allow NEXT VALUE FOR.
-        if (Provider.Contains("Npgsql", StringComparison.Ordinal))
+        // does not allow NEXT VALUE FOR. Training tickets count on their own, from the training rows.
+        if (!db.TrainingMode && Provider.Contains("Npgsql", StringComparison.Ordinal))
             return (await db.Database
                 .SqlQueryRaw<long>($"SELECT nextval('\"{TausiDbContext.TicketNumberSequence}\"') AS \"Value\"")
                 .ToListAsync(ct)).Single();
-        if (Provider.Contains("SqlServer", StringComparison.Ordinal))
+        if (!db.TrainingMode && Provider.Contains("SqlServer", StringComparison.Ordinal))
             return (await db.Database
                 .SqlQueryRaw<long>($"SELECT NEXT VALUE FOR [{TausiDbContext.TicketNumberSequence}] AS [Value]")
                 .ToListAsync(ct)).Single();
 
-        // SQLite (unit tests only): no sequences, and one writer at a time anyway.
+        // SQLite (unit tests only; no sequences, one writer at a time) and training tickets.
         var last = await db.Tickets.MaxAsync(t => (long?)t.Number, ct);
         var pending = db.ChangeTracker.Entries<Domain.Service.Ticket>().Select(e => e.Entity.Number).DefaultIfEmpty(0).Max();
         return Math.Max(Math.Max(last ?? TausiDbContext.FirstTicketNumber - 1, pending) + 1, TausiDbContext.FirstTicketNumber);

@@ -154,4 +154,24 @@ public class SystemApiTests(StaffApp app)
             token = await scope.ServiceProvider.GetRequiredService<AdminRecovery>().Issue(CancellationToken.None);
         (await anon.PostAsJsonAsync("/api/setup/recover", new { token, userName = "admin", password = TausiApp.AdminPassword })).EnsureSuccessStatusCode();
     }
+
+    [Fact]
+    public async Task Download_diagnostics_gives_a_zip_for_support_without_secrets_and_is_audited()
+    {
+        (await app.CreateClient().GetAsync("/api/admin/system/diagnostics")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var admin = await app.AdminClient();
+        var response = await admin.GetAsync("/api/admin/system/diagnostics");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/zip");
+
+        using var zip = new System.IO.Compression.ZipArchive(await response.Content.ReadAsStreamAsync());
+        zip.Entries.Select(e => e.FullName).Should().Contain(["health.json", "summary.json", "system.json"]);
+        var everything = string.Concat(zip.Entries.Select(e => new StreamReader(e.Open()).ReadToEnd()));
+        everything.Should().NotContainAny("Password=", "ConnectionStrings", "Host=");
+        using var summary = JsonDocument.Parse(new StreamReader(zip.GetEntry("summary.json")!.Open()).ReadToEnd());
+        summary.RootElement.GetProperty("terminals").GetArrayLength().Should().BePositive();
+
+        app.Db(db => db.AuditEntries.Any(a => a.Action == AuditActions.DiagnosticsDownloaded)).Should().BeTrue();
+    }
 }

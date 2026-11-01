@@ -205,7 +205,8 @@
       "giftBadge": "Gift",
       "voided": "Voided",
       "priceChanged": "Price changed",
-      "subtotal": "Subtotal"
+      "subtotal": "Subtotal",
+      "notSent": "Not connected: {item} was not added. Add it again when the connection is back."
     },
     "actions": {
       "quantity": "Quantity",
@@ -415,6 +416,9 @@
       "password": "Password",
       "turnOff": "Also switch kiosk mode off on this PC",
       "exit": "Leave"
+    },
+    "training": {
+      "band": "TRAINING · not real sales"
     }
   },
   "approval": {
@@ -475,7 +479,7 @@
     "about": "Tausi POS · by NexaGen Solutions · version {version}",
     "logo": "Logo",
     "signedIn": "Signed in: {name}",
-    "comingSoon": "Coming in a later task.",
+    "comingSoon": "Coming in a later version.",
     "loginTitle": "Admin sign in",
     "userName": "User name",
     "password": "Password",
@@ -1527,7 +1531,12 @@
       "usbHelp": "For a server without internet: choose the .tausiupdate file NexaGen gave you.",
       "package": "Update package",
       "install": "Install the package",
-      "updateStarted": "The update has started. The server stops, takes a backup, updates and starts again; this page comes back in a few minutes."
+      "updateStarted": "The update has started. The server stops, takes a backup, updates and starts again; this page comes back in a few minutes.",
+      "diagnostics": {
+        "title": "Support",
+        "help": "Download diagnostics makes a zip of this server's state (versions, terminals, printers, failed prints, backups) and the last 7 days of logs, with no passwords or sales in it. Send it to NexaGen Solutions when you ask for help.",
+        "download": "Download diagnostics"
+      }
     },
     "backups": {
       "title": "Backups",
@@ -1576,7 +1585,24 @@
       "restoring": "Restoring… this can take a few minutes.",
       "restoreNow": "Restore"
     },
-    "signInPowered": "Tausi POS"
+    "signInPowered": "Tausi POS",
+    "training": {
+      "title": "Training mode",
+      "help": "Staff practise on a training terminal without touching real sales. Its tickets, payments and shifts are kept apart: they never reach reports, the books, stock or cash-ups, and every slip it prints says TRAINING - NOT A RECEIPT.",
+      "terminals": "Terminals",
+      "terminal": "Terminal",
+      "on": "Training",
+      "switch": "Training mode on {terminal}",
+      "data": "Training data",
+      "count": "{tickets} training tickets ({open} still open).",
+      "none": "There is no training data.",
+      "clear": "Clear training data",
+      "clearTitle": "Clear training data?",
+      "clearText": "This deletes every training ticket, payment and shift. Real sales are not touched. It can't be undone.",
+      "cleared": "Training data cleared: {tickets} tickets.",
+      "link": "Training mode"
+    },
+    "diskLow": "The server's disk is nearly full ({free} free). Free some space on the server PC soon: when it is full, nothing can be saved and backups fail."
   },
   "permissions": {
     "order.add": "Add orders",
@@ -1836,7 +1862,9 @@
     "restoring": "Server is restoring a backup",
     "restoringHelp": "This screen comes back by itself when it is done.",
     "updating": "Updating, please wait",
-    "updatingHelp": "This terminal is getting the version that matches the server. It restarts by itself."
+    "updatingHelp": "This terminal is getting the version that matches the server. It restarts by itself.",
+    "busy": "Server busy, retrying…",
+    "busyHelp": "The server can't reach its database for the moment. Nothing you did is lost; this goes away by itself."
   },
   "recover": {
     "title": "Reset an admin password",

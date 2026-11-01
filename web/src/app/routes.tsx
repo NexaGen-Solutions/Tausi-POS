@@ -18,6 +18,7 @@ import { AccountsPage } from '../admin/money/AccountsPage';
 import { ReportsPage } from '../admin/reports/ReportsPage';
 import { TicketPage } from '../admin/reports/TicketPage';
 import { LicencePage } from '../admin/settings/LicencePage';
+import { TrainingPage } from '../admin/settings/TrainingPage';
 import { BackupsPage } from '../admin/system/BackupsPage';
 import { SystemPage } from '../admin/system/SystemPage';
 import { RecoverPage } from '../setup/RecoverPage';
@@ -144,6 +145,7 @@ export const routes: RouteObject[] = [
       { path: 'reports', element: <ReportsPage /> },
       { path: 'tickets/:id', element: <TicketPage /> },
       { path: 'settings/licence', element: <LicencePage /> },
+      { path: 'settings/training', element: <TrainingPage /> },
       { path: 'settings/system', element: <SystemPage /> },
       { path: 'settings/backups', element: <BackupsPage /> },
       { path: 'stock/locations', element: <LocationsPage /> },

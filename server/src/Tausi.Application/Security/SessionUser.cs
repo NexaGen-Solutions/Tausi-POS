@@ -15,7 +15,8 @@ public sealed record SessionUser(
     Guid? SessionId = null);
 
 /// <summary>The terminal identified by the device token on this request, if any.</summary>
-public sealed record DeviceTerminal(Guid TerminalId, string Name);
+/// <param name="Training">Training mode is on for this terminal (its slips say TRAINING; nothing is real).</param>
+public sealed record DeviceTerminal(Guid TerminalId, string Name, bool Training = false);
 
 /// <summary>The caller of the current request. Filled in by the API from the session and device token.</summary>
 public interface ICurrentSession

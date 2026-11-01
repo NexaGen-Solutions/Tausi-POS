@@ -2,10 +2,16 @@
 # Release notes from the conventional commits since the last v* tag, and CHANGELOG.md with them on top.
 #   scripts/changelog.sh 1.2.0              prints the notes and updates CHANGELOG.md
 #   scripts/changelog.sh 1.2.0 --notes-only prints the notes only
+# A version that already has a hand-written "## 1.2.0" entry in CHANGELOG.md (1.0.0 does) keeps it: that
+# entry is printed as the notes and CHANGELOG.md isn't changed.
 set -euo pipefail
 VERSION="$1"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+if [[ -f CHANGELOG.md ]] && grep -q "^## $VERSION\b" CHANGELOG.md; then
+  sed -n "/^## $VERSION\b/,/^## /{/^## /d;p}" CHANGELOG.md | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
+  exit 0
+fi
 PREVIOUS="$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true)"
 RANGE="${PREVIOUS:+$PREVIOUS..}HEAD"
 

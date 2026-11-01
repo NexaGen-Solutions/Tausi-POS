@@ -123,7 +123,10 @@ export function PrinterPanel({
           { value: 'Network9100', label: t('admin.devices.modeNetwork') },
           { value: 'WindowsShare', label: t('admin.devices.modeShare') },
           { value: 'ViaTerminal', label: t('admin.devices.modeTerminal') },
-          { value: 'File', label: t('admin.devices.modeFile') },
+          // Development only (the server refuses it elsewhere): offered just for a printer that has it.
+          ...(printer?.connectionMode === 'File'
+            ? [{ value: 'File' as const, label: t('admin.devices.modeFile') }]
+            : []),
         ]}
       />
       {mode === 'Network9100' && (

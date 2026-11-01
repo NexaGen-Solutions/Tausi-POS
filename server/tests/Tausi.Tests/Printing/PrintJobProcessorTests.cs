@@ -75,6 +75,24 @@ public class PrintJobProcessorTests : IDisposable
     }
 
     [Fact]
+    public async Task Jobs_waiting_when_the_server_restarts_print_after_it_in_order()
+    {
+        // Task 16, Part C.1: the queue is in the database, so a restart loses nothing and keeps the order.
+        var bill = await Queue(PrintJobKind.Bill);
+        var dispense = await Queue(PrintJobKind.Dispense);
+        var receipt = await Queue(PrintJobKind.Receipt);
+
+        // The "restarted" server: a new context and a new processor over the same database.
+        var transport = new FakeTransport();
+        var restarted = new PrintJobProcessor(
+            _db.NewContext(), [transport], Options.Create(new TausiOptions()), _events, _clock, NullLogger<PrintJobProcessor>.Instance);
+        while (await restarted.ProcessDue(CancellationToken.None) > 0) { }
+
+        transport.Sent.Should().Equal(bill.Id, dispense.Id, receipt.Id);
+        (await _db.NewContext().PrintJobs.ToListAsync()).Should().OnlyContain(j => j.Status == PrintJobStatus.Sent);
+    }
+
+    [Fact]
     public async Task Retries_three_times_with_backoff_then_fails_and_publishes()
     {
         var job = await Queue(PrintJobKind.Bill);

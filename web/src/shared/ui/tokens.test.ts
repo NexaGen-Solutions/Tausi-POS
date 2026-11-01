@@ -71,6 +71,8 @@ const textPairs: [string, string][] = [
   ['selected', 'selected-tint'],
   ['text', 'selected-tint'],
   ['warning-on', 'warning'],
+  // The training band: white on both of its orange stripes.
+  ['warning-on', 'warning-text'],
   ['warning-text', 'warning-tint'],
   ['text', 'row-alt'],
   ['text-secondary', 'readonly'],

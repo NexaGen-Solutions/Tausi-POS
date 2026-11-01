@@ -1,6 +1,6 @@
 /* Wireframe 3: order screen. Wireframe 4: the Cold / Warm pop-up. */
 .order-screen {
-  height: 100vh;
+  height: calc(100vh - var(--training-band, 0px));
   min-height: 0;
 }
 .order-title {

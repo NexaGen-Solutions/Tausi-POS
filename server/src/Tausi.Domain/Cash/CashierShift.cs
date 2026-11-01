@@ -12,8 +12,11 @@ public enum ShiftStatus
 /// A cashier's shift on one terminal's drawer, from the opening float to a counted, signed-off
 /// cash-up. One open shift per cashier and one per terminal. Settling needs one.
 /// </summary>
-public class CashierShift : VersionedEntity
+public class CashierShift : VersionedEntity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MaxNoteLength = 300;
 
     public Guid CashierUserId { get; set; }
@@ -53,8 +56,11 @@ public enum DrawerMovementKind
 }
 
 /// <summary>A pay-out or a cash drop during a shift. Audited, posted to the ledger, and a slip prints.</summary>
-public class DrawerMovement : Entity
+public class DrawerMovement : Entity, ITrainingData
 {
+    /// <inheritdoc />
+    public bool IsTraining { get; set; }
+
     public const int MaxNoteLength = 200;
 
     public Guid ShiftId { get; set; }
