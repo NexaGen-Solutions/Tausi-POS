@@ -96,6 +96,7 @@ public sealed class DeliveryCommands(
     IAuditLog audit, IPosEvents events, TimeProvider clock)
 {
     public const string LedgerSource = "Delivery";
+    public const string CostCorrectionSource = "DeliveryCostCorrection";
 
     public async Task<DeliveryDto> Receive(ReceiveDeliveryRequest r, CancellationToken ct)
     {
@@ -263,11 +264,14 @@ public sealed class DeliveryCommands(
         var ids = delivery.Lines.Select(l => l.StockItemId).Distinct().ToList();
         await book.LockItems(ids, ct);
         var items = await db.StockItems.Where(i => ids.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
+        var correction = 0m;
         foreach (var line in delivery.Lines)
         {
             var item = items[line.StockItemId];
             var onHand = await book.TotalOnHand(item.Id, ct);
-            item.AverageCost = StockBook.AverageAfterDelivery(onHand, item.AverageCost, line.BaseQuantity, line.BaseUnitCost);
+            var oldAverage = item.AverageCost;
+            item.AverageCost = StockBook.AverageAfterDelivery(onHand, oldAverage, line.BaseQuantity, line.BaseUnitCost);
+            correction += StockBook.CostOfSalesCorrection(onHand, oldAverage, item.AverageCost);
             await book.Move(item.Id, delivery.LocationId, line.BaseQuantity, line.BaseUnitCost, StockMovementKind.Delivery,
                 StockReferences.Delivery, delivery.Id, userId, day?.Id, ct);
         }
@@ -278,6 +282,19 @@ public sealed class DeliveryCommands(
             await ledger.Post(new JournalEntryDraft(clock.GetUtcNow(), await Memo(delivery, "Delivery", ct), LedgerSource, delivery.Id.ToString(),
                 [JournalLineDraft.Dr(LedgerAccountCodes.Stock, delivery.Total), JournalLineDraft.Cr(PaidFrom(delivery.Payment), delivery.Total)],
                 day?.Id, BusinessDate: delivery.Date), ct);
+        await PostCostCorrection(delivery, MoneyMath.Round(correction), day?.Id, ct);
+    }
+
+    /// <summary>Items sold below zero were costed at the old average (0 if it had none): this delivery's cost corrects them.</summary>
+    private async Task PostCostCorrection(Delivery delivery, decimal amount, Guid? dayId, CancellationToken ct)
+    {
+        if (amount == 0) return;
+        await ledger.Post(new JournalEntryDraft(clock.GetUtcNow(), await Memo(delivery, "Cost of items sold below zero", ct),
+            CostCorrectionSource, delivery.Id.ToString(),
+            amount > 0
+                ? [JournalLineDraft.Dr(LedgerAccountCodes.CostOfSales, amount), JournalLineDraft.Cr(LedgerAccountCodes.Stock, amount)]
+                : [JournalLineDraft.Dr(LedgerAccountCodes.Stock, -amount), JournalLineDraft.Cr(LedgerAccountCodes.CostOfSales, -amount)],
+            dayId, BusinessDate: delivery.Date), ct);
     }
 
     private async Task PostReversal(Delivery delivery, Guid userId, CancellationToken ct)

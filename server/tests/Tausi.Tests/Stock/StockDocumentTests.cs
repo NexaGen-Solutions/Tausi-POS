@@ -53,6 +53,58 @@ public class StockDocumentTests : StockTestBase
         row.OnHandText.Should().Be("-19 crates");
     }
 
+    /// <summary>Sells a quantity at the current average, as a print does, so the Stock account follows.</summary>
+    private async Task SellBelowZero(string item, decimal quantity)
+    {
+        await using var tx = await F.Db.Database.BeginTransactionAsync();
+        var average = Average(item);
+        await F.Get<StockBook>().Move(Item(item), Location("Bar"), -quantity, average, StockMovementKind.Sale, "Test", null, null, null, None);
+        await F.Db.SaveChangesAsync();
+        await tx.CommitAsync();
+    }
+
+    private decimal TotalOnHand(string item) => F.Read().StockLevels.Where(l => l.StockItemId == Item(item)).ToList().Sum(l => l.OnHand);
+
+    [Theory]
+    [InlineData(100, 80, 110, 3000)] // 100 sold below zero at 80, now 110
+    [InlineData(100, 110, 80, -3000)] // the new cost is lower: the cost of sales comes down
+    [InlineData(100, 0, 110, 11000)] // no cost when they were sold
+    [InlineData(0, 80, 110, 0)]
+    [InlineData(-5, 80, 110, 0)] // on hand is positive: nothing was sold below zero
+    public void The_correction_for_items_sold_below_zero(decimal soldBelowZero, decimal oldAverage, decimal newAverage, decimal expected) =>
+        StockBook.CostOfSalesCorrection(-soldBelowZero, oldAverage, newAverage).Should().Be(expected);
+
+    [Theory]
+    [InlineData(4)] // brings it above zero
+    [InlineData(1)] // still below zero after the delivery
+    public async Task A_delivery_corrects_the_cost_of_items_sold_below_zero_and_the_entry_balances(decimal crates)
+    {
+        await AsAdmin();
+        const decimal perBottle = 2500m / 25;
+        var hole = TotalOnHand("Guiness") + 50;
+        await SellBelowZero("Guiness", hole);
+        var oldAverage = Average("Guiness");
+
+        await Deliver("INV-NEG", item: "Guiness", location: "Bar", quantity: crates);
+
+        var entry = Entries(DeliveryCommands.CostCorrectionSource).Single();
+        var expected = decimal.Round(50 * (perBottle - oldAverage), 2, MidpointRounding.AwayFromZero);
+        Dr(entry, expected > 0 ? LedgerAccountCodes.CostOfSales : LedgerAccountCodes.Stock).Should().Be(Math.Abs(expected));
+        Cr(entry, expected > 0 ? LedgerAccountCodes.Stock : LedgerAccountCodes.CostOfSales).Should().Be(Math.Abs(expected));
+        Average("Guiness").Should().Be(perBottle);
+        AllEntriesBalance();
+    }
+
+    [Fact]
+    public async Task A_delivery_with_nothing_sold_below_zero_posts_no_correction()
+    {
+        await AsAdmin();
+
+        await Deliver("INV-POS");
+
+        Entries(DeliveryCommands.CostCorrectionSource).Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData(100, 80, 50, 110, 90)] // (100 × 80 + 50 × 110) ÷ 150
     [InlineData(0, 80, 50, 110, 110)]
