@@ -88,26 +88,27 @@ jobs:
       - run: |
           dotnet build server/src/Tausi.Api -c Release
           dotnet build tools/Tausi.LoadTest -c Release
-      - name: The demo business, then the server
+      # One step: on this runner a server started in an earlier step was gone by the next one.
+      - name: Load test
         shell: pwsh
         run: |
           Push-Location server
           dotnet run --no-build -c Release --project src/Tausi.Api -- seed --demo > "$env:RUNNER_TEMP\seed.txt"
-          Start-Process dotnet -ArgumentList 'run','--no-build','-c','Release','--project','src/Tausi.Api' `
+          $server = Start-Process dotnet -PassThru -ArgumentList 'run','--no-build','-c','Release','--project','src/Tausi.Api' `
             -RedirectStandardOutput "$env:RUNNER_TEMP\server.log" -RedirectStandardError "$env:RUNNER_TEMP\server-err.log"
           Pop-Location
-          for ($i = 0; $i -lt 120; $i++) {
-            try { if ((Invoke-RestMethod http://localhost:5080/api/health).database -eq 'ok') { break } } catch { }
-            Start-Sleep 1
+          $up = $false
+          for ($i = 0; $i -lt 120 -and -not $up; $i++) {
+            try { $up = (Invoke-RestMethod http://localhost:5080/api/health).database -eq 'ok' } catch { Start-Sleep 1 }
           }
-      - name: Load test
-        shell: pwsh
-        run: |
+          if (-not $up) { throw "The server didn't start (exited: $($server.HasExited))" }
           dotnet run --no-build -c Release --project tools/Tausi.LoadTest -- --server http://localhost:5080 `
             --admin-password $env:TAUSI_ADMIN_PASSWORD --seed-output "$env:RUNNER_TEMP\seed.txt" --provider SqlServer `
             --db $env:ConnectionStrings__Tausi --print-output $env:Tausi__Printing__OutputDirectory `
             --hours $env:HOURS --speed $env:SPEED --out load-sqlserver.json | Tee-Object load-sqlserver.md
-          exit $LASTEXITCODE
+          $code = $LASTEXITCODE
+          "Server exited: $($server.HasExited)"
+          exit $code
       - uses: actions/upload-artifact@v7
         if: always()
         with:
