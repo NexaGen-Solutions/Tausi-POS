@@ -1,11 +1,9 @@
 name: Load test (full)
 
 # The busy Friday of task 16 in full: 6 simulated hours at 3x (about 2 hours), on PostgreSQL and on
-# SQL Server Express. Nightly on main (04:00 in Nairobi), or by hand from the Actions tab. The numbers
+# SQL Server Express. By hand from the Actions tab (the owner's choice until it passes on both). The numbers
 # go into docs/PERFORMANCE.md; the job fails on a missed target or any difference after the run.
 on:
-  schedule:
-    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       hours:
