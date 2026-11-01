@@ -1544,6 +1544,8 @@
       "settings": "Schedule and copies",
       "time": "Nightly backup at",
       "timeHint": "Business time; after closing.",
+      "secondTime": "Second backup at",
+      "secondTimeHint": "During the day, before the busy hours. Kept for 7 days. Empty: no second backup.",
       "copyFolder": "Second copy to",
       "copyFolderHint": "A USB drive, network share or synced folder, e.g. E:\\Backups or \\\\NAS\\Tausi. Empty: no second copy.",
       "encrypt": "Encrypt backups with a password",
@@ -1572,6 +1574,7 @@
       "none": "No backups yet.",
       "reason": {
         "Nightly": "Nightly",
+        "Daytime": "Second backup",
         "Manual": "Back up now",
         "Upgrade": "Before an update",
         "BeforeRestore": "Before a restore",

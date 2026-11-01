@@ -44,6 +44,8 @@ export interface BackupRecord {
 
 export interface BackupSettings {
   time: string;
+  /** The backup during the day; null when there is none. */
+  secondTime: string | null;
   copyFolder: string | null;
   encrypt: boolean;
   hasPassword: boolean;

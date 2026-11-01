@@ -70,6 +70,7 @@ describe('Settings → Backups and System', () => {
         'GET /api/admin/backups/settings': () =>
           json(200, {
             time: '05:00',
+            secondTime: '18:00',
             copyFolder: 'E:\\Backups',
             encrypt: false,
             hasPassword: false,
@@ -132,6 +133,7 @@ describe('Settings → Backups and System', () => {
     expect(await screen.findByText('Choose a password for the backups.')).toBeInTheDocument();
     expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({
       time: '05:00',
+      secondTime: '18:00',
       copyFolder: 'E:\\Backups',
       encrypt: true,
       password: null,

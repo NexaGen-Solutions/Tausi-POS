@@ -10,7 +10,8 @@ namespace Tausi.Infrastructure.Backups;
 
 /// <summary>
 /// The nightly backup: once each business day, at the set time (05:00 business time by default, after
-/// closing), or as soon as the server is running after that time if it was off then.
+/// closing), or as soon as the server is running after that time if it was off then. A second backup
+/// during the day works the same way (18:00 by default, before the evening's trade; it can be switched off).
 /// </summary>
 public sealed class BackupScheduler(
     IServiceScopeFactory scopes, BackupEngine engine, SetupGate setup, IOptions<TausiOptions> options, TimeProvider clock,
@@ -29,6 +30,7 @@ public sealed class BackupScheduler(
                 if (!await setup.IsComplete(db, stoppingToken)) continue;
                 var now = await scope.ServiceProvider.GetRequiredService<BusinessClock>().Now(stoppingToken);
                 if (Due(now, engine.NightlyTime()) is { } day) await engine.RunNightly(day, stoppingToken);
+                if (engine.SecondTime() is { } second && Due(now, second) is { } today) await engine.RunDaytime(today, stoppingToken);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {

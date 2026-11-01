@@ -154,7 +154,8 @@ Press **Test print** and **Ruler test**: the ruler shows whether the paper width
 
 ## 5. Backups
 
-Tausi POS backs up by itself **every night at 05:00** (business time), and before every update and
+Tausi POS backs up by itself **every night at 05:00** and **every day at 18:00** (business time; change
+either in Settings → Backups, or leave the second time empty for none), and before every update and
 restore. Each backup is one `.tausibak` file in `C:\ProgramData\Tausi POS\backups\`, with the database,
 the keys and the uploaded files. Every backup is checked after it is made.
 
@@ -166,8 +167,8 @@ server is still made.
 **Encryption** (optional): tick *Encrypt backups with a password*. **Write the password down and keep it
 safe**: without it an encrypted backup can't be restored by anyone, including NexaGen.
 
-**Kept**: the last 14 nightly backups, the first backup of each month for 12 months, and other backups
-for 30 days.
+**Kept**: the last 14 nightly backups, the first backup of each month for 12 months, the 18:00 backups
+for 7 days, and other backups for 30 days.
 
 A red banner shows on the admin site and the Close day screen when last night's backup failed, or when
 no backup has worked for 48 hours.

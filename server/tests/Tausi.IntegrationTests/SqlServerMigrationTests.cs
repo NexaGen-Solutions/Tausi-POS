@@ -51,6 +51,37 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         }
     }
 
+    private static async Task<string> RecoveryModel(TausiDbContext db) =>
+        await db.Database.SqlQueryRaw<string>("SELECT recovery_model_desc AS [Value] FROM sys.databases WHERE database_id = DB_ID()").SingleAsync();
+
+    [SkippableFact]
+    public async Task A_database_nobody_backs_the_log_of_moves_to_simple()
+    {
+        Skip.IfNot(sql.Available, Skipped);
+        await using var db = new SqlServerTausiDbContext(sql.Options("tausi_log_simple"));
+        await db.Database.MigrateAsync();
+        await db.Database.ExecuteSqlRawAsync("ALTER DATABASE CURRENT SET RECOVERY FULL");
+
+        await SqlServerLogSetting.Apply(db, NullLogger.Instance, CancellationToken.None);
+
+        (await RecoveryModel(db)).Should().Be("SIMPLE");
+    }
+
+    [SkippableFact]
+    public async Task A_database_whose_log_is_backed_up_stays_full()
+    {
+        Skip.IfNot(sql.Available, Skipped);
+        await using var db = new SqlServerTausiDbContext(sql.Options("tausi_log_full"));
+        await db.Database.MigrateAsync();
+        await db.Database.ExecuteSqlRawAsync("ALTER DATABASE CURRENT SET RECOVERY FULL");
+        await db.Database.ExecuteSqlRawAsync("BACKUP DATABASE tausi_log_full TO DISK = '/tmp/tausi_log_full.bak' WITH INIT");
+        await db.Database.ExecuteSqlRawAsync("BACKUP LOG tausi_log_full TO DISK = '/tmp/tausi_log_full.trn' WITH INIT");
+
+        await SqlServerLogSetting.Apply(db, NullLogger.Instance, CancellationToken.None);
+
+        (await RecoveryModel(db)).Should().Be("FULL");
+    }
+
     [SkippableFact]
     public async Task Two_print_presses_at_once_print_one_round_on_sql_server()
     {
