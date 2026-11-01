@@ -5,7 +5,9 @@ name: Tausi POS release
 # artifacts only (version 0.0.<run number>).
 #
 # Secrets (each optional; without one the matching artifacts are marked unsigned):
-#   WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD   Authenticode (.pfx as base64) for the .exe and .msi files
+#   WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD   Authenticode (.pfx as base64) for the .exe and .msi files.
+#     Self-signed (tools/signing/create-nexagen-cert.ps1): the installers also trust it on the PC. A paid
+#     certificate needs only these two secrets replaced: the installers then add nothing.
 #   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD   the terminal updater's signing key
 #   TAUSI_UPDATE_SIGNING_KEY                             signs server updates (tausi-licence sign-update)
 # Variable: UPDATE_BASE_URL   where updates.json and the installers are hosted for servers to download
@@ -50,6 +52,8 @@ jobs:
       VERSION: ${{ needs.version.outputs.version }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      CERT: ${{ secrets.WINDOWS_CERTIFICATE }}
+      CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -73,24 +77,23 @@ jobs:
         shell: pwsh
         working-directory: terminal
         run: |
-          $updater = if ($env:TAURI_SIGNING_PRIVATE_KEY) { '{"bundle":{"createUpdaterArtifacts":true}}' } else { '{}' }
-          npm run tauri build -- --config $updater
+          # Signed as it builds (Authenticode), so the updater's signature is made over the signed installer.
+          $sign = ../scripts/terminal-signing.ps1
+          $windows = @{}
+          if ($sign) { $windows.signCommand = $sign }
+          $online = @{ bundle = @{ windows = $windows } }
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) { $online.bundle.createUpdaterArtifacts = $true }
+          npm run tauri build -- --config ($online | ConvertTo-Json -Depth 5 -Compress)
           if ($LASTEXITCODE -ne 0) { exit 1 }
           New-Item -ItemType Directory -Force ../out | Out-Null
           $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
           Copy-Item $exe "../out/TausiPOS-Setup-$env:VERSION.exe"
           if (Test-Path "$($exe.FullName).sig") { Copy-Item "$($exe.FullName).sig" "../out/TausiPOS-Setup-$env:VERSION.exe.sig" }
-          npm run tauri build -- --config '{"bundle":{"windows":{"webviewInstallMode":{"type":"offlineInstaller"}}}}'
+          $windows.webviewInstallMode = @{ type = 'offlineInstaller' }
+          npm run tauri build -- --config (@{ bundle = @{ windows = $windows } } | ConvertTo-Json -Depth 5 -Compress)
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
           Copy-Item $exe "../out/TausiPOS-Setup-$env:VERSION-offline.exe"
-      - name: Sign (Authenticode)
-        if: env.CERT != ''
-        shell: pwsh
-        env:
-          CERT: ${{ secrets.WINDOWS_CERTIFICATE }}
-          CERT_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: scripts/sign.ps1 -Files (Get-ChildItem out/*.exe).FullName
       - uses: actions/upload-artifact@v7
         with:
           name: terminal

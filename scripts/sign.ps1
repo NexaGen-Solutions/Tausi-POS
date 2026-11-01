@@ -5,7 +5,7 @@
 param([Parameter(Mandatory)] [string[]] $Files)
 $ErrorActionPreference = 'Stop'
 if (-not $env:CERT) { Write-Host 'No certificate: unsigned.'; exit 0 }
-$pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+$pfx = Join-Path $env:RUNNER_TEMP "cert-$PID.pfx"
 [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERT))
 $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
 & $signtool.FullName sign /f $pfx /p $env:CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /d 'Tausi POS' $Files

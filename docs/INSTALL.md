@@ -269,3 +269,42 @@ with the settings from `/etc/tausi/tausi.env`).
 | `TausiServer test-db` | Checks the database connection |
 | `TausiServer wait-health` | Waits until the server answers |
 | `TausiServer enable-https` / `disable-https` | The optional HTTPS for the admin site |
+
+## 12. Code signing and Windows warnings
+
+The installers are signed with NexaGen Solutions' code-signing certificate, using the
+`WINDOWS_CERTIFICATE` and `WINDOWS_CERTIFICATE_PASSWORD` secrets. A build made without them is unsigned.
+
+**A self-signed certificate is only trusted by PCs that have been told to trust it.** Each installer does
+that for its own PC: it adds the certificate to the PC's **Trusted Publishers** and **Trusted Root** (Local
+Machine), and its first screen says so. Installing needs an administrator. The certificate is limited to
+signing code: it can't identify a website or sign other certificates.
+
+**This doesn't remove the warning on the first install.** Windows checks the file before the installer has
+run, so a PC without the certificate still warns ("Windows protected your PC", or an unknown publisher). Before
+running an installer you copied or downloaded:
+
+1. Compare its SHA-256 fingerprint with the one NexaGen gives you: `Get-FileHash .\TausiPOS-Server-Setup-<version>.exe`.
+   Don't run it if they differ.
+2. Clear the "downloaded from the internet" mark: `Unblock-File .\TausiPOS-Server-Setup-<version>.exe`.
+3. Run it. If Windows still warns: **More info** → **Run anyway**.
+
+Later updates to that PC no longer warn about the publisher. A PC that hasn't had the certificate (a new PC, or
+one where it was removed) warns again. Antivirus can still flag a new file, whoever signed it.
+
+**Removing the certificate** (an uninstall leaves it, because the server and terminal may share a PC). In an
+administrator PowerShell, with the thumbprint printed when the certificate was created:
+
+```powershell
+Remove-Item Cert:\LocalMachine\Root\<thumbprint>, Cert:\LocalMachine\TrustedPublisher\<thumbprint>
+```
+
+**Creating the certificate** (once, on a PC you trust, not a customer's):
+`pwsh tools/signing/create-nexagen-cert.ps1`, then store the two secrets it prints. It is valid for 3 years; signed
+files keep working after that, because they are timestamped, but new builds need a new certificate and every PC
+then trusts the new one on its next install. **Guard the `.pfx`:** anyone with it and its password can sign
+programs that every PC with this certificate will trust. Keep it off customer PCs, and if it may have been exposed,
+stop using it and remove it from those PCs.
+
+**Moving to a paid certificate:** replace the two secrets with the OV certificate. Nothing else changes: the
+installers trust only a self-signed certificate, so they stop adding anything to the PC.

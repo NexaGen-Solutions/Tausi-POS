@@ -30,3 +30,6 @@ print-output/
 *.swp
 .env
 tools/screenshots/out/
+
+# Code-signing private keys (tools/signing): never in the repo.
+*.pfx

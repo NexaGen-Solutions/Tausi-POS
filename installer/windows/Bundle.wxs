@@ -41,6 +41,8 @@
     <Variable Name="RESTOREPASSWORD" Type="string" Value="" Hidden="yes" />
     <Variable Name="DELETEDATA" Type="string" Value="0" />
     <Variable Name="BUSINESSNAME" Type="string" Value="" />
+    <!-- 1: this build trusts its self-signed certificate on the PC (the first screen says so). -->
+    <Variable Name="TRUSTCERT" Type="string" Value="$(TrustCert)" />
 
     <!-- An earlier install: SQL Server Express instance TAUSI, and the port it uses. -->
     <util:RegistrySearch Id="SqlTausi" Root="HKLM" Key="SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"

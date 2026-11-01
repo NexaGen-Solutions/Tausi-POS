@@ -56,7 +56,8 @@ These are not in 1.0.0 (see "After v1" in `docs/DECISIONS.md`):
 
 - Replace the development **licence public key** with the owner's real key (DECISIONS.md: Setup wizard
   and licences). Keys made with the development key stop working then; pilot sites get a new key.
-- Sign the installers with the code-signing certificate (`scripts/sign.ps1`), so Windows doesn't warn.
+- Sign the installers: `docs/INSTALL.md`, section 12. With the self-signed certificate the first install on each
+  PC still warns; a paid certificate removes the "unknown publisher" warning.
 
 ## Upgrading from pilot builds
 

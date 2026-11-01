@@ -32,6 +32,21 @@ function Sign([string[]] $files) {
   if ($LASTEXITCODE -ne 0) { throw "signing failed" }
 }
 
+# A self-signed certificate: the installer carries its public part and trusts it on the PC. A paid certificate
+# already chains to a root Windows trusts, so nothing is added.
+$trustCert = '0'
+$certArgs = @()
+if ($CertificateFile) {
+  $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::new((Resolve-Path $CertificateFile).Path, $CertificatePassword)
+  if ($cert.Subject -eq $cert.Issuer) {
+    $trustCert = '1'
+    $certFolder = Join-Path $work 'cert'
+    New-Item -ItemType Directory -Force $certFolder | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $certFolder 'nexagen-code-signing.cer'), $cert.Export('Cert'))
+    $certArgs = @('-bindpath', "Cert=$certFolder")
+  }
+}
+
 # The rollback test build: migrate fails on purpose.
 $programFiles = $Server
 if ($FailMigration) {
@@ -54,12 +69,12 @@ Sign @("$programFiles\TausiServer.exe", "$work\setup\TausiSetup.exe", "$work\set
 $ext = @('-ext', 'WixToolset.Util.wixext', '-ext', 'WixToolset.Firewall.wixext')
 Push-Location $here
 try {
-  wix build -arch x64 -d "Version=$Version" @ext -bindpath "Server=$programFiles" Package.wxs -o "$work\TausiPOS-Server.msi"
+  wix build -arch x64 -d "Version=$Version" -d "TrustCert=$trustCert" @ext @certArgs -bindpath "Server=$programFiles" Package.wxs -o "$work\TausiPOS-Server.msi"
   if ($LASTEXITCODE -ne 0) { throw "MSI build failed" }
   Sign @("$work\TausiPOS-Server.msi")
 
   $bundle = Join-Path $Out "TausiPOS-Server-Setup-$Version.exe"
-  wix build -arch x64 -d "Version=$Version" @ext -bindpath "Setup=$work\setup" -bindpath "Msi=$work" Bundle.wxs -o $bundle
+  wix build -arch x64 -d "Version=$Version" -d "TrustCert=$trustCert" @ext -bindpath "Setup=$work\setup" -bindpath "Msi=$work" Bundle.wxs -o $bundle
   if ($LASTEXITCODE -ne 0) { throw "bundle build failed" }
 
   if ($CertificateFile) {
