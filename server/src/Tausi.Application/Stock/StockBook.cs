@@ -89,6 +89,13 @@ public sealed class StockBook(ITausiDb db, IStockDatabase stockDb, TimeProvider 
     public static decimal AverageAfterDelivery(decimal onHand, decimal average, decimal delivered, decimal cost) =>
         onHand <= 0 || onHand + delivered <= 0 ? cost : (onHand * average + delivered * cost) / (onHand + delivered);
 
+    /// <summary>
+    /// What a delivery changes the cost of items sold below zero by: they are revalued from the old
+    /// average to the new one, so the Stock account stays on hand × average. A minus lowers the cost.
+    /// </summary>
+    public static decimal CostOfSalesCorrection(decimal onHand, decimal oldAverage, decimal newAverage) =>
+        onHand < 0 ? -onHand * (newAverage - oldAverage) : 0;
+
     /// <summary>The average after taking a delivery back out at its cost; unchanged if nothing would be left.</summary>
     public static decimal AverageAfterReversal(decimal onHand, decimal average, decimal reversed, decimal cost) =>
         onHand - reversed <= 0 ? average : (onHand * average - reversed * cost) / (onHand - reversed);
