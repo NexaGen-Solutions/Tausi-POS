@@ -65,6 +65,11 @@ icacls "$home_\config\appsettings.Production.json" /inheritance:r | Out-Null
 
 Write-Host '1. Silent install on the existing SQL Server Express'
 $code = Setup $First 'install.log' @('DB=existing', 'SQLINSTANCE=.\SQLEXPRESS', 'SQLGRANTSYSTEM=1', 'PORT=5080')
+$signer = (Get-AuthenticodeSignature $First).SignerCertificate
+if ($signer -and $signer.Subject -eq $signer.Issuer) {
+  Check (Test-Path "Cert:\LocalMachine\Root\$($signer.Thumbprint)") 'the self-signed certificate is trusted (Root)'
+  Check (Test-Path "Cert:\LocalMachine\TrustedPublisher\$($signer.Thumbprint)") 'the self-signed certificate is trusted (Trusted Publishers)'
+}
 Check ($code -eq 0) "the installer finished (exit $code)"
 $service = Get-Service TausiPOSServer -ErrorAction SilentlyContinue
 Check ($service -and $service.Status -eq 'Running') 'the service runs'

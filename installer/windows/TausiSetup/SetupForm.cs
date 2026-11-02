@@ -114,10 +114,13 @@ namespace Tausi.Setup
                   "A backup is taken first; the settings and all data are kept. If anything goes wrong, the previous version and its data are put back."
                 : $"Tausi POS Server {_ba.Get("WixBundleVersion")} by NexaGen Solutions.\r\n\r\n" +
                   "This PC becomes the bar's server: it holds the data and the printing, and the counter PCs connect to it. Please read the licence agreement.";
+            var trusts = _ba.Get("TRUSTCERT") == "1";
+            if (trusts)
+                intro += "\r\n\r\nThis also adds NexaGen Solutions' code-signing certificate to this PC's trusted certificates, so Windows recognises Tausi POS and its updates.";
             var licence = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Text = Licence(), BackColor = Color.White };
             var accept = new CheckBox { Text = "I accept the licence agreement", Dock = DockStyle.Bottom, Height = 36 };
             accept.CheckedChanged += (s, e) => _next.Enabled = accept.Checked;
-            Page(_ba.UpgradingFrom != null ? "Upgrade Tausi POS Server" : "Welcome", Text_(intro, 72), licence, accept);
+            Page(_ba.UpgradingFrom != null ? "Upgrade Tausi POS Server" : "Welcome", Text_(intro, trusts ? 124 : 72), licence, accept);
             // The full logo on its deep teal panel, beside the welcome (the left part of dialog.png).
             var dialog = Picture("dialog.png");
             if (dialog != null) _body.Controls.Add(new PictureBox { Image = dialog, Dock = DockStyle.Left, Width = 200, SizeMode = PictureBoxSizeMode.Normal, BackColor = Dark, Margin = new Padding(0, 0, 16, 0) });

@@ -80,6 +80,9 @@
       <ComponentRef Id="Remembered" />
       <ComponentRef Id="Firewall" />
       <ComponentRef Id="AdminShortcuts" />
+<?if $(TrustCert) = "1" ?>
+      <ComponentRef Id="SigningCertificate" />
+<?endif?>
     </Feature>
 
     <ComponentGroup Id="ServerFiles" Directory="INSTALLFOLDER">
@@ -160,7 +163,23 @@
     <CustomAction Id="Purge" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="check"
                   ExeCommand="&quot;[INSTALLFOLDER]TausiServer.exe&quot; purge --business &quot;[BUSINESSNAME]&quot;" />
 
+<?if $(TrustCert) = "1" ?>
+    <!-- A self-signed build: trust its certificate on this PC. It stays after an uninstall, as the terminal may use it
+         too (docs/INSTALL.md says how to remove it). A failure here doesn't stop the install. -->
+    <Component Id="SigningCertificate" Directory="INSTALLFOLDER">
+      <File Id="NexagenCertificate" Source="!(bindpath.Cert)\nexagen-code-signing.cer" KeyPath="yes" />
+    </Component>
+    <CustomAction Id="TrustRoot" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="ignore"
+                  ExeCommand="&quot;[System64Folder]certutil.exe&quot; -f -addstore Root &quot;[INSTALLFOLDER]nexagen-code-signing.cer&quot;" />
+    <CustomAction Id="TrustPublisher" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" Return="ignore"
+                  ExeCommand="&quot;[System64Folder]certutil.exe&quot; -f -addstore TrustedPublisher &quot;[INSTALLFOLDER]nexagen-code-signing.cer&quot;" />
+<?endif?>
+
     <InstallExecuteSequence>
+<?if $(TrustCert) = "1" ?>
+      <Custom Action="TrustRoot" After="InstallFiles" Condition="NOT REMOVE" />
+      <Custom Action="TrustPublisher" After="TrustRoot" Condition="NOT REMOVE" />
+<?endif?>
       <Custom Action="PreUpgradeBackup" After="InstallInitialize" Condition="WIX_UPGRADE_DETECTED AND NOT REMOVE" />
       <!-- Windows Installer allows it only in a few places: after InstallExecute keeps the whole upgrade one
            transaction and leaves the old program in place for PreUpgradeBackup, which runs first. -->

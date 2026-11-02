@@ -1,0 +1,100 @@
+name: Signing check
+
+# Builds and installs both installers signed with a throwaway self-signed certificate, and checks they are
+# signed and trust it on the PC. Nothing is uploaded: these builds must never reach a real PC. Runs when the
+# signing code changes, or by hand, because the certificate in the repo's secrets is only used on real builds.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/signing/**
+      - scripts/sign.ps1
+      - scripts/terminal-signing.ps1
+      - installer/windows/**
+      - terminal/src-tauri/windows/**
+      - .github/workflows/signing-check.yml
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: SQL Server Express
+        shell: pwsh
+        run: choco install sql-server-express -y --no-progress
+      - name: WiX Toolset v5
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.Firewall.wixext/5.0.2
+      - name: Build the web app
+        run: npm ci && npm run build
+        working-directory: web
+      - name: A throwaway certificate, from the same script
+        shell: pwsh
+        run: |
+          $password = 'throwaway-signing-check'
+          tools/signing/create-nexagen-cert.ps1 -OutFolder "$env:RUNNER_TEMP\signing" -Password (ConvertTo-SecureString $password -AsPlainText -Force)
+          $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::new("$env:RUNNER_TEMP\signing\nexagen-code-signing.pfx", $password)
+          $eku = ($cert.Extensions | Where-Object { $_ -is [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] }).EnhancedKeyUsages.Value
+          $basic = $cert.Extensions | Where-Object { $_ -is [Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] }
+          if ($cert.PublicKey.GetRSAPublicKey().KeySize -ne 3072) { throw 'not RSA 3072' }
+          if (@($eku) -join ',' -ne '1.3.6.1.5.5.7.3.3') { throw "may be used for more than code signing: $eku" }
+          if (-not $basic -or $basic.CertificateAuthority) { throw 'must not be able to sign other certificates' }
+          "THUMB=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+          "CERT_PASSWORD=$password" >> $env:GITHUB_ENV
+          "CERT=$([Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:RUNNER_TEMP\signing\nexagen-code-signing.pfx")))" >> $env:GITHUB_ENV
+      - name: Server installer
+        shell: pwsh
+        run: |
+          dotnet publish server/src/Tausi.Api -c Release -r win-x64 --self-contained true -p:Version=0.15.1 -o out/server
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          installer/windows/build.ps1 -Version 0.15.1 -Server out/server -Out out/installer -CertificateFile "$env:RUNNER_TEMP\signing\nexagen-code-signing.pfx" -CertificatePassword $env:CERT_PASSWORD
+          $setup = 'out/installer/TausiPOS-Server-Setup-0.15.1.exe'
+          if ((Get-AuthenticodeSignature $setup).SignerCertificate.Thumbprint -ne $env:THUMB) { throw 'the installer is not signed' }
+          $p = Start-Process $setup -ArgumentList '/quiet','/log',"$env:RUNNER_TEMP\install.log",'DB=existing','SQLINSTANCE=.\SQLEXPRESS','SQLGRANTSYSTEM=1','PORT=5080' -PassThru
+          if (-not $p.WaitForExit(15 * 60 * 1000) -or $p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\install.log" -Tail 30; throw "install failed: $($p.ExitCode)" }
+          foreach ($store in 'Root', 'TrustedPublisher') {
+            if (-not (Test-Path "Cert:\LocalMachine\$store\$env:THUMB")) { throw "not in LocalMachine\$store" }
+          }
+          if ((Get-AuthenticodeSignature $setup).Status -ne 'Valid') { throw 'still not trusted after the install' }
+          $exe = Get-AuthenticodeSignature 'C:\Program Files\Tausi POS\Server\TausiServer.exe'
+          if ($exe.Status -ne 'Valid') { throw "TausiServer.exe: $($exe.Status)" }
+          (Invoke-RestMethod http://127.0.0.1:5080/health -TimeoutSec 30).status
+          # For the terminal's own check.
+          foreach ($store in 'Root', 'TrustedPublisher') { Remove-Item "Cert:\LocalMachine\$store\$env:THUMB" }
+      - name: Terminal installer
+        shell: pwsh
+        working-directory: terminal
+        run: |
+          npm ci
+          $sign = ../scripts/terminal-signing.ps1
+          if (-not $sign) { throw 'no sign command' }
+          npm run tauri build -- --config (@{ bundle = @{ windows = @{ signCommand = $sign } } } | ConvertTo-Json -Depth 5 -Compress)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $setup = (Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1).FullName
+          if ((Get-AuthenticodeSignature $setup).SignerCertificate.Thumbprint -ne $env:THUMB) { throw 'the installer is not signed' }
+          $p = Start-Process $setup -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "install failed: $($p.ExitCode)" }
+          foreach ($store in 'Root', 'TrustedPublisher') {
+            if (-not (Test-Path "Cert:\LocalMachine\$store\$env:THUMB")) { throw "not in LocalMachine\$store" }
+          }
+          Get-ChildItem 'C:\Program Files\Tausi POS\Terminal\*.exe' | ForEach-Object {
+            $s = Get-AuthenticodeSignature $_.FullName
+            "$($_.Name): $($s.Status)"
+            if ($s.Status -ne 'Valid') { throw "$($_.Name) is not signed" }
+          }

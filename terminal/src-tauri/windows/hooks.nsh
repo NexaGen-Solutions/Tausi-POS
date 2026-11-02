@@ -5,6 +5,8 @@
 ; - TausiPOS-Setup.exe /S SERVER=http://192.168.1.10:5080 pre-fills the server address: it is written
 ;   to C:\ProgramData\Tausi POS\Terminal\server.txt, which the app reads on its first start.
 
+!include "${__FILEDIR__}\trust-cert.nsh"
+
 !macro NSIS_HOOK_PREINSTALL
   ; The default folder is "Tausi POS"; the terminal has its own subfolder. A folder chosen by hand,
   ; or the one an earlier install used, is kept.
@@ -17,6 +19,9 @@
 !macro NSIS_HOOK_POSTINSTALL
   ; Every user: start the terminal at sign-in.
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "Tausi POS" '"$INSTDIR\${MAINBINARYNAME}.exe"'
+
+  ; A self-signed build: trust the certificate it is signed with.
+  !insertmacro TausiTrustCert
 
   ; SERVER=... on the command line: the address the first screen offers.
   ${GetParameters} $R0
