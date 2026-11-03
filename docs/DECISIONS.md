@@ -469,4 +469,5 @@ Owner's decisions and larger items for a later version. Not in 1.0.0.
 - **SQL Server TCP on loopback only:** the instance listens on all addresses, with the firewall closed to it; restricting it to 127.0.0.1 needs SQL Server Configuration Manager settings.
 - **`server/DevicesApiTests.cs`:** a stray copy of a test file in the server folder (not in any project); delete it.
 - **VM acceptance checks:** the owner runs Task 15's checklist on clean Windows 11 VMs (SQL Express download, reboot, terminal kiosk, restore on a third VM).
+- **SQL Server Express size:** Express stops a database at 10 GB, about 1.7 to 3.3 years for a bar doing 250 tickets a day (PERFORMANCE.md). Show the database size and a warning on Settings → System as it nears the limit, and consider rebuilding SQL Server's indexes now and then (its pages are 60–70% full).
 - **zip advisories:** drop the three ignores in `terminal/src-tauri/.cargo/audit.toml` once tauri-plugin-updater uses zip 9 or later.
