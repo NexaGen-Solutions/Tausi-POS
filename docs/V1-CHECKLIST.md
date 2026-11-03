@@ -1,19 +1,19 @@
 # Tausi POS v1 checklist
 
 Every requirement in `docs/design.md` and every wireframe in `docs/wireframes/tausi-pos-wireframes.pdf`,
-checked against the code for version 1.0.0 (task 16, 28 Oct 2026).
+checked against the code for version 1.0.0 (task 16, 28 Oct 2026; brought up to date on 3 Nov 2026).
 
 **Done** · **Done differently** (why, with the DECISIONS.md section) · **Later version** · **Missing**
 
-## For the owner to decide
+## Decided by the owner
 
-Larger items found missing or open. None is built; each needs your decision.
-
-| Item | From | What it would take |
+| Item | From | Decision |
 | --- | --- | --- |
-| **Opt-in support mode** | design.md, Product setup: "an opt-in support mode" | Needs a definition first: remote access for NexaGen (a remote-desktop tool, a VPN, or a support login on the admin site that the owner switches on for a set time). The "Send diagnostics" half is built (Settings → System → Support). A support login with an expiry is about 1–2 days. |
-| **Approvals on the admin site** | design.md, Roles and approvals; DECISIONS Follow-ups | Supervisors can approve only on a terminal (PIN pad or their counter's request list). Deciding requests from the admin site is about a day. |
-| **Real licence public key** | Product setup and licensing | The owner's signing key replaces the development key before selling; a one-line change plus a key ceremony (DECISIONS: Setup wizard and licences). |
+| **Opt-in support mode** | design.md, Product setup: "an opt-in support mode" | **Later version.** The "Send diagnostics" half is built (Settings → System → Support). |
+| **Approvals on the admin site** | design.md, Roles and approvals; DECISIONS Follow-ups | **Later version.** Supervisors approve on a terminal (PIN pad or their counter's request list). |
+| **Real licence public key** | Product setup and licensing | **Done.** `Licensing.ProductionPublicKey` is the owner's key; the tests' key is accepted only in Development. |
+| **Code signing** | Task 16 | **Done** with a self-signed NexaGen Solutions certificate (INSTALL.md section 12); a paid certificate needs only the two secrets replaced. |
+| **Licence text** | `LICENSE` | **Confirmed** by the owner (3 Nov 2026). |
 
 The ERPNext sync is **Later version (owner's decision)**: see "After v1" in DECISIONS.md.
 
@@ -126,7 +126,7 @@ multiple warehouses): **Later version**, as the design says. Stock has a Store a
 | One installer: service + `TausiPOS` database on SQL Server Express or PostgreSQL | Done | CI `installer-windows`, `linux-package` |
 | Fixed IP, firewall port, network power saving off | Done | INSTALL.md (power saving added in this task); the installer opens the port |
 | Terminal installer; pairing; starts with Windows; full screen; Windows 10/11 | Done | CI `terminal-windows`, `PairingTests` |
-| Nightly backup; second copy off the server | Done | `BackupFileTests`, `BackupApiTests`; the installer test now backs up and verifies as the service's own account |
+| Nightly backup; second copy off the server | Done | `BackupFileTests`, `BackupApiTests`; the installer test now backs up and verifies as the service's own account. Also a second backup each day at 18:00 (`BackupFileTests.Backups_during_the_day_are_kept_for_a_week`) |
 | Server updated after closing; terminal checks for updates on start and updates itself | Done | `UpdateTests` |
 | Running alongside SambaPOS with separate databases | Done | INSTALL.md; `docs/PILOT.md` |
 
@@ -138,7 +138,7 @@ multiple warehouses): **Later version**, as the design says. Stock has a Store a
 | Wizard: business, admin and PIN, terminals and printers with a test print, menu import (CSV or SambaPOS), opening stock, licence | Done | `SetupFlowTests`, `ImportTests` |
 | Licence tied to the business and a terminal count; grace period on expiry | Done | `LicenceTests.Expiry_warns_then_gives_grace_then_only_the_listed_features_wait_for_a_key` |
 | "Send diagnostics" bundling the logs | Done (this task) | Settings → System → Support; `DiagnosticsZipTests`, `SystemApiTests.Download_diagnostics_gives_a_zip_for_support_without_secrets_and_is_audited` |
-| Opt-in support mode | **Missing (owner to decide)** | See the top of this file |
+| Opt-in support mode | **Later version (owner's decision)** | See the top of this file |
 
 ### Development environment
 
@@ -203,6 +203,11 @@ Each is refused on an installed server (anything but Development), with a test:
 | `Tausi:Test:FailMigration` | **Done differently:** the installer's rollback test needs it in Production. It is off unless written into the settings file by hand, and only the test build's settings file has it. |
 
 `seed` without `--demo` (roles, permissions, ledger accounts) stays: it changes nothing an install hasn't already got.
+
+## Performance
+
+The full load test (a busy Friday at a four-counter bar, 6 hours) meets every target on PostgreSQL and
+SQL Server Express with nothing lost or doubled: [PERFORMANCE.md](PERFORMANCE.md).
 
 ## Failure tests
 

@@ -61,6 +61,32 @@ public static class Database
             size);
     }
 
+    /// <summary>The largest tables after the run; on SQL Server also how full their pages are and what's in LOB pages.</summary>
+    public static async Task<List<string>> LargestTables(Options o)
+    {
+        await using var db = Context(o);
+        var rows = o.Provider == "SqlServer"
+            ? await db.Database.SqlQueryRaw<TableSize>("""
+                SELECT TOP 10 t.name AS Name,
+                  CAST(SUM(a.used_pages) * 8 / 1024.0 AS decimal(12,1)) AS Mb,
+                  CAST(SUM(CASE WHEN a.type = 2 THEN a.used_pages ELSE 0 END) * 8 / 1024.0 AS decimal(12,1)) AS LobMb,
+                  (SELECT AVG(s.avg_page_space_used_in_percent) FROM sys.dm_db_index_physical_stats(DB_ID(), t.object_id, NULL, NULL, 'SAMPLED') s
+                   WHERE s.index_id IN (0, 1) AND s.alloc_unit_type_desc = 'IN_ROW_DATA') AS PagesFull
+                FROM sys.tables t
+                JOIN sys.partitions p ON p.object_id = t.object_id
+                JOIN sys.allocation_units a ON a.container_id = p.partition_id
+                GROUP BY t.object_id, t.name
+                ORDER BY SUM(a.used_pages) DESC
+                """).ToListAsync()
+            : await db.Database.SqlQueryRaw<TableSize>("""
+                SELECT relname AS "Name", CAST(pg_total_relation_size(relid) / 1048576.0 AS numeric(12,1)) AS "Mb",
+                  CAST(0 AS numeric(12,1)) AS "LobMb", CAST(NULL AS double precision) AS "PagesFull"
+                FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 10
+                """).ToListAsync();
+        return ["", "| Table | MB | Of which LOB | Pages full |", "| --- | --- | --- | --- |",
+            .. rows.Select(r => $"| {r.Name} | {r.Mb} | {r.LobMb} | {(r.PagesFull is { } f ? $"{f:0}%" : "")} |")];
+    }
+
     /// <summary>The server's working set, when it runs on this machine as TausiServer.</summary>
     public static long? ServerMemory()
     {
@@ -122,6 +148,8 @@ public sealed partial class PrintWatcher : IDisposable
 }
 
 public sealed record Target(string Name, string Metric, double Percentile, double LimitMs);
+
+public sealed record TableSize(string Name, decimal Mb, decimal LobMb, double? PagesFull);
 
 public sealed record ReportResult(bool Passed, string Markdown, IReadOnlyDictionary<string, double?> P95, IReadOnlyList<string> Problems);
 

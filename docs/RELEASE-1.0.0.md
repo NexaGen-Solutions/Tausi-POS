@@ -47,17 +47,19 @@ These are not in 1.0.0 (see "After v1" in `docs/DECISIONS.md`):
 - **M-Pesa STK push**, card-terminal integration, phone ordering, kitchen display screens.
 - **Refunds and un-settling** a ticket settled by mistake.
 - **Approvals on the admin site** (they happen on the terminals) and an **opt-in remote support mode**:
-  waiting for the owner's decision (`docs/V1-CHECKLIST.md`).
+  a later version, by the owner's decision.
 - **Payroll, a balance sheet, multiple warehouses** (the store and the bar are supported).
 - Printing to Windows-shared and USB printers is tested in CI on Windows, but has to be confirmed on each
   site's printers during the pilot.
 
 ## Before selling
 
-- Replace the development **licence public key** with the owner's real key (DECISIONS.md: Setup wizard
-  and licences). Keys made with the development key stop working then; pilot sites get a new key.
-- Sign the installers: `docs/INSTALL.md`, section 12. With the self-signed certificate the first install on each
-  PC still warns; a paid certificate removes the "unknown publisher" warning.
+- The **licence public key** is the owner's real key; licence keys are made with its private key.
+- The installers are **signed** by NexaGen Solutions (`docs/INSTALL.md`, section 12). With the self-signed
+  certificate the first install on each PC still warns; a paid certificate removes the "unknown publisher"
+  warning.
+- After publishing the release, upload `updates.json` and the installers to the update site
+  (`https://updates.nexagensolutions.com/tausi`), the installers first.
 
 ## Upgrading from pilot builds
 

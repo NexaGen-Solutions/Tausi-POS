@@ -2,7 +2,7 @@
 
 Tausi POS by NexaGen Solutions. Each release's changes, newest first (built by the release workflow from the commit messages).
 
-## 1.0.0 (2026-10-28)
+## 1.0.0 (November 2026)
 
 The first release of Tausi POS: everything a bar or restaurant needs to run service, cash, stock and the
 books on its own server, with no internet needed.
@@ -49,8 +49,9 @@ books on its own server, with no internet needed.
 - A first-run **setup wizard**: business details, the first admin, terminals and printers, the menu,
   opening stock and the licence.
 - **Installers** for the server (Windows, with SQL Server Express or PostgreSQL; or Linux) and the
-  counter terminals (Windows 10 and 11), with a **Tausi POS Admin** shortcut on the server PC.
-- **Nightly backups**, checked after each run and copied to a second place, with restore from the
-  admin site. Updates install after closing time; terminals update themselves.
+  counter terminals (Windows 10 and 11), signed by NexaGen Solutions, with a **Tausi POS Admin**
+  shortcut on the server PC.
+- **Backups every night and again at 18:00**, checked after each run and copied to a second place,
+  with restore from the admin site. Updates install after closing time; terminals update themselves.
 - **Download diagnostics** for NexaGen support.
 - Licence keys with a trial and a grace period, so service never stops.
