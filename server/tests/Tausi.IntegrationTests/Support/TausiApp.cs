@@ -104,6 +104,8 @@ public class TausiApp : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Tausi:Backups:PgDump", PgTools.Dump);
         builder.UseSetting("Tausi:Backups:PgRestore", PgTools.Restore);
         builder.UseSetting("Tausi:Updates:TerminalFolder", Path.Combine(_dataDir, "terminal-updates"));
+        // Never NexaGen's real update site: nothing listens on port 9, so a check fails the same way everywhere.
+        builder.UseSetting("Tausi:Updates:FeedUrl", "http://127.0.0.1:9/updates.json");
         Settings(builder);
         // The tests print to File printers, which an installed server refuses (DevelopmentHost).
         builder.ConfigureTestServices(services => services.AddSingleton(new Tausi.Application.Common.DevelopmentHost(IsDevelopment: true)));
