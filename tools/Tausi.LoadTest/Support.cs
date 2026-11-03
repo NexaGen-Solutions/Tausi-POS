@@ -43,8 +43,10 @@ public static class Database
     {
         await using var db = Context(o);
         long Jobs(PrintJobKind kind) => db.PrintJobs.LongCount(j => j.Kind == kind);
+        // SQL Server: the pages the data uses, not the files' size (the log and free space would count, and
+        // SQL Express's 10 GB limit is on the data).
         var size = o.Provider == "SqlServer"
-            ? (await db.Database.SqlQueryRaw<long>("SELECT CAST(SUM(CAST(size AS bigint)) * 8192 AS bigint) AS [Value] FROM sys.database_files").ToListAsync()).Single()
+            ? (await db.Database.SqlQueryRaw<long>("SELECT CAST(SUM(CAST(used_pages AS bigint)) * 8192 AS bigint) AS [Value] FROM sys.allocation_units").ToListAsync()).Single()
             : (await db.Database.SqlQueryRaw<long>("SELECT pg_database_size(current_database()) AS \"Value\"").ToListAsync()).Single();
         return new Snapshot(
             await db.Tickets.LongCountAsync(),
