@@ -43,8 +43,10 @@ public static class Database
     {
         await using var db = Context(o);
         long Jobs(PrintJobKind kind) => db.PrintJobs.LongCount(j => j.Kind == kind);
+        // SQL Server: the pages the data uses, not the files' size (the log and free space would count, and
+        // SQL Express's 10 GB limit is on the data).
         var size = o.Provider == "SqlServer"
-            ? (await db.Database.SqlQueryRaw<long>("SELECT CAST(SUM(CAST(size AS bigint)) * 8192 AS bigint) AS [Value] FROM sys.database_files").ToListAsync()).Single()
+            ? (await db.Database.SqlQueryRaw<long>("SELECT CAST(SUM(CAST(used_pages AS bigint)) * 8192 AS bigint) AS [Value] FROM sys.allocation_units").ToListAsync()).Single()
             : (await db.Database.SqlQueryRaw<long>("SELECT pg_database_size(current_database()) AS \"Value\"").ToListAsync()).Single();
         return new Snapshot(
             await db.Tickets.LongCountAsync(),
@@ -57,6 +59,32 @@ public static class Database
             await db.VoidLogs.LongCountAsync(),
             await db.JournalEntries.LongCountAsync(e => e.SourceType == "Sale"),
             size);
+    }
+
+    /// <summary>The largest tables after the run; on SQL Server also how full their pages are and what's in LOB pages.</summary>
+    public static async Task<List<string>> LargestTables(Options o)
+    {
+        await using var db = Context(o);
+        var rows = o.Provider == "SqlServer"
+            ? await db.Database.SqlQueryRaw<TableSize>("""
+                SELECT TOP 10 t.name AS Name,
+                  CAST(SUM(a.used_pages) * 8 / 1024.0 AS decimal(12,1)) AS Mb,
+                  CAST(SUM(CASE WHEN a.type = 2 THEN a.used_pages ELSE 0 END) * 8 / 1024.0 AS decimal(12,1)) AS LobMb,
+                  (SELECT AVG(s.avg_page_space_used_in_percent) FROM sys.dm_db_index_physical_stats(DB_ID(), t.object_id, NULL, NULL, 'SAMPLED') s
+                   WHERE s.index_id IN (0, 1) AND s.alloc_unit_type_desc = 'IN_ROW_DATA') AS PagesFull
+                FROM sys.tables t
+                JOIN sys.partitions p ON p.object_id = t.object_id
+                JOIN sys.allocation_units a ON a.container_id = p.partition_id
+                GROUP BY t.object_id, t.name
+                ORDER BY SUM(a.used_pages) DESC
+                """).ToListAsync()
+            : await db.Database.SqlQueryRaw<TableSize>("""
+                SELECT relname AS "Name", CAST(pg_total_relation_size(relid) / 1048576.0 AS numeric(12,1)) AS "Mb",
+                  CAST(0 AS numeric(12,1)) AS "LobMb", CAST(NULL AS double precision) AS "PagesFull"
+                FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 10
+                """).ToListAsync();
+        return ["", "| Table | MB | Of which LOB | Pages full |", "| --- | --- | --- | --- |",
+            .. rows.Select(r => $"| {r.Name} | {r.Mb} | {r.LobMb} | {(r.PagesFull is { } f ? $"{f:0}%" : "")} |")];
     }
 
     /// <summary>The server's working set, when it runs on this machine as TausiServer.</summary>
@@ -120,6 +148,8 @@ public sealed partial class PrintWatcher : IDisposable
 }
 
 public sealed record Target(string Name, string Metric, double Percentile, double LimitMs);
+
+public sealed record TableSize(string Name, decimal Mb, decimal LobMb, double? PagesFull);
 
 public sealed record ReportResult(bool Passed, string Markdown, IReadOnlyDictionary<string, double?> P95, IReadOnlyList<string> Problems);
 

@@ -326,5 +326,6 @@ var after = await Database.Snapshot(options);
 var check = await admin.Get("/api/admin/system/check");
 var result = Report.Build(options, stats, before, after, check, memory, sw.Elapsed);
 Console.WriteLine(result.Markdown);
+Console.WriteLine(string.Join(Environment.NewLine, await Database.LargestTables(options)));
 if (options.Out is { } outFile) File.WriteAllText(outFile, JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
 return result.Passed ? 0 : 1;

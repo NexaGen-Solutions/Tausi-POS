@@ -637,9 +637,9 @@ dotnet run -- --server http://localhost:5080 --admin-password "$TAUSI_ADMIN_PASS
 
 `--hours 6 --speed 3` is the full run (2 real hours); `--hours 0.1 --speed 30` takes a minute. It adds
 staff and tickets, so run it on a database seeded for it. It prints the measures, the targets and any
-difference, and exits 1 if a target is missed or anything differs. CI runs a short one on every push and
-the full one nightly on PostgreSQL and SQL Server (`load-test.yml`, also by hand from the Actions tab);
-the numbers are in `docs/PERFORMANCE.md`.
+difference, and exits 1 if a target is missed or anything differs. CI runs a short one on every push;
+the full one on PostgreSQL and SQL Server runs by hand from the Actions tab (`load-test.yml`). The
+numbers are in `docs/PERFORMANCE.md`.
 
 ## 5. SQL Server
 
