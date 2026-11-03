@@ -2,7 +2,7 @@
 
 Tausi POS by NexaGen Solutions. Each release's changes, newest first (built by the release workflow from the commit messages).
 
-## 1.0.0 (November 2026)
+## 1.0.0 (2026-11-03)
 
 The first release of Tausi POS: everything a bar or restaurant needs to run service, cash, stock and the
 books on its own server, with no internet needed.
