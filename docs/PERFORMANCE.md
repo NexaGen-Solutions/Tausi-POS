@@ -50,8 +50,8 @@ From 360-ticket runs that list each table (run 41594948958, 3 Nov 2026):
 | **What stays, per 1,000 tickets** | **about 18 MB** | **about 34 MB** |
 
 SQL Server counts only the pages its data uses (not the log or free space). Its pages are about 60–70%
-full, because ids made in time order land all over SQL Server's index order; text also takes 2 bytes a
-character there.
+full, probably because ids made in time order land all over SQL Server's index order (not yet proved);
+text also takes 2 bytes a character there.
 
 **SQL Server Express stops a database at 10 GB.** At about 34 MB per 1,000 tickets (65 MB if print jobs
 are counted in full), a bar doing 250 tickets a day reaches it in about 1.7 to 3.3 years, one doing 120 a
