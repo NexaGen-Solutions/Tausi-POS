@@ -458,6 +458,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateOnly?>("OldBusinessDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid?>("ReversedByEntryId")
                         .HasColumnType("uniqueidentifier");
 

@@ -457,6 +457,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateOnly?>("OldBusinessDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid?>("ReversedByEntryId")
                         .HasColumnType("uuid");
 

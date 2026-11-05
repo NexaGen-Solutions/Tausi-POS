@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Tausi.Application.Money;
 using Tausi.IntegrationTests.Support;
 
@@ -64,20 +65,36 @@ public class MoneyApiTests(TausiApp app)
     }
 
     [Fact]
-    public async Task The_back_fill_dates_existing_entries_on_postgresql()
+    public async Task The_back_fill_dates_existing_entries_and_moves_1_0_0_entries_to_calendar_dates_on_postgresql()
     {
-        var id = Guid.NewGuid();
+        var (old, served) = (Guid.NewGuid(), Guid.NewGuid());
+        var happened = DateTimeOffset.UtcNow.AddDays(-1);
+        var wrongDate = DateOnly.FromDateTime(happened.UtcDateTime).AddDays(-2);
         app.Db(db =>
         {
-            db.JournalEntries.Add(new Domain.Ledger.JournalEntry { Id = id, Date = DateTimeOffset.UtcNow.AddDays(-3), Memo = "Before task 12", SourceType = "Test", CreatedAt = DateTimeOffset.UtcNow });
+            var period = db.WorkPeriods.Select(p => p.Id).First();
+            db.JournalEntries.Add(new Domain.Ledger.JournalEntry { Id = old, Date = DateTimeOffset.UtcNow.AddDays(-3), Memo = "Before task 12", SourceType = "Test", CreatedAt = DateTimeOffset.UtcNow });
+            // As version 1.0.0 dated it: its work period's opening date, kept by the migration in OldBusinessDate.
+            db.JournalEntries.Add(new Domain.Ledger.JournalEntry
+            {
+                Id = served, Date = happened, Memo = "Sale", SourceType = Application.Settling.SalePosting.SourceType, SourceId = Guid.NewGuid().ToString(),
+                CreatedAt = happened, WorkPeriodId = period, BusinessDate = wrongDate, OldBusinessDate = wrongDate,
+            });
             db.SaveChanges();
             return 0;
         });
 
-        app.Db(db => new LedgerBackfill(db).Run(CancellationToken.None).GetAwaiter().GetResult());
+        for (var run = 0; run < 2; run++)
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<LedgerBackfill>().Run(CancellationToken.None);
+        }
 
-        app.Db(db => db.JournalEntries.Single(e => e.Id == id).BusinessDate).Should().NotBeNull();
+        app.Db(db => db.JournalEntries.Single(e => e.Id == old).BusinessDate).Should().NotBeNull();
         app.Db(db => db.JournalEntries.Count(e => e.BusinessDate == null)).Should().Be(0);
+        var zone = app.Db(db => BusinessDates.Zone(db, CancellationToken.None).GetAwaiter().GetResult());
+        app.Db(db => db.JournalEntries.Single(e => e.Id == served).BusinessDate).Should().Be(BusinessDates.Of(happened, zone));
+        app.Db(db => db.JournalEntries.Single(e => e.Id == served).OldBusinessDate).Should().Be(wrongDate);
     }
     private async Task<HttpClient> SignedInAs(string user, string role, string password)
     {

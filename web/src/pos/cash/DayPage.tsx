@@ -25,8 +25,22 @@ interface DaySummary {
   rounding: number;
   shiftDifferences: { cashier: string; terminal: string; difference: number }[];
   payOuts: number;
-  /** The day's profit from the ledger (cash book daily summary). */
+  /** The day's profit from the ledger (cash book daily summary); null when the work period spans several dates. */
   profit?: { net: number } | null;
+  /** A work period over several dates: its sales (by date served) and takings (by date paid) per date. */
+  dates?: { date: string; items: number; sales: number; vat: number; taken: number }[];
+  /** "This work period covered 3 days (Sun 2 – Tue 4 Nov)."; null for one date. */
+  spans?: string | null;
+}
+
+/** "Sun 2 Nov" from "2026-11-02". */
+function shortDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
 interface DayStatus {
@@ -201,6 +215,11 @@ export function DayPage() {
               <p className="cash-note">{t('pos.day.summaryAfter')}</p>
             ) : (
               <>
+                {summary.spans && (
+                  <p className="cash-note cash-note--warning" role="note">
+                    {summary.spans}
+                  </p>
+                )}
                 <Line label={t('pos.day.tickets')} value={String(summary.tickets)} />
                 <Line label={t('pos.day.gross')} value={formatAmount(summary.gross)} />
                 <Line
@@ -238,6 +257,18 @@ export function DayPage() {
                   />
                 ))}
                 <Line label={t('pos.day.payOuts')} value={formatAmount(summary.payOuts)} />
+                {summary.dates && summary.dates.length > 1 && (
+                  <>
+                    <h3 className="cash-subtitle">{t('pos.day.byDate')}</h3>
+                    {summary.dates.map((d) => (
+                      <Line
+                        key={d.date}
+                        label={shortDate(d.date)}
+                        value={`${formatAmount(d.sales)} · ${formatAmount(d.taken)}`}
+                      />
+                    ))}
+                  </>
+                )}
                 {summary.profit && (
                   <div className="cash-row cash-row--total">
                     <span>{t('pos.day.netForDay')}</span>

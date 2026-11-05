@@ -79,76 +79,90 @@ function Check({
   );
 }
 
-/** The period (a work period, or business dates with quick picks) and the filters this report takes. */
+/**
+ * The period: dates first (Today by default, the quick picks, or picked dates); a work period as a
+ * second choice, for the Z report and cash-ups, since a work period can span several dates.
+ */
 export function ReportFilterBar({ definition, options, filters, onChange }: Props) {
   const uses = (filter: string) => definition.filters.includes(filter);
   const set = (change: Partial<ReportFilters>) => onChange({ ...filters, ...change });
   const id = (value: string) => value || undefined;
-  const ranged = filters.from !== undefined || filters.quick !== undefined;
+  const byPeriod = filters.workPeriodId !== undefined;
   const periods = options?.periods ?? [];
   const period =
     periods.find((p) => p.id === filters.workPeriodId) ?? periods.find((p) => p.open) ?? periods[0];
-  const openShown = ranged || !!period?.open;
+  const openShown = !byPeriod || !!period?.open;
+  const datesValue = byPeriod
+    ? 'period'
+    : (filters.quick ?? (filters.from !== undefined ? '' : 'Today'));
 
   return (
     <div className="report-filters">
       {definition.usesPeriod && (
         <>
           <SelectField
-            label={t('admin.reports.period')}
-            value={ranged ? 'range' : (filters.workPeriodId ?? '')}
-            onChange={(e) =>
-              e.target.value === 'range'
-                ? set({ workPeriodId: undefined, quick: 'Today', from: undefined, to: undefined })
-                : set({
-                    workPeriodId: id(e.target.value),
-                    quick: undefined,
-                    from: undefined,
-                    to: undefined,
-                  })
-            }
+            label={t('admin.reports.dates')}
+            value={datesValue}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === 'period')
+                set({
+                  workPeriodId: period?.id ?? '',
+                  quick: undefined,
+                  from: undefined,
+                  to: undefined,
+                });
+              else if (value === '')
+                set({
+                  workPeriodId: undefined,
+                  quick: undefined,
+                  from: todayIso(),
+                  to: todayIso(),
+                });
+              else
+                set({
+                  workPeriodId: undefined,
+                  quick: value as QuickRange,
+                  from: undefined,
+                  to: undefined,
+                });
+            }}
             options={[
-              { value: '', label: t('admin.reports.currentPeriod') },
-              ...periods.map((p) => ({
-                value: p.id,
-                label: `${formatBusinessDate(p.date)}${p.open ? ` ${t('admin.reports.openSuffix')}` : ''}`,
-              })),
-              { value: 'range', label: t('admin.reports.dateRange') },
+              ...quickRanges.map((q) => ({ value: q, label: t(`admin.reports.quick.${q}`) })),
+              { value: '', label: t('admin.reports.chooseDates') },
+              { value: 'period', label: t('admin.reports.byPeriod') },
             ]}
           />
-          {ranged && (
+          {!byPeriod && filters.quick === undefined && filters.from !== undefined && (
+            <>
+              <Field
+                label={t('admin.reports.from')}
+                type="date"
+                value={filters.from ?? ''}
+                max={todayIso()}
+                onChange={(e) => e.target.value && set({ from: e.target.value })}
+              />
+              <Field
+                label={t('admin.reports.to')}
+                type="date"
+                value={filters.to ?? ''}
+                max={todayIso()}
+                onChange={(e) => e.target.value && set({ to: e.target.value })}
+              />
+            </>
+          )}
+          {byPeriod && (
             <>
               <SelectField
-                label={t('admin.reports.dates')}
-                value={filters.quick ?? ''}
-                onChange={(e) =>
-                  e.target.value
-                    ? set({ quick: e.target.value as QuickRange, from: undefined, to: undefined })
-                    : set({ quick: undefined, from: todayIso(), to: todayIso() })
-                }
-                options={[
-                  ...quickRanges.map((q) => ({ value: q, label: t(`admin.reports.quick.${q}`) })),
-                  { value: '', label: t('admin.reports.chooseDates') },
-                ]}
+                label={t('admin.reports.period')}
+                value={filters.workPeriodId ?? ''}
+                onChange={(e) => set({ workPeriodId: e.target.value })}
+                options={periods.map((p) => ({
+                  value: p.id,
+                  label: `${formatBusinessDate(p.date)}${p.open ? ` ${t('admin.reports.openSuffix')}` : ''}`,
+                }))}
               />
-              {filters.quick === undefined && (
-                <>
-                  <Field
-                    label={t('admin.reports.from')}
-                    type="date"
-                    value={filters.from ?? ''}
-                    max={todayIso()}
-                    onChange={(e) => e.target.value && set({ from: e.target.value })}
-                  />
-                  <Field
-                    label={t('admin.reports.to')}
-                    type="date"
-                    value={filters.to ?? ''}
-                    max={todayIso()}
-                    onChange={(e) => e.target.value && set({ to: e.target.value })}
-                  />
-                </>
-              )}
+              <p className="report-filters__note">{t('admin.reports.periodNote')}</p>
             </>
           )}
         </>
