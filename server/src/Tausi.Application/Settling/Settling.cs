@@ -242,8 +242,8 @@ public sealed class SettleTicket(
         var payments = ticket.Payments.Where(p => p.Counts).OrderBy(p => p.TakenAt).ToList();
         foreach (var payment in payments) payment.Status = PaymentStatus.Final;
 
-        var draft = SalePosting.Draft(ticket, payments, day.Id, now);
-        if (draft is not null) await ledger.Post(draft, ct);
+        var zone = await Money.BusinessDates.Zone(db, ct);
+        foreach (var draft in SalePosting.Drafts(ticket, payments, day.Id, now, zone)) await ledger.Post(draft, ct);
 
         var receipt = await prints.Receipt(ticket, edit.TerminalId, copy: false, ct);
         var expired = await ApprovalExpiry.ForTickets(db, [ticket.Id], ApprovalExpiry.TicketClosed, now, ct);
@@ -317,37 +317,67 @@ public static class SalePosting
 {
     public const string SourceType = "Sale";
 
-    public static JournalEntryDraft? Draft(Ticket ticket, IReadOnlyList<Payment> payments, Guid workPeriodId, DateTimeOffset now, Guid? shiftId = null)
+    /// <summary>The date a line belongs to: when it was served (printed), in the business's time zone.</summary>
+    public static DateOnly LineDate(OrderLine line, TimeZoneInfo zone) => Money.BusinessDates.Of(line.PrintedAt ?? line.AddedAt, zone);
+
+    /// <summary>
+    /// A settled ticket's entries. Items count on the date they were served and the payment on the date
+    /// it was taken: items served on an earlier date get their own entry on that date (Dr Unsettled
+    /// sales, Cr Sales and VAT), which the payment's entry clears (Cr Unsettled sales). Each entry balances.
+    /// </summary>
+    public static IReadOnlyList<JournalEntryDraft> Drafts(
+        Ticket ticket, IReadOnlyList<Payment> payments, Guid workPeriodId, DateTimeOffset now, TimeZoneInfo zone, Guid? shiftId = null)
     {
         var memo = $"Receipt {ticket.ReceiptNumber} · Ticket #{ticket.Number}";
-        var lines = new List<JournalLineDraft>();
-        void Debit(string account, decimal amount, string text) { if (amount > 0) lines.Add(JournalLineDraft.Dr(account, amount, text)); }
-        void Credit(string account, decimal amount, string text) { if (amount > 0) lines.Add(JournalLineDraft.Cr(account, amount, text)); }
+        var paidOn = Money.BusinessDates.Of(now, zone);
+        var shift = shiftId ?? ticket.SettledShiftId;
+        var drafts = new List<JournalEntryDraft>();
+        var counted = ticket.Lines.Where(l => l.Counts).ToList();
+
+        var earlier = counted.Select(l => LineDate(l, zone)).Where(d => d != paidOn).Distinct().Order().ToList();
+        decimal unsettled = 0;
+        foreach (var date in earlier)
+        {
+            var lines = new List<JournalLineDraft>();
+            var served = counted.Where(l => LineDate(l, zone) == date).ToList();
+            SalesAndVat(served, lines);
+            var total = lines.Sum(l => l.Credit);
+            if (total == 0) continue;
+            lines.Insert(0, JournalLineDraft.Dr(LedgerAccountCodes.UnsettledSales, total, "Served, not yet paid"));
+            unsettled += total;
+            drafts.Add(new JournalEntryDraft(now, $"{memo} · served {date:ddd d MMM}", SourceType, ticket.Id.ToString(), lines,
+                workPeriodId, shift, date));
+        }
+
+        var main = new List<JournalLineDraft>();
+        void Debit(string account, decimal amount, string text) { if (amount > 0) main.Add(JournalLineDraft.Dr(account, amount, text)); }
+        void Credit(string account, decimal amount, string text) { if (amount > 0) main.Add(JournalLineDraft.Cr(account, amount, text)); }
 
         Debit(LedgerAccountCodes.Cash, payments.Where(p => p.Type == PaymentType.Cash).Sum(p => p.Amount), "Cash");
         Debit(LedgerAccountCodes.MPesa, payments.Where(p => p.Type == PaymentType.Mpesa).Sum(p => p.Amount), "M-Pesa");
         Debit(LedgerAccountCodes.CardClearing, payments.Where(p => p.Type == PaymentType.Card).Sum(p => p.Amount), "Card");
-
-        // Sales and VAT per rate (exempt items apart), from the amounts stored on each line.
-        foreach (var rate in ticket.Lines.Where(l => l.Counts).GroupBy(l => (l.VatRate, l.VatExempt)).OrderByDescending(g => g.Key.VatRate))
-        {
-            var label = rate.Key.VatExempt ? "VAT exempt" : $"VAT {rate.Key.VatRate:0.##}%";
-            Credit(LedgerAccountCodes.Sales, rate.Sum(l => l.Net), $"Sales · {label}");
-            Credit(LedgerAccountCodes.VatPayable, rate.Sum(l => l.Vat), label);
-        }
+        SalesAndVat(counted.Where(l => LineDate(l, zone) == paidOn).ToList(), main);
+        Credit(LedgerAccountCodes.UnsettledSales, unsettled, "Served earlier, paid now");
 
         // Rounding up (customer paid more) is income; rounding down is a cost.
         Credit(LedgerAccountCodes.Rounding, ticket.RoundingAmount, "Rounding");
         Debit(LedgerAccountCodes.Rounding, -ticket.RoundingAmount, "Rounding");
 
-        CostOfSales(ticket, lines);
-        if (lines.Count == 0) return null; // Nothing to post (everything was gifted).
-        return new JournalEntryDraft(now, memo, SourceType, ticket.Id.ToString(), lines, workPeriodId, shiftId ?? ticket.SettledShiftId);
+        if (main.Count > 0) drafts.Add(new JournalEntryDraft(now, memo, SourceType, ticket.Id.ToString(), main, workPeriodId, shift, paidOn));
+        return drafts; // None when everything was gifted.
     }
 
-    /// <summary>Task 11: debit Cost of sales and credit Stock from the recipes. Nothing yet.</summary>
-    private static void CostOfSales(Ticket ticket, List<JournalLineDraft> lines)
+    /// <summary>Sales and VAT per rate (exempt items apart), from the amounts stored on each line.</summary>
+    public static void SalesAndVat(IReadOnlyList<OrderLine> served, List<JournalLineDraft> lines)
     {
+        foreach (var rate in served.GroupBy(l => (l.VatRate, l.VatExempt)).OrderByDescending(g => g.Key.VatRate))
+        {
+            var label = rate.Key.VatExempt ? "VAT exempt" : $"VAT {rate.Key.VatRate:0.##}%";
+            var net = rate.Sum(l => l.Net);
+            var vat = rate.Sum(l => l.Vat);
+            if (net > 0) lines.Add(JournalLineDraft.Cr(LedgerAccountCodes.Sales, net, $"Sales · {label}"));
+            if (vat > 0) lines.Add(JournalLineDraft.Cr(LedgerAccountCodes.VatPayable, vat, label));
+        }
     }
 }
 

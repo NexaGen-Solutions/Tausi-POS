@@ -496,7 +496,7 @@ public class ReportsTests : StockTestBase
     private static List<ReportRow> Rows(ReportResult result, int table = 0) => result.Tables[table].Groups.SelectMany(g => g.Rows).ToList();
 
     [Fact]
-    public async Task A_work_period_past_midnight_stays_on_its_date_in_a_date_range()
+    public async Task A_sale_after_midnight_counts_on_the_new_date_though_its_work_period_opened_the_day_before()
     {
         await F.SetSetting(SettingsRegistry.BusinessTimeZoneKey, "Africa/Nairobi");
         F.Clock.Advance(TimeSpan.FromHours(4)); // 01:00 on the 21st in Nairobi; the day opened on the 20th
@@ -504,10 +504,10 @@ public class ReportsTests : StockTestBase
         var ticket = await Printed("7", ("Tusker Lager", 1));
         await AsAdmin();
 
-        var friday = await Run("tickets", new ReportFilters { From = Today, To = Today });
-        friday.Tables[0].Groups[0].Rows.Should().ContainSingle().Which.TicketId.Should().Be(ticket.Id);
-        (await Run("tickets", new ReportFilters { From = Today.AddDays(1), To = Today.AddDays(1) })).IsEmpty.Should().BeTrue();
-        friday.Period.Should().Be("Tue 20 Oct 2026");
+        var wednesday = await Run("tickets", new ReportFilters { From = Today.AddDays(1), To = Today.AddDays(1) });
+        wednesday.Tables[0].Groups[0].Rows.Should().ContainSingle().Which.TicketId.Should().Be(ticket.Id);
+        (await Run("tickets", new ReportFilters { From = Today, To = Today })).IsEmpty.Should().BeTrue();
+        wednesday.Period.Should().Be("Wed 21 Oct 2026");
     }
 
     [Theory]

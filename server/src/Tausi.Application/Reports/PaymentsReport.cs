@@ -19,10 +19,10 @@ public sealed class PaymentsReport : ReportBase
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
         var f = c.Filters;
-        var ids = c.Period.PeriodIds;
+        var (start, end) = (c.Period.Start, c.Period.End);
         var payments = await (from p in c.Db.Payments.AsNoTracking()
                               join k in c.Db.Tickets.AsNoTracking() on p.TicketId equals k.Id
-                              where ids.Contains(p.WorkPeriodId) && p.Status == PaymentStatus.Final
+                              where p.TakenAt >= start && p.TakenAt < end && p.Status == PaymentStatus.Final
                               select new { p.Type, p.Amount, p.MpesaCode, p.TakenByUserId, p.BroughtByUserId, p.ShiftId, p.TakenAt, TicketId = k.Id, k.Number })
             .ToListAsync(ct);
         if (f.CashierId is { } cashierFilter) payments = payments.Where(p => p.TakenByUserId == cashierFilter).ToList();
@@ -30,7 +30,7 @@ public sealed class PaymentsReport : ReportBase
         var typed = f.PaymentType is { } type ? payments.Where(p => p.Type == type).ToList() : payments;
 
         // Per cashier shift.
-        var shifts = await c.Db.CashierShifts.AsNoTracking().Where(s => ids.Contains(s.WorkPeriodId))
+        var shifts = await c.Db.CashierShifts.AsNoTracking().Where(s => s.OpenedAt < end && (s.ClosedAt == null || s.ClosedAt > start))
             .Where(s => f.CashierId == null || s.CashierUserId == f.CashierId).OrderBy(s => s.OpenedAt).ToListAsync(ct);
         var shiftIds = shifts.Select(s => s.Id).ToList();
         var movements = await c.Db.DrawerMovements.AsNoTracking().Where(m => shiftIds.Contains(m.ShiftId))
@@ -63,7 +63,7 @@ public sealed class PaymentsReport : ReportBase
 
         // Per waiter: what they brought in, and their bills still open.
         var openBills = await c.Db.Tickets.AsNoTracking()
-            .Where(k => ids.Contains(k.WorkPeriodId) && k.Status == TicketStatus.Open && (f.WaiterId == null || k.OpenedByUserId == f.WaiterId))
+            .Where(k => k.OpenedAt < end && k.Status == TicketStatus.Open && (f.WaiterId == null || k.OpenedByUserId == f.WaiterId))
             .Select(k => new
             {
                 k.Id, k.Number, k.OpenedByUserId, k.OpenedAt, Table = k.Table != null ? k.Table.Name : k.CustomerName,

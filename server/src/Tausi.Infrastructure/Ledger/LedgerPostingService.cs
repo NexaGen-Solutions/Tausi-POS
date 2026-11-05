@@ -24,11 +24,9 @@ public sealed class LedgerPostingService(ITausiDb db, ICurrentSession session, T
         if (missing.Count > 0)
             throw new DomainException($"Unknown or inactive ledger account: {string.Join(", ", missing)}.");
 
-        // The business date: as chosen (admin forms), else the work period's, else the open day's, else today.
-        var date = draft.BusinessDate
-            ?? (draft.WorkPeriodId is { } period ? await BusinessDates.OfPeriod(db, period, ct) : null)
-            ?? await db.WorkPeriods.AsNoTracking().Where(p => p.IsOpen).Select(p => p.BusinessDate).FirstOrDefaultAsync(ct)
-            ?? await BusinessDates.Today(db, clock, ct);
+        // The business date: as chosen (admin forms and sales served on another day), else the calendar
+        // date it happened, whichever work period is open.
+        var date = draft.BusinessDate ?? BusinessDates.Of(draft.Date, await BusinessDates.Zone(db, ct));
         var late = await BusinessDates.IsClosed(db, date, ct);
 
         var entry = new JournalEntry

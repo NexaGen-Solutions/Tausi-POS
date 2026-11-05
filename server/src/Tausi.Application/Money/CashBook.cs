@@ -262,11 +262,12 @@ public static class Summaries
     /// <summary>Menu items sold that day with no recipe: their cost of sales is missing.</summary>
     public static async Task<IReadOnlyList<string>> NoRecipe(ITausiDb db, DateOnly date, CancellationToken ct)
     {
-        var periods = await BusinessDates.PeriodsOn(db, date, ct);
+        var zone = await BusinessDates.Zone(db, ct);
+        var (start, end) = (BusinessDates.Midnight(date, zone), BusinessDates.Midnight(date.AddDays(1), zone));
         var withRecipe = db.RecipeLines.Select(r => r.MenuItemId);
         return await db.OrderLines.AsNoTracking()
-            .Where(l => l.Status == OrderLineStatus.Printed && l.MenuItemId != null && !withRecipe.Contains(l.MenuItemId.Value))
-            .Join(db.Tickets.Where(k => periods.Contains(k.WorkPeriodId)), l => l.TicketId, k => k.Id, (l, k) => l.Name)
-            .Distinct().OrderBy(n => n).ToListAsync(ct);
+            .Where(l => l.Status == OrderLineStatus.Printed && l.PrintedAt >= start && l.PrintedAt < end
+                        && l.MenuItemId != null && !withRecipe.Contains(l.MenuItemId.Value))
+            .Select(l => l.Name).Distinct().OrderBy(n => n).ToListAsync(ct);
     }
 }

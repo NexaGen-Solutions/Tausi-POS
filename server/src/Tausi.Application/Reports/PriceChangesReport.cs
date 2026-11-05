@@ -21,7 +21,7 @@ public sealed class PriceChangesReport : ReportBase
         if (f.Kind is null or "" or "Menu")
         {
             var menu = await (from p in c.Db.PriceChangeLogs.AsNoTracking()
-                              where p.Kind == PriceChangeKind.Menu && p.At >= c.Period.Start && p.At <= c.Period.End
+                              where p.Kind == PriceChangeKind.Menu && p.At >= c.Period.Start && p.At < c.Period.End
                                     && (f.UserId == null || p.ChangedByUserId == f.UserId)
                               orderby p.At
                               select new
@@ -41,11 +41,11 @@ public sealed class PriceChangesReport : ReportBase
         }
         if (f.Kind is null or "" or "Ticket")
         {
-            var ids = c.Period.PeriodIds;
+            var (start, end) = (c.Period.Start, c.Period.End);
             var onTickets = await (from p in c.Db.PriceChangeLogs.AsNoTracking()
                                    join k in c.Db.Tickets.AsNoTracking() on p.TicketId equals k.Id
                                    join l in c.Db.OrderLines.AsNoTracking() on p.OrderLineId equals l.Id
-                                   where p.Kind == PriceChangeKind.Ticket && ids.Contains(k.WorkPeriodId)
+                                   where p.Kind == PriceChangeKind.Ticket && p.At >= start && p.At < end
                                          && (f.UserId == null || p.ChangedByUserId == f.UserId)
                                    orderby p.At
                                    select new { p.At, k.Id, k.Number, l.Name, l.Quantity, p.OldPrice, p.NewPrice, p.ChangedByUserId, p.ApprovedByUserId })

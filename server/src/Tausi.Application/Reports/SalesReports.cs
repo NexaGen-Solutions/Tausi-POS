@@ -11,11 +11,11 @@ internal static class VoidQueries
 
     public static Task<List<VoidRow>> ForPeriod(ReportContext c, CancellationToken ct)
     {
-        var ids = c.Period.PeriodIds;
+        var (start, end) = (c.Period.Start, c.Period.End);
         return (from v in c.Db.VoidLogs.AsNoTracking()
                 join k in c.Db.Tickets.AsNoTracking() on v.TicketId equals k.Id
                 join l in c.Db.OrderLines.AsNoTracking() on v.OrderLineId equals l.Id
-                where ids.Contains(k.WorkPeriodId) && k.Status != TicketStatus.Cancelled
+                where v.At >= start && v.At < end && k.Status != TicketStatus.Cancelled
                 select new VoidRow(v.MenuItemId, v.ItemName, v.Quantity, v.Amount, l.AddedByUserId, k.OpenedByUserId, l.AddedTerminalId))
             .ToListAsync(ct);
     }
@@ -40,7 +40,7 @@ public sealed class SalesByUserReport : ReportBase
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
         var f = c.Filters;
-        var query = SalesQuery.Lines(c.Db, c.Period.PeriodIds, c.IncludeOpen);
+        var query = SalesQuery.Lines(c.Db, c.Period, c.IncludeOpen);
         if (f.TerminalId is { } terminal) query = query.Where(l => l.AddedTerminalId == terminal);
         if (f.UserId is { } user)
             query = f.CreditTo == CreditTo.OpenedBy ? query.Where(l => l.OpenedByUserId == user) : query.Where(l => l.AddedByUserId == user);
@@ -78,7 +78,7 @@ public sealed class SalesByUserReport : ReportBase
 
     public static async Task<string?> RoundingNote(ReportContext c, CancellationToken ct)
     {
-        var rounding = await SalesQuery.Rounding(c.Db, c.Period.PeriodIds, ct);
+        var rounding = await SalesQuery.Rounding(c.Db, c.Period, ct);
         return rounding == 0 ? null : $"Rounding on receipts: KSh {ReportFormat.Money(rounding)} (not in the item amounts)";
     }
 }
@@ -104,7 +104,7 @@ public sealed class SalesByItemReport : ReportBase
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
         var f = c.Filters;
-        var query = SalesQuery.Lines(c.Db, c.Period.PeriodIds, c.IncludeOpen);
+        var query = SalesQuery.Lines(c.Db, c.Period, c.IncludeOpen);
         if (f.TerminalId is { } terminal) query = query.Where(l => l.AddedTerminalId == terminal);
         if (f.UserId is { } user) query = query.Where(l => l.AddedByUserId == user);
         if (f.CategoryId is { } category) query = query.Where(l => c.Db.MenuItems.Any(m => m.Id == l.MenuItemId && m.CategoryId == category));

@@ -8,9 +8,10 @@ using Tausi.Application.Settings;
 namespace Tausi.Application.Reports;
 
 /// <summary>
-/// The period a report covers: its work periods, its business dates and the clock-time window
-/// (for things without a work period, such as menu price changes and the audit log). A work period
-/// that runs past midnight stays on its opening date, and the window runs until it closed.
+/// The period a report covers: dates (midnight to midnight in the business's time zone) or one work
+/// period (from its opening to its close). Everything counts when it happened inside the window
+/// [<see cref="Start"/>, <see cref="End"/>): a line when it was served, a payment when it was taken.
+/// <see cref="PeriodIds"/> are the work periods that ran during it.
 /// </summary>
 public sealed record ReportPeriod(
     IReadOnlyList<Guid> PeriodIds, DateOnly From, DateOnly To, DateTimeOffset Start, DateTimeOffset End, bool HasOpenPeriod, string Label)
@@ -52,6 +53,14 @@ public sealed class ReportContext
     public string RoleOf(Guid id) => Users.TryGetValue(id, out var x) ? x.Role : "";
     public string TerminalName(Guid? id) => id is { } t && Terminals.TryGetValue(t, out var n) ? n : "";
 
+    /// <summary>The tickets active during the period: opened before it ended, and still open or last used after it started.</summary>
+    public IQueryable<Domain.Service.Ticket> Tickets()
+    {
+        var (start, end) = (Period.Start, Period.End);
+        return Db.Tickets.AsNoTracking()
+            .Where(k => k.OpenedAt < end && (k.Status == Domain.Service.TicketStatus.Open || k.LastActivityAt >= start));
+    }
+
     /// <summary>A time in the business's own clock.</summary>
     public DateTimeOffset Local(DateTimeOffset at) => TimeZoneInfo.ConvertTime(at, Zone);
 
@@ -78,7 +87,7 @@ public sealed class ReportContext
     {
         var periods = (await db.WorkPeriods.AsNoTracking()
                 .Select(p => new { p.Id, p.OpenedAt, p.ClosedAt, p.BusinessDate, p.IsOpen }).ToListAsync(ct))
-            .Select(p => new { p.Id, p.OpenedAt, End = p.ClosedAt ?? now, p.IsOpen, Date = p.BusinessDate ?? BusinessDates.Of(p.OpenedAt, zone) })
+            .Select(p => new { p.Id, p.OpenedAt, End = p.ClosedAt ?? DateTimeOffset.MaxValue, p.IsOpen, Date = p.BusinessDate ?? BusinessDates.Of(p.OpenedAt, zone) })
             .OrderBy(p => p.OpenedAt).ToList();
         var today = BusinessDates.Of(now, zone);
 
@@ -89,19 +98,17 @@ public sealed class ReportContext
             if (end < start) throw new FieldErrorsException(new Dictionary<string, string> { ["to"] = "The end date is before the start date." });
             if (end.DayNumber - start.DayNumber > 366)
                 throw new FieldErrorsException(new Dictionary<string, string> { ["to"] = "Choose at most a year." });
-            var inRange = periods.Where(p => p.Date >= start && p.Date <= end).ToList();
             var midnight = Midnight(start, zone);
             var afterEnd = Midnight(end.AddDays(1), zone);
-            return new ReportPeriod(inRange.Select(p => p.Id).ToList(), start, end,
-                inRange.Count > 0 ? Min(inRange.Min(p => p.OpenedAt), midnight) : midnight,
-                inRange.Count > 0 ? Max(inRange.Max(p => p.End), afterEnd) : afterEnd,
-                inRange.Any(p => p.IsOpen), RangeLabel(start, end));
+            var ran = periods.Where(p => p.OpenedAt < afterEnd && p.End > midnight).ToList();
+            return new ReportPeriod(ran.Select(p => p.Id).ToList(), start, end, midnight, afterEnd, ran.Any(p => p.IsOpen), RangeLabel(start, end));
         }
 
         var chosen = f.WorkPeriodId is { } id
             ? periods.FirstOrDefault(p => p.Id == id) ?? throw new NotFoundException("Work period not found.")
             : periods.LastOrDefault(p => p.IsOpen) ?? periods.LastOrDefault();
-        if (chosen is null) return new ReportPeriod([], today, today, Midnight(today, zone), now, false, "No work period yet");
+        // An open work period's window has no end yet: everything up to now (and at this very moment) counts.
+        if (chosen is null) return new ReportPeriod([], today, today, Midnight(today, zone), DateTimeOffset.MaxValue, false, "No work period yet");
         var label = $"{chosen.Date.ToString("ddd d MMM yyyy", CultureInfo.InvariantCulture)}{(chosen.IsOpen ? " (open)" : "")}";
         return new ReportPeriod([chosen.Id], chosen.Date, chosen.Date, chosen.OpenedAt, chosen.End, chosen.IsOpen, label);
     }
@@ -126,12 +133,5 @@ public sealed class ReportContext
             ? from.ToString("ddd d MMM yyyy", CultureInfo.InvariantCulture)
             : $"{from.ToString("d MMM yyyy", CultureInfo.InvariantCulture)} – {to.ToString("d MMM yyyy", CultureInfo.InvariantCulture)}";
 
-    public static DateTimeOffset Midnight(DateOnly date, TimeZoneInfo zone)
-    {
-        var local = date.ToDateTime(TimeOnly.MinValue);
-        return new DateTimeOffset(local, zone.GetUtcOffset(local)).ToUniversalTime();
-    }
-
-    private static DateTimeOffset Min(DateTimeOffset a, DateTimeOffset b) => a < b ? a : b;
-    private static DateTimeOffset Max(DateTimeOffset a, DateTimeOffset b) => a > b ? a : b;
+    public static DateTimeOffset Midnight(DateOnly date, TimeZoneInfo zone) => BusinessDates.Midnight(date, zone);
 }

@@ -45,14 +45,14 @@ public class CashBookTests : StockTestBase
     // ---- Business date ----
 
     [Fact]
-    public async Task A_work_period_that_runs_past_midnight_keeps_its_opening_date()
+    public async Task A_sale_after_midnight_is_on_the_new_date_though_its_work_period_opened_the_day_before()
     {
         await Nairobi();
         F.Clock.Advance(TimeSpan.FromHours(4)); // 01:00 in Nairobi on the 21st
         await F.LoginOn("edna", "Counter A");
         var ticket = await Printed("7", ("Tusker Lager", 1));
 
-        Entries(StockSelling.SaleSource).Single().BusinessDate.Should().Be(Today);
+        Entries(StockSelling.SaleSource).Single().BusinessDate.Should().Be(Today.AddDays(1));
         F.Read().JournalEntries.Should().OnlyContain(e => e.BusinessDate != null);
         _ = ticket;
     }
