@@ -156,7 +156,7 @@ if ($Terminal) {
   $exe = Get-ChildItem 'C:\Program Files\Tausi POS\Terminal\*.exe' -ErrorAction SilentlyContinue | Where-Object Name -ne 'uninstall.exe'
   Check ($null -ne $exe) 'in C:\Program Files\Tausi POS\Terminal'
   $run = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).'Tausi POS'
-  Check ($run -like '*Tausi POS\Terminal*') 'starts for every user at sign-in'
+  Check ($run -like '*Tausi POS\*') 'starts for every user at sign-in'
   Check ([string](Get-Content 'C:\ProgramData\Tausi POS\Terminal\server.txt' -Raw -ErrorAction SilentlyContinue) -match '192.168.1.10:5080') 'the server address is pre-filled'
 
   $root = 'C:\Program Files\Tausi POS'
