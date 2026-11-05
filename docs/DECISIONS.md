@@ -406,6 +406,7 @@ Each entry: date, decision, reason.
 | 2026-11-02 | `cargo audit` also ignores **RUSTSEC-2026-0429** (zip 4.6.1 stops the process on a symlink entry with a large declared size), for the same reason as the three earlier zip advisories: zip comes in through tauri-plugin-updater, the terminal's updates are .exe installers, not .zip, and each update's signature is checked before anything is unpacked. Remove it with the others when the updater moves to zip 9 or later. | The owner's decision. The advisory was published after the last green run. |
 | 2026-11-03 | **Ready to release:** the owner confirmed the `LICENSE` text, added the signing and update secrets (`WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`, `TAURI_SIGNING_PRIVATE_KEY`, `TAUSI_UPDATE_SIGNING_KEY`), set up the update site at `updates.nexagensolutions.com/tausi`, and keeps encrypted copies of every private key on two USB drives. | The owner's steps before tagging v1.0.0. |
 | 2026-11-03 | **Version 1.0.0.** The owner tested the upgrade with a copy of a pilot site's backup on a clean PC (0.15.557), signed off the pilot, and asked for main to be tagged `v1.0.0`. | The owner's decision. |
+| 2026-11-05 | **CI artifacts are kept 3 days, release builds 14, load test results 14** (dry runs of the release workflow 3; the licence tool stays 30). The published release keeps its own files. | The repository is now private, where artifact storage is limited: 38.8 GB of old builds hit the limit and failed CI's upload steps. The owner approved deleting them. |
 
 ## After v1
 

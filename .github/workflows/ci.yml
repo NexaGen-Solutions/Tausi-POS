@@ -140,6 +140,7 @@ jobs:
             load-result.*
             ${{ runner.temp }}/server.log
           if-no-files-found: warn
+          retention-days: 3
 
   screenshots:
     # The main screens in the brand colours, for a person to look at (not compared pixel by pixel).
@@ -219,6 +220,7 @@ jobs:
             docs/guides/pdf/
             ${{ runner.temp }}/server-*.log
           if-no-files-found: warn
+          retention-days: 3
 
   terminal-windows:
     # The Windows terminal app (Tauri) with real printing through the Windows spooler.
@@ -266,7 +268,7 @@ jobs:
           name: tausi-terminal-windows
           path: TausiPOS-Setup.exe
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
   audit:
     # Known vulnerabilities in what ships: fails on high or critical ones.
@@ -414,6 +416,7 @@ jobs:
           name: install-logs
           path: out/install-logs
           if-no-files-found: ignore
+          retention-days: 3
       # Uploaded even when the tests fail, so it can be tried on a real PC.
       - uses: actions/upload-artifact@v7
         if: always()
@@ -421,4 +424,4 @@ jobs:
           name: tausi-server-windows
           path: out/a/TausiPOS-Server-Setup-${{ steps.versions.outputs.first }}.exe
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 3
