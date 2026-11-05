@@ -10,6 +10,8 @@ on:
       - tools/signing/**
       - scripts/sign.ps1
       - scripts/terminal-signing.ps1
+      - scripts/terminal-launcher.ps1
+      - terminal/launcher/**
       - installer/windows/**
       - terminal/src-tauri/windows/**
       - .github/workflows/signing-check.yml
@@ -84,7 +86,8 @@ jobs:
           npm ci
           $sign = ../scripts/terminal-signing.ps1
           if (-not $sign) { throw 'no sign command' }
-          npm run tauri build -- --config (@{ bundle = @{ windows = @{ signCommand = $sign } } } | ConvertTo-Json -Depth 5 -Compress)
+          $launcher = ../scripts/terminal-launcher.ps1
+          npm run tauri build -- --config (@{ bundle = @{ windows = @{ signCommand = $sign }; resources = $launcher } } | ConvertTo-Json -Depth 5 -Compress)
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $setup = (Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1).FullName
           if ((Get-AuthenticodeSignature $setup).SignerCertificate.Thumbprint -ne $env:THUMB) { throw 'the installer is not signed' }
@@ -93,7 +96,7 @@ jobs:
           foreach ($store in 'Root', 'TrustedPublisher') {
             if (-not (Test-Path "Cert:\LocalMachine\$store\$env:THUMB")) { throw "not in LocalMachine\$store" }
           }
-          Get-ChildItem 'C:\Program Files\Tausi POS\Terminal\*.exe' | ForEach-Object {
+          Get-ChildItem 'C:\Program Files\Tausi POS\Terminal\*.exe', 'C:\Program Files\Tausi POS\Launcher\*.exe' | ForEach-Object {
             $s = Get-AuthenticodeSignature $_.FullName
             "$($_.Name): $($s.Status)"
             if ($s.Status -ne 'Valid') { throw "$($_.Name) is not signed" }

@@ -1,6 +1,6 @@
 [package]
 name = "tausi-terminal"
-version = "1.0.0"
+version = "1.0.1"
 description = "Tausi POS terminal: the full-screen POS app for counter PCs, by NexaGen Solutions"
 edition = "2021"
 

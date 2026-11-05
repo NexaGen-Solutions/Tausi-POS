@@ -3,7 +3,8 @@
 //! `tausi-launcher.exe` starts the app (or the previous version, or offers Repair: [`plan::choose`]),
 //! gives a new version 60 seconds to open its window, restarts the app when it stops without saying
 //! why, and recreates the sign-in entry and the desktop shortcut when they're gone.
-//! `tausi-launcher.exe --repair --yes` repairs without asking (used by the installer test).
+//! `tausi-launcher.exe --repair --yes` repairs without asking; `--plan` prints what it would run
+//! (App, Previous or Repair) and starts nothing. Both are for support and the installer test.
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
@@ -33,6 +34,18 @@ pub fn run() -> i32 {
     let unattended = args.iter().any(|a| a == "--yes");
     let paths = Paths::find();
     let Some(state_file) = state::default_path() else { return 1 };
+
+    if args.iter().any(|a| a == "--plan") {
+        let st = TerminalState::load(&state_file);
+        let build = build_of(&paths.app());
+        println!("{:?}", plan::choose(Installed {
+            app_exists: paths.app().exists(),
+            previous_exists: paths.previous_app().exists(),
+            app_build: build.as_deref(),
+            bad_build: st.bad_build.as_deref(),
+        }));
+        return 0;
+    }
 
     if args.iter().any(|a| a == "--repair") {
         return match repair(&paths) {
