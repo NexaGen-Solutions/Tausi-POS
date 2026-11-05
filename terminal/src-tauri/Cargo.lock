@@ -4037,6 +4037,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tausi-launcher"
+version = "1.0.1"
+dependencies = [
+ "base64 0.22.1",
+ "minisign-verify",
+ "serde",
+ "serde_json",
+ "windows",
+]
+
+[[package]]
 name = "tausi-print"
 version = "0.1.0"
 dependencies = [
@@ -4058,6 +4069,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "tausi-launcher",
  "tausi-print",
  "url",
  "windows",
