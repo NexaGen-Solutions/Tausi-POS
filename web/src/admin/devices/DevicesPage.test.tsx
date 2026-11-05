@@ -128,6 +128,31 @@ describe('Terminals and printers', () => {
     expect(terminalRow('Counter A')).toHaveTextContent('edna');
   });
 
+  it("warns when a terminal's last update failed", async () => {
+    terminals = [
+      terminal('Counter A', {
+        health: {
+          updateFrom: '1.0.0',
+          updateTo: '1.0.1',
+          updateResult: 'Failed',
+          updateError: 'Blocked by antivirus.',
+          updateAt: '2026-11-03T18:00:00Z',
+          exitReason: 'Closed to update',
+          exitAt: '2026-11-03T18:00:00Z',
+          warning: 'Last update to 1.0.1 failed (Blocked by antivirus)',
+        },
+      }),
+      terminals[1],
+    ];
+    serve();
+    renderRoutes(routes, '/admin/terminals');
+    await screen.findByRole('button', { name: 'Edit Counter A' });
+    expect(terminalRow('Counter A')).toHaveTextContent(
+      'Last update to 1.0.1 failed (Blocked by antivirus)',
+    );
+    expect(terminalRow('Pillar 1')).toHaveTextContent('—');
+  });
+
   it('shows the routing preview while editing a terminal', async () => {
     serve();
     renderRoutes(routes, '/admin/terminals');

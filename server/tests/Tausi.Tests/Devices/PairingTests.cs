@@ -148,6 +148,41 @@ public class PairingTests : IAsyncLifetime
         TerminalAdmin.LocalPrinters(json).Should().Equal(expected);
 
     [Fact]
+    public async Task The_terminals_page_shows_how_each_terminal_last_updated_and_why_it_stopped_with_a_warning()
+    {
+        var counterA = _f.Db.Terminals.Single(t => t.Name == "Counter A").Id;
+        var at = new DateTimeOffset(2026, 11, 3, 18, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds();
+        await TerminalHealth.Save(_f.Db, counterA, new TerminalHealthReport("1.0.0",
+            new TerminalHealthReport.ExitReport("Closed to update", at),
+            new TerminalHealthReport.UpdateReport("1.0.0", "1.0.1", "Failed", "Blocked by antivirus.", at)), CancellationToken.None);
+
+        var row = (await _f.Get<ListTerminals>().Execute(CancellationToken.None)).Single(t => t.Name == "Counter A");
+        row.Health!.UpdateResult.Should().Be("Failed");
+        row.Health.UpdateAt.Should().Be(DateTimeOffset.FromUnixTimeSeconds(at));
+        row.Health.ExitReason.Should().Be("Closed to update");
+        row.Health.Warning.Should().Be("Last update to 1.0.1 failed (Blocked by antivirus)");
+        (await _f.Get<ListTerminals>().Execute(CancellationToken.None)).Single(t => t.Name == "Counter B").Health
+            .Should().BeNull("it has reported nothing");
+    }
+
+    [Theory]
+    [InlineData("Success", null, "Closed", 0, null)]
+    [InlineData("Rolled back", "It didn't start within 60 seconds.", null, 0, "Last update to 1.0.1 was rolled back to 1.0.0 (It didn't start within 60 seconds)")]
+    [InlineData("Installing", null, null, 5, null)]
+    [InlineData("Installing", null, null, 20, "Last update to 1.0.1 didn't finish")]
+    [InlineData("Success", null, "Stopped unexpectedly (exit code 3)", 0, "Stopped unexpectedly (exit code 3)")]
+    public void A_warning_shows_only_when_something_needs_looking_at(string result, string? error, string? exit, int minutesAgo, string? warning)
+    {
+        var now = new DateTimeOffset(2026, 11, 3, 18, 0, 0, TimeSpan.Zero);
+        var terminal = new Domain.Devices.Terminal
+        {
+            Name = "Counter A", LastUpdateFrom = "1.0.0", LastUpdateTo = "1.0.1", LastUpdateResult = result, LastUpdateError = error,
+            LastUpdateAt = now.AddMinutes(-minutesAgo), LastExitReason = exit,
+        };
+        TerminalHealth.Warning(terminal, now).Should().Be(warning);
+    }
+
+    [Fact]
     public async Task Terminals_migrated_with_an_empty_printer_list_still_list()
     {
         _f.Db.Terminals.Single(t => t.Name == "Counter A").LocalPrintersJson = "";

@@ -42,7 +42,8 @@ public sealed record TerminalRow(
     string RoutingPreview,
     long RowVersion,
     Guid? SellsFromLocationId = null,
-    string? SellsFromLocationName = null);
+    string? SellsFromLocationName = null,
+    TerminalHealthDto? Health = null);
 
 public sealed record TerminalRequest(
     string Name,
@@ -105,7 +106,8 @@ public sealed class TerminalAdmin(
                 t.Active, t.IsPaired,
                 LocalPrinters(t.LocalPrintersJson),
                 PrintRouting.Preview(t.Name, t.ReceiptPrinter?.Name, t.EffectiveDispenseHeader, t.DispensePrinter?.Name),
-                t.RowVersion, t.SellsFromLocationId, t.SellsFromLocationId is { } l ? locations.GetValueOrDefault(l) : null);
+                t.RowVersion, t.SellsFromLocationId, t.SellsFromLocationId is { } l ? locations.GetValueOrDefault(l) : null,
+                TerminalHealth.Of(t, now));
         }).ToList();
     }
 }

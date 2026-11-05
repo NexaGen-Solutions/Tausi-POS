@@ -21,6 +21,18 @@ export interface TerminalRow {
   /** The stock location its sales come from. */
   sellsFromLocationId?: string | null;
   sellsFromLocationName?: string | null;
+  /** How its last update went and why it last stopped, as the terminal app reported it. */
+  health?: {
+    updateFrom: string | null;
+    updateTo: string | null;
+    updateResult: string | null;
+    updateError: string | null;
+    updateAt: string | null;
+    exitReason: string | null;
+    exitAt: string | null;
+    /** Set when something needs looking at, e.g. "Last update to 1.0.1 failed (blocked by antivirus)". */
+    warning: string | null;
+  } | null;
 }
 
 export type ConnectionMode = 'Network9100' | 'WindowsShare' | 'ViaTerminal' | 'File';

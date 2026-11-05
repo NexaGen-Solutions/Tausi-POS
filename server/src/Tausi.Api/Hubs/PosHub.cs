@@ -45,6 +45,13 @@ public sealed class PosHub(TerminalPresence presence, TausiDbContext db) : Hub
             .ExecuteUpdateAsync(u => u.SetProperty(t => t.LocalPrintersJson, JsonSerializer.Serialize(clean)));
     }
 
+    /// <summary>The terminal app reports how its last update went and why it last stopped (Task 17a).</summary>
+    public async Task ReportHealth(TerminalHealthReport report)
+    {
+        if (Context.Items.TryGetValue(TerminalItem, out var item) is false || item is not Guid terminalId) return;
+        await TerminalHealth.Save(db, terminalId, report, Context.ConnectionAborted);
+    }
+
     private const string TerminalItem = "terminalId";
 
     /// <summary>

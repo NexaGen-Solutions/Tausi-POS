@@ -5,7 +5,14 @@ import {
   type HubConnection,
 } from '@microsoft/signalr';
 import { apiUrl } from '../api/client';
-import { checkPrinter, deviceToken, isTauri, listPrinters, printRaw } from '../device/device';
+import {
+  checkPrinter,
+  deviceToken,
+  isTauri,
+  listPrinters,
+  printRaw,
+  terminalHealth,
+} from '../device/device';
 import { pinSession } from '../session/session';
 import { updateConnection } from './status';
 
@@ -95,6 +102,7 @@ function build(): HubConnection {
     updateConnection({ hub: 'connected' });
     emit('reconnected', null);
     void reportPrinters(hub);
+    void reportHealth(hub);
   });
   hub.onclose(() => {
     if (wanted) {
@@ -117,6 +125,16 @@ async function reportPrinters(hub: HubConnection) {
   }
 }
 
+/** Tells the server how this terminal's last update went and why it last stopped (the Terminals page). */
+async function reportHealth(hub: HubConnection) {
+  if (!isTauri() || !deviceToken()) return;
+  try {
+    await hub.invoke('ReportHealth', await terminalHealth());
+  } catch {
+    // An older terminal app, or the server is busy: it's sent again on the next connection.
+  }
+}
+
 function scheduleRestart() {
   window.clearTimeout(restartTimer);
   restartTimer = window.setTimeout(() => void start(), 5000);
@@ -132,6 +150,7 @@ async function start() {
     updateConnection({ hub: 'connected' });
     emit('reconnected', null);
     void reportPrinters(connection);
+    void reportHealth(connection);
   } catch {
     updateConnection({ hub: 'reconnecting' });
     scheduleRestart();

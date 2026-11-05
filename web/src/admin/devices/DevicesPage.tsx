@@ -101,6 +101,21 @@ export function DevicesPage() {
       render: (x) => x.appVersion ?? '—',
     },
     {
+      key: 'health',
+      header: t('admin.devices.colHealth'),
+      render: (x) =>
+        x.health?.warning ? (
+          <span className="devices-health devices-health--warning">{x.health.warning}</span>
+        ) : x.health?.updateResult ? (
+          t('admin.devices.lastUpdate', {
+            result: x.health.updateResult,
+            version: x.health.updateTo ?? '',
+          })
+        ) : (
+          '—'
+        ),
+    },
+    {
       key: 'list',
       header: t('admin.devices.colPriceList'),
       render: (x) => x.priceListName ?? t('admin.devices.defaultList'),

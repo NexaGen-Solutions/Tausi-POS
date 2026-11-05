@@ -339,8 +339,34 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<Guid?>("DispensePrinterId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("LastExitAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastExitReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("LastUpdateAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastUpdateError")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("LastUpdateFrom")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("LastUpdateResult")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("LastUpdateTo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("LocalPrintersJson")
                         .IsRequired()

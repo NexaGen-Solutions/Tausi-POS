@@ -708,6 +708,8 @@
       "colStatus": "Status",
       "colUser": "Current user",
       "colApp": "App",
+      "colHealth": "Last update",
+      "lastUpdate": "{result} ({version})",
       "colPriceList": "Price list",
       "colDispense": "Dispense printer",
       "colReceipt": "Receipt printer",
