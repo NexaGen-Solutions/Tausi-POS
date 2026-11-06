@@ -98,6 +98,7 @@ jobs:
         with:
           name: terminal
           path: out/*
+          retention-days: ${{ github.ref_type == 'tag' && 14 || 3 }}
 
   server-windows:
     needs: [version, terminal]
@@ -161,6 +162,7 @@ jobs:
         with:
           name: server-windows
           path: out/installer/TausiPOS-Server-Setup-*.exe
+          retention-days: ${{ github.ref_type == 'tag' && 14 || 3 }}
 
   server-linux:
     needs: version
@@ -190,6 +192,7 @@ jobs:
         with:
           name: server-linux
           path: out/tausi-server-*.tar.gz
+          retention-days: ${{ github.ref_type == 'tag' && 14 || 3 }}
 
   licence-tool:
     # NexaGen's internal tool: a workflow artifact only, never a release asset.
@@ -241,6 +244,7 @@ jobs:
         with:
           name: release-${{ env.VERSION }}
           path: dist
+          retention-days: ${{ github.ref_type == 'tag' && 14 || 3 }}
       - name: Draft release (the owner publishes it)
         if: needs.version.outputs.release == 'true'
         uses: softprops/action-gh-release@v3

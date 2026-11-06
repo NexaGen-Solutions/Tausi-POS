@@ -69,6 +69,7 @@ jobs:
           path: |
             load-postgres.*
             ${{ runner.temp }}/server.log
+          retention-days: 14
 
   sqlserver:
     runs-on: windows-latest
@@ -116,3 +117,4 @@ jobs:
           path: |
             load-sqlserver.*
             ${{ runner.temp }}\server*.log
+          retention-days: 14
