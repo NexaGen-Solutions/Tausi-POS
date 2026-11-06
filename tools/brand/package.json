@@ -7,6 +7,6 @@
     "build": "node build-icons.mjs"
   },
   "dependencies": {
-    "sharp": "0.34.4"
+    "sharp": "0.35.5"
   }
 }
