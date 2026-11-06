@@ -593,7 +593,9 @@ The SQL Server migration test starts SQL Server 2022 with Testcontainers, or use
 `TAUSI_TEST_SQLSERVER`; without Docker or that variable it is skipped.
 
 The backup tests need `pg_dump` and `pg_restore` (PostgreSQL 16's). Without them on the PATH they run
-them in the `postgres:16` Docker image. The terminal app: `cd terminal/src-tauri && cargo test`.
+them in the `postgres:16` Docker image. The terminal app: `cd terminal/src-tauri && cargo test`; its launcher:
+`cd terminal/launcher && cargo test` (the launcher itself runs on Windows only; CI builds it with
+`scripts/terminal-launcher.ps1` and bundles it into the terminal installer).
 The installers are tested in CI on Windows (`installer/windows/test-install.ps1`) and the Linux
 package on Ubuntu 24.04 (the `linux-package` job runs `install.sh --with-postgres` for real).
 

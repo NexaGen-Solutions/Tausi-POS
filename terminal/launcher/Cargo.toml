@@ -1,0 +1,33 @@
+[package]
+name = "tausi-launcher"
+version = "1.0.1"
+edition = "2021"
+description = "Tausi POS launcher: starts the terminal app, keeps it running, rolls back a failed update and repairs a missing app"
+
+[lib]
+name = "tausi_launcher"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tausi-launcher"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+minisign-verify = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Com",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[build-dependencies]
+serde_json = "1"

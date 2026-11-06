@@ -60,13 +60,10 @@ public sealed class VatReport : ReportBase
 
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
-        var dates = await c.Db.WorkPeriods.AsNoTracking().Where(p => c.Period.PeriodIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, p => p.BusinessDate ?? BusinessDates.Of(p.OpenedAt, c.Zone), ct);
-        var byRate = await SalesQuery.Lines(c.Db, c.Period.PeriodIds, includeOpen: false)
-            .GroupBy(l => new { l.WorkPeriodId, l.VatRate, l.VatExempt })
-            .Select(g => new { g.Key.WorkPeriodId, g.Key.VatRate, g.Key.VatExempt, Gross = g.Sum(l => l.Gross - l.Discount), Net = g.Sum(l => l.Net), Vat = g.Sum(l => l.Vat) })
+        var served = await SalesQuery.Lines(c.Db, c.Period, includeOpen: false)
+            .Select(l => new { l.ServedAt, l.VatRate, l.VatExempt, Gross = l.Gross - l.Discount, l.Net, l.Vat })
             .ToListAsync(ct);
-        var rows = byRate.Select(r => new { Date = dates[r.WorkPeriodId], Label = RateLabel(r.VatRate, r.VatExempt), r.VatRate, r.VatExempt, r.Gross, r.Net, r.Vat })
+        var rows = served.Select(r => new { Date = BusinessDates.Of(r.ServedAt, c.Zone), Label = RateLabel(r.VatRate, r.VatExempt), r.VatRate, r.VatExempt, r.Gross, r.Net, r.Vat })
             .GroupBy(r => (r.Date, r.Label, r.VatRate, r.VatExempt))
             .Select(g => new { g.Key.Date, g.Key.Label, g.Key.VatRate, g.Key.VatExempt, Gross = g.Sum(x => x.Gross), Net = g.Sum(x => x.Net), Vat = g.Sum(x => x.Vat) })
             .ToList();
@@ -98,8 +95,7 @@ public sealed class TicketsReport : ReportBase
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
         var f = c.Filters;
-        var ids = c.Period.PeriodIds;
-        var query = c.Db.Tickets.AsNoTracking().Where(k => ids.Contains(k.WorkPeriodId));
+        var query = c.Tickets();
         if (!c.IncludeOpen) query = query.Where(k => k.Status != TicketStatus.Open);
         if (f.Status is { } status) query = query.Where(k => k.Status == status);
         if (f.UserId is { } user) query = query.Where(k => k.OpenedByUserId == user);
@@ -123,8 +119,8 @@ public sealed class TicketsReport : ReportBase
         if (f.MaxAmount is { } max) tickets = tickets.Where(k => k.Total <= max).ToList();
 
         var types = await (from p in c.Db.Payments.AsNoTracking()
-                           join k in c.Db.Tickets.AsNoTracking() on p.TicketId equals k.Id
-                           where ids.Contains(k.WorkPeriodId) && p.Status != PaymentStatus.Removed
+                           join k in c.Tickets() on p.TicketId equals k.Id
+                           where p.Status != PaymentStatus.Removed
                            select new { p.TicketId, p.Type }).Distinct().ToListAsync(ct);
         string Paid(Guid ticket) => string.Join(", ", types.Where(t => t.TicketId == ticket).Select(t => t.Type).Distinct().OrderBy(t => t)
             .Select(t => t == PaymentType.Mpesa ? "M-Pesa" : t.ToString()));
@@ -157,27 +153,24 @@ public sealed class UsersReport : ReportBase
 
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
-        var ids = c.Period.PeriodIds;
         var (start, end) = (c.Period.Start, c.Period.End);
         var users = await c.Db.Users.AsNoTracking().Where(u => c.Filters.RoleId == null || u.RoleId == c.Filters.RoleId)
             .Select(u => new { u.Id, u.Name, u.Active, Role = u.Role != null ? u.Role.Name : "" }).ToListAsync(ct);
-        var sessions = await c.Db.UserSessions.AsNoTracking().Where(s => s.StartedAt >= start && s.StartedAt <= end)
+        var sessions = await c.Db.UserSessions.AsNoTracking().Where(s => s.StartedAt >= start && s.StartedAt < end)
             .Select(s => new { s.UserId, s.TerminalId, s.StartedAt }).ToListAsync(ct);
-        var tickets = await c.Db.Tickets.AsNoTracking().Where(k => ids.Contains(k.WorkPeriodId))
+        var tickets = await c.Db.Tickets.AsNoTracking().Where(k => k.OpenedAt >= start && k.OpenedAt < end)
             .GroupBy(k => k.OpenedByUserId).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, ct);
         var items = await (from l in c.Db.OrderLines.AsNoTracking()
-                           join k in c.Db.Tickets.AsNoTracking() on l.TicketId equals k.Id
-                           where ids.Contains(k.WorkPeriodId) && l.Status != OrderLineStatus.Cancelled
+                           where l.AddedAt >= start && l.AddedAt < end && l.Status != OrderLineStatus.Cancelled
                            group l by l.AddedByUserId into g
                            select new { g.Key, Quantity = g.Sum(l => l.Quantity) }).ToDictionaryAsync(x => x.Key, x => x.Quantity, ct);
-        var inPeriod = c.Db.Tickets.AsNoTracking().Where(k => ids.Contains(k.WorkPeriodId)).Select(k => k.Id);
-        var voids = await c.Db.VoidLogs.AsNoTracking().Where(v => inPeriod.Contains(v.TicketId))
+        var voids = await c.Db.VoidLogs.AsNoTracking().Where(v => v.At >= start && v.At < end)
             .Select(v => new { v.RequestedByUserId, v.ApprovedByUserId }).ToListAsync(ct);
-        var gifts = await c.Db.GiftLogs.AsNoTracking().Where(g => inPeriod.Contains(g.TicketId))
+        var gifts = await c.Db.GiftLogs.AsNoTracking().Where(g => g.At >= start && g.At < end)
             .Select(g => new { g.RequestedByUserId, g.ApprovedByUserId }).ToListAsync(ct);
-        var discounts = await c.Db.DiscountLogs.AsNoTracking().Where(d => inPeriod.Contains(d.TicketId))
+        var discounts = await c.Db.DiscountLogs.AsNoTracking().Where(d => d.At >= start && d.At < end)
             .Select(d => new { d.RequestedByUserId, d.ApprovedByUserId }).ToListAsync(ct);
-        var prices = await c.Db.PriceChangeLogs.AsNoTracking().Where(p => p.TicketId != null && inPeriod.Contains(p.TicketId.Value))
+        var prices = await c.Db.PriceChangeLogs.AsNoTracking().Where(p => p.TicketId != null && p.At >= start && p.At < end)
             .Select(p => new { RequestedByUserId = p.ChangedByUserId, p.ApprovedByUserId }).ToListAsync(ct);
         // An approval is someone else's say-so; doing it yourself (Allowed) isn't one. A request approved from the
         // approvals screen has its decider as the approver on the log, so it counts once.
@@ -228,7 +221,7 @@ public sealed class AuditReport : ReportBase
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
         var f = c.Filters;
-        var query = c.Db.AuditEntries.AsNoTracking().Where(a => a.At >= c.Period.Start && a.At <= c.Period.End);
+        var query = c.Db.AuditEntries.AsNoTracking().Where(a => a.At >= c.Period.Start && a.At < c.Period.End);
         if (f.UserId is { } user) query = query.Where(a => a.UserId == user);
         if (!string.IsNullOrWhiteSpace(f.Action)) query = query.Where(a => a.Action.StartsWith(f.Action.Trim()));
         if (!string.IsNullOrWhiteSpace(f.Entity)) query = query.Where(a => a.EntityType == f.Entity.Trim());

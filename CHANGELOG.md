@@ -2,6 +2,27 @@
 
 Tausi POS by NexaGen Solutions. Each release's changes, newest first (built by the release workflow from the commit messages).
 
+## 1.0.1 (unreleased)
+
+Fixes for 1.0.0. **Each counter PC needs the new `TausiPOS-Setup-1.0.1.exe` run once by hand**, because
+this version fixes how terminals update; after that they update from the server as before.
+
+### Fixed
+
+- **Sales now count on the day they happened.** A work period left open for several days put every sale
+  on the day it was opened. Now each item counts on the date it was served and each payment on the date
+  it was taken, in the business's time zone, with the day changing at midnight. Reports filter by dates
+  first (Today by default), with work periods as a second choice. A Z report for a work period that ran
+  over several days shows each day's sales and takings, with a warning. Upgrading moves the sales already
+  recorded to the right dates; a backup is taken first.
+- **A terminal app can no longer vanish after a failed install.** Reinstalling over an older version first
+  removed it, so an install that was then blocked (for example by antivirus) left an empty folder. The
+  installer now keeps the previous version, and a new launcher starts the app, restarts it if it stops,
+  goes back to the previous version if a new one doesn't start within a minute, and offers **Repair**
+  (from the server, keeping the pairing) if the app is missing.
+- **The Terminals page shows each terminal's last update and why it last stopped**, with a warning when
+  an update failed or was rolled back.
+
 ## 1.0.0 (2026-11-03)
 
 The first release of Tausi POS: everything a bar or restaurant needs to run service, cash, stock and the

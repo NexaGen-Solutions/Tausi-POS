@@ -86,6 +86,12 @@
   align-items: flex-end;
   gap: var(--space-3);
 }
+.report-filters__note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
 .report-filters .nx-field {
   min-width: 160px;
 }

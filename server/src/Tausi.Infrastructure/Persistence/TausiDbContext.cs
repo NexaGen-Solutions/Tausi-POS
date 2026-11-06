@@ -200,6 +200,11 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.DeviceTokenHash).HasMaxLength(64);
             e.HasIndex(x => x.DeviceTokenHash).IsUnique();
             e.Property(x => x.AppVersion).HasMaxLength(50);
+            e.Property(x => x.LastUpdateFrom).HasMaxLength(50);
+            e.Property(x => x.LastUpdateTo).HasMaxLength(50);
+            e.Property(x => x.LastUpdateResult).HasMaxLength(20);
+            e.Property(x => x.LastUpdateError).HasMaxLength(300);
+            e.Property(x => x.LastExitReason).HasMaxLength(100);
             e.Property(x => x.DispenseHeader).HasMaxLength(40);
             e.Property(x => x.LocalPrintersJson).Unbounded();
             e.Ignore(x => x.IsPaired);

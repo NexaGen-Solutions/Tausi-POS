@@ -79,7 +79,36 @@ it had. Nothing is lost.
   update"), in case it is ever needed.
 
 A **terminal** that fails to update keeps working on its current version and tries again at its next
-start.
+start. The **Terminals** page shows each terminal's last update and why it last stopped, with a warning
+such as "Last update to 1.0.1 failed (blocked by antivirus)".
+
+## A terminal app is missing, or Windows Defender took it
+
+**Signs**: the counter shows the Windows desktop; `C:\Program Files\Tausi POS\Terminal` is empty;
+or the launcher says **Tausi POS needs repairing**.
+
+1. Press **OK** on **Tausi POS needs repairing**: it reinstalls the app from the server and keeps the
+   pairing. Or run the latest `TausiPOS-Setup.exe` on the counter PC.
+2. **Check whether Defender took it**: Windows Security → Virus & threat protection → **Protection
+   history**. An entry naming `tausi-terminal.exe`, `TausiPOS-Setup.exe` or a file in
+   `C:\Program Files\Tausi POS` means Defender removed or blocked it. In PowerShell (administrator):
+   ```powershell
+   Get-MpThreatDetection | Sort-Object InitialDetectionTime -Descending | Select-Object -First 10 InitialDetectionTime, Resources
+   & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Restore -ListAll
+   ```
+3. **Restore it** if it's a Tausi file: Protection history → the entry → **Actions → Restore** (or
+   **Allow on device**). In PowerShell: `& "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Restore -Name "<threat name>"`.
+   Only do this for files you know came from NexaGen: check the installer's SHA-256 fingerprint first
+   (`Get-FileHash`).
+4. **Report a false positive** to Microsoft, so it stops for every customer:
+   https://www.microsoft.com/wdsi/filesubmission, choose "Software developer", attach the file and say it's
+   Tausi POS by NexaGen Solutions. Tell NexaGen too.
+
+The installers and the app are signed by NexaGen Solutions, which makes this less likely but
+doesn't rule it out: antivirus can still flag a new file, whoever signed it.
+
+If Protection history shows anything that isn't a Tausi file, treat the PC as possibly infected: don't
+sign in to anything on it, take it off the network, and ask NexaGen before repairing it.
 
 ## A lost admin password
 
