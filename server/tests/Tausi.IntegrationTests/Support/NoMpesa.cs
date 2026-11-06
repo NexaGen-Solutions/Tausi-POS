@@ -10,7 +10,8 @@ public static class NoMpesa
     {
         services.AddLogging();
         services.AddSingleton<ISecretProtector, NoSecrets>();
-        services.AddSingleton<IDaraja>(_ => throw new InvalidOperationException("M-Pesa isn't set up in this test."));
+        // Never called: with no credentials nothing asks Daraja.
+        services.AddSingleton<IDaraja>(sp => new Tausi.Infrastructure.Mpesa.HttpDaraja(TimeProvider.System));
         services.AddSingleton<IMonoImages, Tausi.Infrastructure.Mpesa.SkiaMonoImages>();
         services.AddSingleton<BillQrCache>();
         services.AddSingleton<RelayStatus>();
