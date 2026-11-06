@@ -26,25 +26,23 @@ public sealed class VoidsReport : ReportBase
     public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
     {
         var f = c.Filters;
-        var ids = c.Period.PeriodIds;
-        var tickets = await c.Db.Tickets.AsNoTracking().Where(k => ids.Contains(k.WorkPeriodId))
-            .ToDictionaryAsync(k => k.Id, k => k.Number, ct);
-        var inPeriod = c.Db.Tickets.AsNoTracking().Where(k => ids.Contains(k.WorkPeriodId)).Select(k => k.Id);
+        var (start, end) = (c.Period.Start, c.Period.End);
+        var tickets = await c.Tickets().ToDictionaryAsync(k => k.Id, k => k.Number, ct);
 
         var events = new List<Event>();
-        events.AddRange((await c.Db.VoidLogs.AsNoTracking().Where(v => inPeriod.Contains(v.TicketId)).ToListAsync(ct))
+        events.AddRange((await c.Db.VoidLogs.AsNoTracking().Where(v => v.At >= start && v.At < end).ToListAsync(ct))
             .Select(v => new Event(v.At, "Void", v.TicketId, v.ItemName, v.Quantity, v.Amount, Join(v.Reason, v.Note), v.RequestedByUserId,
                 v.ApprovedByUserId, v.TerminalId, v.WasPoured)));
-        events.AddRange((await c.Db.GiftLogs.AsNoTracking().Where(g => inPeriod.Contains(g.TicketId)).ToListAsync(ct))
+        events.AddRange((await c.Db.GiftLogs.AsNoTracking().Where(g => g.At >= start && g.At < end).ToListAsync(ct))
             .Select(g => new Event(g.At, "Gift", g.TicketId, g.ItemName, g.Quantity, g.Amount, Join(g.Reason, g.Note), g.RequestedByUserId,
                 g.ApprovedByUserId, g.TerminalId, null)));
-        events.AddRange((await c.Db.DiscountLogs.AsNoTracking().Where(d => inPeriod.Contains(d.TicketId)).ToListAsync(ct))
+        events.AddRange((await c.Db.DiscountLogs.AsNoTracking().Where(d => d.At >= start && d.At < end).ToListAsync(ct))
             .Select(d => new Event(d.At, "Discount", d.TicketId,
                 d.Kind is null ? "Discount removed" : d.Kind == DiscountKind.Percent ? $"Discount {d.Value:0.##}%" : "Discount", null, d.Amount,
                 Join(d.Reason, d.Note), d.RequestedByUserId, d.ApprovedByUserId, d.TerminalId, null)));
         var priceChanges = await (from p in c.Db.PriceChangeLogs.AsNoTracking()
                                   join l in c.Db.OrderLines.AsNoTracking() on p.OrderLineId equals l.Id
-                                  where p.Kind == PriceChangeKind.Ticket && inPeriod.Contains(p.TicketId!.Value)
+                                  where p.Kind == PriceChangeKind.Ticket && p.At >= start && p.At < end
                                   select new { p.At, p.TicketId, l.Name, l.Quantity, p.OldPrice, p.NewPrice, p.Reason, p.ChangedByUserId, p.ApprovedByUserId, p.TerminalId })
             .ToListAsync(ct);
         events.AddRange(priceChanges.Select(p => new Event(p.At, "Price change", p.TicketId!.Value,
@@ -53,7 +51,7 @@ public sealed class VoidsReport : ReportBase
 
         string[] actions = [AuditActions.BillReprinted, AuditActions.ReceiptReprinted, AuditActions.TicketMoved, AuditActions.TicketMerged];
         var audits = await c.Db.AuditEntries.AsNoTracking()
-            .Where(a => actions.Contains(a.Action) && a.At >= c.Period.Start && a.At <= c.Period.End).ToListAsync(ct);
+            .Where(a => actions.Contains(a.Action) && a.At >= start && a.At < end).ToListAsync(ct);
         foreach (var a in audits)
         {
             if (!Guid.TryParse(a.EntityId, out var ticket) || !tickets.ContainsKey(ticket) || a.UserId is not { } user) continue;
@@ -95,7 +93,7 @@ public sealed class VoidsReport : ReportBase
 
         // Requests that didn't go through: rejected, expired or cancelled.
         var requests = await c.Db.ApprovalRequests.AsNoTracking()
-            .Where(r => ids.Contains(r.WorkPeriodId)
+            .Where(r => r.RequestedAt >= start && r.RequestedAt < end
                         && (r.Status == ApprovalStatus.Rejected || r.Status == ApprovalStatus.Expired || r.Status == ApprovalStatus.Cancelled))
             .OrderBy(r => r.RequestedAt).ToListAsync(ct);
         var requestRows = requests

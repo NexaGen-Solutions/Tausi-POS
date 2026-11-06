@@ -107,8 +107,9 @@ public static class CashSlips
             .Text(business, TextStyle.Center | TextStyle.Bold)
             .Text("DAY REPORT · Z", TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight)
             .Text($"{Time(openedAt)} - {Time(closedAt)}", TextStyle.Center)
-            .Text($"Closed by {closedBy}", TextStyle.Center)
-            .Separator()
+            .Text($"Closed by {closedBy}", TextStyle.Center);
+        if (d.Spans is { } spans) b.Text(spans, TextStyle.Bold);
+        b.Separator()
             .Columns2("Tickets", d.Tickets.ToString(CultureInfo.InvariantCulture))
             .Columns2("Gross sales", Amount(d.Gross));
         if (d.Discounts != 0) b.Columns2("Discounts", "-" + Amount(d.Discounts));
@@ -122,6 +123,15 @@ public static class CashSlips
         foreach (var p in d.Payments) b.Columns2($"{p.Type} ({p.Count})", Amount(p.Amount));
         if (d.Rounding != 0) b.Columns2("Rounding", Signed(d.Rounding));
         b.Columns2("TOTAL TAKEN", Slips.Money(d.PaymentsTotal, style.Currency), TextStyle.Bold).Separator();
+        if (d.Dates is { Count: > 1 } dates)
+        {
+            // Sales count on the date served, payments on the date taken.
+            b.Text("By date", TextStyle.Bold);
+            foreach (var day in dates)
+                b.Columns2(day.Date.ToString("ddd d MMM", CultureInfo.InvariantCulture) + " sales", Amount(day.Sales))
+                    .Columns2("  taken", Amount(day.Taken));
+            b.Separator();
+        }
         if (d.ShiftDifferences.Count > 0)
         {
             b.Text("Cash-ups", TextStyle.Bold);

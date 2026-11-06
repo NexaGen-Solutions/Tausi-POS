@@ -394,7 +394,8 @@ describe('Reports', () => {
   it('shows the filters each report takes and reruns with them', async () => {
     renderRoutes(routes, '/admin/reports');
     await screen.findByRole('table', { name: 'Sales by user' });
-    expect(screen.getByLabelText('Work period')).toBeInTheDocument();
+    expect(screen.getByLabelText('Dates')).toHaveValue('Today');
+    expect(screen.queryByLabelText('Work period')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Credit sales to')).toHaveValue('AddedBy');
     expect(screen.getByLabelText('Include open tickets')).toBeChecked();
 
@@ -402,17 +403,27 @@ describe('Reports', () => {
     await userEvent.selectOptions(screen.getByLabelText('User'), 'u-edna');
     await waitFor(() =>
       expect(runs('sales-by-user').at(-1)?.body).toEqual({
+        quick: 'Today',
         creditTo: 'OpenedBy',
         userId: 'u-edna',
       }),
     );
     expect(runs('sales-by-user').at(-1)?.headers.get('Idempotency-Key')).toBeNull();
 
-    await userEvent.selectOptions(screen.getByLabelText('Work period'), 'range');
     await userEvent.selectOptions(screen.getByLabelText('Dates'), 'LastWeek');
     await waitFor(() =>
       expect(runs('sales-by-user').at(-1)?.body).toMatchObject({ quick: 'LastWeek' }),
     );
+
+    // A work period is the second choice, with a note that it can span several days.
+    await userEvent.selectOptions(screen.getByLabelText('Dates'), 'period');
+    expect(screen.getByLabelText('Work period')).toBeInTheDocument();
+    expect(screen.getByText(/Work periods can span several days/)).toBeInTheDocument();
+    await waitFor(() => {
+      const body = runs('sales-by-user').at(-1)?.body as Record<string, unknown>;
+      expect(body.workPeriodId).toBeTruthy();
+      expect(body.quick).toBeUndefined();
+    });
 
     await userEvent.click(screen.getByRole('button', { name: 'Stock on hand' }));
     expect(await screen.findByLabelText('As at')).toBeInTheDocument();
@@ -427,10 +438,16 @@ describe('Reports', () => {
     await userEvent.type(screen.getByLabelText('Amount from'), '500');
     expect(runs('tickets')).toHaveLength(1);
     await userEvent.type(screen.getByLabelText('Amount from'), '{Enter}');
-    await waitFor(() => expect(runs('tickets').at(-1)?.body).toEqual({ minAmount: 500 }));
+    await waitFor(() =>
+      expect(runs('tickets').at(-1)?.body).toEqual({ quick: 'Today', minAmount: 500 }),
+    );
     await userEvent.click(screen.getByLabelText('Has voids'));
     await waitFor(() =>
-      expect(runs('tickets').at(-1)?.body).toEqual({ minAmount: 500, hasVoids: true }),
+      expect(runs('tickets').at(-1)?.body).toEqual({
+        quick: 'Today',
+        minAmount: 500,
+        hasVoids: true,
+      }),
     );
   });
 

@@ -42,6 +42,8 @@ public static class LedgerAccountCodes
     public const string OwnersDrawings = "OWNERS_DRAWINGS";
     public const string BankCharges = "BANK_CHARGES";
     public const string OtherIncome = "OTHER_INCOME";
+    /// <summary>Sales served on an earlier date than they were paid: credited on the day served, cleared when paid.</summary>
+    public const string UnsettledSales = "UNSETTLED_SALES";
 
     /// <summary>Where money is: the drawers, the safe, the bank, M-Pesa and card takings on their way.</summary>
     public static readonly IReadOnlySet<string> Money = new HashSet<string> { Cash, Safe, Bank, MPesa, CardClearing };
@@ -67,5 +69,6 @@ public static class LedgerAccountCodes
         (OwnersDrawings, "Owner's drawings", AccountType.Equity),
         (BankCharges, "Bank charges", AccountType.Expense),
         (OtherIncome, "Other income", AccountType.Income),
+        (UnsettledSales, "Unsettled sales", AccountType.Asset),
     ];
 }

@@ -336,21 +336,36 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         await carol.DisposeAsync();
     }
     [SkippableFact]
-    public async Task The_back_fill_dates_existing_entries_on_sql_server()
+    public async Task The_back_fill_dates_existing_entries_and_moves_1_0_0_entries_to_calendar_dates_on_sql_server()
     {
         Skip.IfNot(sql.Available, Skipped);
         const string name = "tausi_backfill";
         await Seeded(name);
-        var id = Guid.NewGuid();
+        var (old, served) = (Guid.NewGuid(), Guid.NewGuid());
+        var happened = DateTimeOffset.UtcNow.AddDays(-1);
         await using (var db = new SqlServerTausiDbContext(sql.Options(name)))
         {
-            db.JournalEntries.Add(new Domain.Ledger.JournalEntry { Id = id, Date = DateTimeOffset.UtcNow.AddDays(-3), Memo = "Before task 12", SourceType = "Test", CreatedAt = DateTimeOffset.UtcNow });
+            var period = await db.WorkPeriods.Select(p => p.Id).FirstAsync();
+            var wrongDate = DateOnly.FromDateTime(happened.UtcDateTime).AddDays(-2);
+            db.JournalEntries.Add(new Domain.Ledger.JournalEntry { Id = old, Date = DateTimeOffset.UtcNow.AddDays(-3), Memo = "Before task 12", SourceType = "Test", CreatedAt = DateTimeOffset.UtcNow });
+            // As version 1.0.0 dated it: its work period's opening date, kept by the migration in OldBusinessDate.
+            db.JournalEntries.Add(new Domain.Ledger.JournalEntry
+            {
+                Id = served, Date = happened, Memo = "Sale", SourceType = Application.Settling.SalePosting.SourceType, SourceId = Guid.NewGuid().ToString(),
+                CreatedAt = happened, WorkPeriodId = period, BusinessDate = wrongDate, OldBusinessDate = wrongDate,
+            });
             await db.SaveChangesAsync();
-            await new Application.Money.LedgerBackfill(db).Run(CancellationToken.None);
+            var backfill = new Application.Money.LedgerBackfill(db, new Infrastructure.Ledger.LedgerPostingService(db, new FixedSession(), TimeProvider.System));
+            await backfill.Run(CancellationToken.None);
+            await backfill.Run(CancellationToken.None);
         }
 
         await using var check = new SqlServerTausiDbContext(sql.Options(name));
-        (await check.JournalEntries.SingleAsync(e => e.Id == id)).BusinessDate.Should().NotBeNull();
+        (await check.JournalEntries.SingleAsync(e => e.Id == old)).BusinessDate.Should().NotBeNull();
         (await check.JournalEntries.CountAsync(e => e.BusinessDate == null)).Should().Be(0);
+        var zone = await Application.Money.BusinessDates.Zone(check, CancellationToken.None);
+        var moved = await check.JournalEntries.SingleAsync(e => e.Id == served);
+        moved.BusinessDate.Should().Be(Application.Money.BusinessDates.Of(happened, zone));
+        moved.OldBusinessDate.Should().Be(DateOnly.FromDateTime(happened.UtcDateTime).AddDays(-2));
     }
 }

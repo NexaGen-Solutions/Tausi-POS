@@ -1,6 +1,6 @@
 <#
   Puts one version (MAJOR.MINOR.PATCH, from the release tag) everywhere it is shown: every .NET assembly
-  (and so /health), the web app (the admin site's About line), the terminal app and its installer.
+  (and so /health), the web app (the admin site's About line), the terminal app, its launcher and its installer.
     scripts/set-version.ps1 -Version 1.2.0
 #>
 param([Parameter(Mandatory)] [string] $Version)
@@ -19,8 +19,10 @@ foreach ($file in 'web/package.json', 'terminal/package.json', 'terminal/src-tau
   Set-Content $path $text -NoNewline
 }
 
-$cargo = Join-Path $root 'terminal/src-tauri/Cargo.toml'
-$text = Get-Content $cargo -Raw
-$text = ([regex]'(?m)^version = "[^"]*"').Replace($text, "version = `"$Version`"", 1)
-Set-Content $cargo $text -NoNewline
+foreach ($file in 'terminal/src-tauri/Cargo.toml', 'terminal/launcher/Cargo.toml') {
+  $cargo = Join-Path $root $file
+  $text = Get-Content $cargo -Raw
+  $text = ([regex]'(?m)^version = "[^"]*"').Replace($text, "version = `"$Version`"", 1)
+  Set-Content $cargo $text -NoNewline
+}
 Write-Host "Version $Version set."

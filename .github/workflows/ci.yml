@@ -237,6 +237,7 @@ jobs:
         with:
           workspaces: |
             terminal/print -> target
+            terminal/launcher -> target
             terminal/src-tauri -> target
       - name: Build the web app (bundled for the setup screen)
         run: npm ci && npm run build
@@ -244,6 +245,9 @@ jobs:
       - name: Test the print crate
         run: cargo test
         working-directory: terminal/print
+      - name: Test the launcher
+        run: cargo test
+        working-directory: terminal/launcher
       - name: Test the terminal app
         run: cargo test
         working-directory: terminal/src-tauri
@@ -256,8 +260,10 @@ jobs:
         run: |
           npm ci
           $sign = ../scripts/terminal-signing.ps1
-          if ($sign) { npm run tauri build -- --config (@{ bundle = @{ windows = @{ signCommand = $sign } } } | ConvertTo-Json -Depth 5 -Compress) }
-          else { npm run tauri build }
+          $launcher = ../scripts/terminal-launcher.ps1
+          $bundle = @{ resources = $launcher }
+          if ($sign) { $bundle.windows = @{ signCommand = $sign } }
+          npm run tauri build -- --config (@{ bundle = $bundle } | ConvertTo-Json -Depth 5 -Compress)
           if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Name the installer TausiPOS-Setup.exe
         shell: pwsh

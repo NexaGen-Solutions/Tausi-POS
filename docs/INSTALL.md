@@ -116,7 +116,16 @@ admin site in its own window (Microsoft Edge, without tabs or an address bar).
    type the code and choose the terminal. Within seconds the counter PC shows the PIN pad.
 
 The terminal starts by itself when Windows starts, full screen, and can't be closed with Alt+F4
-(**kiosk mode**). The pairing is kept encrypted for that Windows user.
+(**kiosk mode**). The pairing is kept encrypted for that Windows user, in their own app data, so a
+reinstall or a repair keeps it.
+
+**The launcher** (from 1.0.1): Windows starts `C:\Program Files\Tausi POS\Launcher\tausi-launcher.exe`,
+which starts the app and looks after it. If the app stops by itself it starts it again (after three times
+in ten minutes it stops and offers Repair). If a new version doesn't start within 60 seconds, it goes back
+to the version before it, kept in `C:\Program Files\Tausi POS\Terminal.previous\`. If the app is
+missing, it shows **Tausi POS needs repairing**: **OK** downloads the terminal installer again from the
+paired server, checks NexaGen's signature and reinstalls it (Windows asks for an administrator), keeping
+the pairing. Technicians: `tausi-launcher.exe --plan` says what it would start (App, Previous or Repair).
 
 **After a power cut**: the terminal starts when someone signs in to Windows, not before. So that a
 counter PC comes back to the PIN pad on its own, give it a standard (not administrator) Windows user
@@ -205,6 +214,11 @@ first, installs, and starts again; if anything fails it goes back to the previou
 by itself. No internet? NexaGen can give you a `.tausiupdate` file: Settings → System → *Update from a
 USB drive*. Updates are checked against NexaGen's signature before they run.
 
+**Updating terminals to 1.0.1 (once, by hand):** 1.0.1 fixes how terminals update, so the terminals on
+1.0.0 can't get it by themselves safely. On each counter PC, after the server is on 1.0.1, run the new
+`TausiPOS-Setup-1.0.1.exe` once (choose **Yes**). It keeps the pairing. From then on terminals update
+from the server as below.
+
 **The terminals** update **from the server**, never from the internet: after the server is updated, each
 terminal downloads the matching version and installs it when it has sat on the PIN screen for 5 minutes
 with nobody logged in (never in the middle of an order), or at its next start. A terminal too old for the
@@ -222,6 +236,8 @@ Silent: `TausiPOS-Server-Setup.exe /uninstall /quiet` (keeps the data;
 add `DELETEDATA=1 BUSINESSNAME="Demo Bar"` to delete it).
 
 The terminal: Settings → Apps → **Tausi POS** → Uninstall, or `"C:\Program Files\Tausi POS\Terminal\uninstall.exe" /S`.
+It also removes the launcher and the previous version. Reinstalling with "Uninstall before installing"
+keeps them, so a reinstall that fails half-way still leaves a terminal that starts.
 
 ## 9. Linux server
 

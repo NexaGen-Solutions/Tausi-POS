@@ -16,10 +16,14 @@ public class JournalEntry : Entity
     public Guid? ShiftId { get; set; }
 
     /// <summary>
-    /// The business day it belongs to: the work period's opening date (a Friday that runs past
-    /// midnight is still Friday), or the date chosen on an admin form. Null only before the back-fill.
+    /// The date it belongs to: the calendar date it happened in the business's time zone (a sale's
+    /// items on the date they were served, its payment on the date it was paid), or the date chosen
+    /// on an admin form. Null only before the back-fill.
     /// </summary>
     public DateOnly? BusinessDate { get; set; }
+
+    /// <summary>Its date before version 1.0.1 moved sales to calendar dates; kept for one release, to check.</summary>
+    public DateOnly? OldBusinessDate { get; set; }
 
     /// <summary>Back-dated into a day that was already closed: shown as "Late entry", not on that day's Z.</summary>
     public bool IsLate { get; set; }

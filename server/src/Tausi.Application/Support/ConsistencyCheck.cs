@@ -3,6 +3,7 @@ using Tausi.Application.Abstractions;
 using Tausi.Application.Security;
 using Tausi.Application.Settling;
 using Tausi.Domain.People;
+using Tausi.Domain.Ledger;
 using Tausi.Domain.Service;
 
 namespace Tausi.Application.Support;
@@ -56,19 +57,27 @@ public sealed class ConsistencyCheck(ITausiDb db, TimeProvider clock, ICurrentSe
         var credit = entries.Sum(e => e.Credit);
         if (debit != credit) Add("ledger", [$"The trial balance is off by {debit - credit:0.00} (debit {debit:0.00}, credit {credit:0.00})."]);
 
-        // Settled tickets: paid in full, and one sale entry each (none when nothing was due).
+        // Settled tickets: paid in full, with sale entries when something was due, and everything they
+        // put on Unsettled sales (items served on an earlier date) cleared by the payment.
         var settled = await db.Tickets.AsNoTracking().Include(t => t.Lines).Include(t => t.Payments)
             .Where(t => t.Status == TicketStatus.Settled).ToListAsync(ct);
-        var saleEntries = (await db.JournalEntries.AsNoTracking()
-                .Where(e => e.SourceType == SalePosting.SourceType && e.ReversesEntryId == null && e.ReversedByEntryId == null)
-                .Select(e => e.SourceId).ToListAsync(ct))
-            .GroupBy(id => id ?? "").ToDictionary(g => g.Key, g => g.Count());
+        var saleEntries = (await db.JournalLines.AsNoTracking()
+                .Join(db.JournalEntries.Where(e => e.SourceType == SalePosting.SourceType && e.ReversesEntryId == null && e.ReversedByEntryId == null),
+                    l => l.JournalEntryId, e => e.Id, (l, e) => new { e.SourceId, Entry = e.Id, Code = l.Account!.Code, l.Debit, l.Credit })
+                .ToListAsync(ct))
+            .GroupBy(x => x.SourceId ?? "")
+            .ToDictionary(g => g.Key, g => (Count: g.Select(x => x.Entry).Distinct().Count(),
+                Unsettled: g.Where(x => x.Code == LedgerAccountCodes.UnsettledSales).Sum(x => x.Debit - x.Credit)));
         Add("tickets", settled.Where(t => t.Paid != t.AmountDue)
             .Select(t => $"#{t.Number} is settled for {t.AmountDue:0.00} but its payments come to {t.Paid:0.00}."));
         Add("tickets", settled
             .Select(t => (Ticket: t, Entries: saleEntries.GetValueOrDefault(t.Id.ToString())))
-            .Where(x => x.Entries != (x.Ticket.AmountDue > 0 ? 1 : 0))
-            .Select(x => $"#{x.Ticket.Number} has {x.Entries} sale journal entries (it should have {(x.Ticket.AmountDue > 0 ? 1 : 0)})."));
+            .Where(x => (x.Entries.Count > 0) != (x.Ticket.AmountDue > 0))
+            .Select(x => $"#{x.Ticket.Number} has {x.Entries.Count} sale journal entries (it should have {(x.Ticket.AmountDue > 0 ? "at least one" : "none")})."));
+        Add("tickets", settled
+            .Select(t => (Ticket: t, Entries: saleEntries.GetValueOrDefault(t.Id.ToString())))
+            .Where(x => x.Entries.Unsettled != 0)
+            .Select(x => $"#{x.Ticket.Number} leaves {x.Entries.Unsettled:0.00} on Unsettled sales after it was paid."));
         Add("tickets", settled.Where(t => t.ReceiptNumber is null).Select(t => $"#{t.Number} is settled without a receipt number."));
 
         // Stock: the cached on hand is the sum of the movements.

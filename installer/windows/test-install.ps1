@@ -10,6 +10,9 @@
   3. An upgrade whose migration fails (a test build): the backup and the previous version come back.
   4. Uninstall: the service, program and firewall rule go; C:\ProgramData\Tausi POS stays.
   5. The terminal installer (silent, with SERVER=): Program Files\Tausi POS\Terminal, the Run key, server.txt.
+     The launcher in its own folder starts it at sign-in; a reinstall keeps the previous version; an app
+     that's gone (or a reinstall's uninstall step, run in place) leaves the launcher running the previous
+     version; a real uninstall removes the launcher, the previous version and the Run key.
 #>
 param(
   [Parameter(Mandatory)] [string] $First,
@@ -153,8 +156,46 @@ if ($Terminal) {
   $exe = Get-ChildItem 'C:\Program Files\Tausi POS\Terminal\*.exe' -ErrorAction SilentlyContinue | Where-Object Name -ne 'uninstall.exe'
   Check ($null -ne $exe) 'in C:\Program Files\Tausi POS\Terminal'
   $run = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).'Tausi POS'
-  Check ($run -like '*Tausi POS\Terminal*') 'starts for every user at sign-in'
+  Check ($run -like '*Tausi POS\*') 'starts for every user at sign-in'
   Check ([string](Get-Content 'C:\ProgramData\Tausi POS\Terminal\server.txt' -Raw -ErrorAction SilentlyContinue) -match '192.168.1.10:5080') 'the server address is pre-filled'
+
+  $root = 'C:\Program Files\Tausi POS'
+  $launcher = "$root\Launcher\tausi-launcher.exe"
+  function Plan {
+    $out = Join-Path $env:TEMP 'tausi-plan.txt'
+    Start-Process -FilePath $launcher -ArgumentList '--plan' -Wait -NoNewWindow -RedirectStandardOutput $out | Out-Null
+    ([string](Get-Content $out -Raw)).Trim()
+  }
+  Check (Test-Path $launcher) 'the launcher is in its own folder'
+  Check ($run -like '*Tausi POS\Launcher\tausi-launcher.exe*') 'the sign-in entry starts the launcher'
+  Check ((Plan) -eq 'App') 'the launcher runs the app'
+
+  $p = Start-Process -FilePath $Terminal -ArgumentList @('/S') -Wait -PassThru
+  Check ($p.ExitCode -eq 0) "installed again (exit $($p.ExitCode))"
+  Check (Test-Path "$root\Terminal.previous\tausi-terminal.exe") 'a reinstall keeps the previous version'
+
+  Remove-Item "$root\Terminal\tausi-terminal.exe"
+  Check ((Plan) -eq 'Previous') 'with the app gone, the launcher runs the previous version'
+
+  # "Uninstall before installing": the installer runs the old uninstaller in place, then installs.
+  $p = Start-Process -FilePath $Terminal -ArgumentList @('/S') -Wait -PassThru
+  $p = Start-Process -FilePath "$root\Terminal\uninstall.exe" -ArgumentList @('/S', "_?=$root\Terminal") -Wait -PassThru
+  Check ($p.ExitCode -eq 0) "a reinstall's uninstall step ran (exit $($p.ExitCode))"
+  Check (-not (Test-Path "$root\Terminal\tausi-terminal.exe")) 'it removed the app'
+  Check ((Test-Path $launcher) -and (Test-Path "$root\Terminal.previous\tausi-terminal.exe")) 'it kept the launcher and the previous version'
+  $kept = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).'Tausi POS'
+  Check ($kept -like '*tausi-launcher.exe*') 'it kept the sign-in entry'
+  Check ((Plan) -eq 'Previous') 'if the install half fails now, the previous version still runs'
+
+  $p = Start-Process -FilePath $Terminal -ArgumentList @('/S') -Wait -PassThru
+  Check (((Plan) -eq 'App') -and $p.ExitCode -eq 0) 'installed again, the launcher runs the new app'
+
+  $p = Start-Process -FilePath "$root\Terminal\uninstall.exe" -ArgumentList @('/S') -Wait -PassThru
+  Start-Sleep 5 # the uninstaller copies itself to a temporary folder and runs from there
+  Check (-not (Test-Path "$root\Launcher")) 'a real uninstall removes the launcher'
+  Check (-not (Test-Path "$root\Terminal.previous")) 'and the previous version'
+  $gone = (Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).'Tausi POS'
+  Check ($null -eq $gone) 'and the sign-in entry'
 }
 
 if ($failures.Count -gt 0) {

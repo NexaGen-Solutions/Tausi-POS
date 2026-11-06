@@ -34,6 +34,8 @@ public sealed class SaleLine
     public Guid OpenedByUserId { get; init; }
     public Guid AddedTerminalId { get; init; }
     public DateTimeOffset AddedAt { get; init; }
+    /// <summary>When it was served (printed); when it was added for a line not printed yet. Its sale date.</summary>
+    public DateTimeOffset ServedAt { get; init; }
     public int? PrintRound { get; init; }
 
     /// <summary>The sale: gross after the discount share (0 for a gift).</summary>
@@ -54,6 +56,7 @@ public sealed class SaleLine
 /// </summary>
 public static class SalesQuery
 {
+    /// <summary>The lines of whole work periods (the Z report and My sales).</summary>
     public static IQueryable<SaleLine> Lines(ITausiDb db, IReadOnlyCollection<Guid> periodIds, bool includeOpen) =>
         from l in db.OrderLines.AsNoTracking()
         join k in db.Tickets.AsNoTracking() on l.TicketId equals k.Id
@@ -85,14 +88,64 @@ public static class SalesQuery
             OpenedByUserId = k.OpenedByUserId,
             AddedTerminalId = l.AddedTerminalId,
             AddedAt = l.AddedAt,
+            ServedAt = l.PrintedAt ?? l.AddedAt,
             PrintRound = l.PrintRound,
         };
+
+
+    /// <summary>The lines served in a report's period: each counts on the date it was served (printed), whichever work period it was in.</summary>
+    public static IQueryable<SaleLine> Lines(ITausiDb db, ReportPeriod period, bool includeOpen)
+    {
+        var (start, end) = (period.Start, period.End);
+        return from l in db.OrderLines.AsNoTracking()
+               join k in db.Tickets.AsNoTracking() on l.TicketId equals k.Id
+               where (l.PrintedAt ?? l.AddedAt) >= start && (l.PrintedAt ?? l.AddedAt) < end
+                     && (k.Status == TicketStatus.Settled || (includeOpen && k.Status == TicketStatus.Open))
+                     && l.Status != OrderLineStatus.Cancelled && l.Status != OrderLineStatus.Voided && l.VoidedAt == null
+        select new SaleLine
+               {
+                   LineId = l.Id,
+                   SaleLineId = l.SplitFromLineId ?? l.Id,
+                   TicketId = k.Id,
+                   TicketNumber = k.Number,
+                   TicketStatus = k.Status,
+                   WorkPeriodId = k.WorkPeriodId,
+                   MenuItemId = l.MenuItemId,
+                   Name = l.Name,
+                   Options = l.Options,
+                   Quantity = l.Quantity,
+                   UnitPrice = l.UnitPrice,
+                   Gross = l.Gross,
+                   Discount = l.Discount,
+                   Net = l.Net,
+                   Vat = l.Vat,
+                   VatRate = l.VatRate,
+                   VatExempt = l.VatExempt,
+                   IsGift = l.IsGift,
+                   OriginalUnitPrice = l.OriginalUnitPrice,
+                   AddedByUserId = l.AddedByUserId,
+                   OpenedByUserId = k.OpenedByUserId,
+                   AddedTerminalId = l.AddedTerminalId,
+                   AddedAt = l.AddedAt,
+                   ServedAt = l.PrintedAt ?? l.AddedAt,
+                   PrintRound = l.PrintRound,
+               };
+    }
 
     /// <summary>The rounding on settled tickets (open tickets aren't rounded yet).</summary>
     public static async Task<decimal> Rounding(ITausiDb db, IReadOnlyCollection<Guid> periodIds, CancellationToken ct) =>
         await db.Tickets.AsNoTracking()
             .Where(k => periodIds.Contains(k.WorkPeriodId) && k.Status == TicketStatus.Settled)
             .SumAsync(k => (decimal?)k.RoundingAmount, ct) ?? 0;
+
+    /// <summary>The rounding on tickets paid in a report's period (it counts on the date paid, like the payment).</summary>
+    public static async Task<decimal> Rounding(ITausiDb db, ReportPeriod period, CancellationToken ct)
+    {
+        var (start, end) = (period.Start, period.End);
+        return await db.Tickets.AsNoTracking()
+            .Where(k => k.Status == TicketStatus.Settled && k.SettledAt >= start && k.SettledAt < end)
+            .SumAsync(k => (decimal?)k.RoundingAmount, ct) ?? 0;
+    }
 
     /// <summary>
     /// Cost of sales per sale line from the stock movements of its print (Task 11), shared between

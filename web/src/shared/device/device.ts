@@ -116,6 +116,24 @@ export async function listPrinters(): Promise<string[]> {
   return invoke<string[]>('list_printers');
 }
 
+/** The terminal's health file (shared with the launcher): its version, last update and last exit. */
+export interface TerminalHealth {
+  version: string | null;
+  lastExit: { reason: string; at: number } | null;
+  lastUpdate: {
+    from: string;
+    to: string;
+    result: string;
+    error: string | null;
+    at: number;
+  } | null;
+}
+
+/** In the terminal app: how its last update went and why it last stopped. */
+export async function terminalHealth(): Promise<TerminalHealth> {
+  return invoke<TerminalHealth>('terminal_health');
+}
+
 /** In the terminal app: is there a printer by this name on this PC? Rejects with the reason. */
 export async function checkPrinter(printer: string): Promise<void> {
   await invoke('check_printer', { printer });

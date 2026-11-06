@@ -14,6 +14,7 @@ const COMMANDS: &[&str] = &[
     "move_server",
     "update_check",
     "update_install",
+    "terminal_health",
 ];
 
 fn main() {

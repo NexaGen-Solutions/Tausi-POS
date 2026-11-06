@@ -339,8 +339,34 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<Guid?>("DispensePrinterId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("LastExitAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastExitReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastUpdateAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastUpdateError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("LastUpdateFrom")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("LastUpdateResult")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("LastUpdateTo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("LocalPrintersJson")
                         .IsRequired()
@@ -456,6 +482,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly?>("OldBusinessDate")
+                        .HasColumnType("date");
 
                     b.Property<Guid?>("ReversedByEntryId")
                         .HasColumnType("uuid");

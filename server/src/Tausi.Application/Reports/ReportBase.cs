@@ -18,8 +18,7 @@ public abstract class ReportBase : IReport
     protected static async Task<string?> OpenNote(ReportContext c, CancellationToken ct)
     {
         if (!c.IncludeOpen) return null;
-        var ids = c.Period.PeriodIds;
-        var open = await c.Db.Tickets.AsNoTracking().CountAsync(k => ids.Contains(k.WorkPeriodId) && k.Status == TicketStatus.Open, ct);
+        var open = await c.Tickets().CountAsync(k => k.Status == TicketStatus.Open, ct);
         return open == 0 ? null : open == 1 ? "Includes 1 open ticket" : $"Includes {open} open tickets";
     }
 

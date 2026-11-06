@@ -47,7 +47,7 @@ export function ReportsPage() {
   const reports = Array.isArray(list.data) ? list.data : [];
   const key = params.get('report') ?? reports[0]?.key;
   const definition = reports.find((r) => r.key === key) ?? reports[0];
-  const [filters, setFilters] = useState<ReportFilters>({});
+  const [filters, setFilters] = useState<ReportFilters>({ quick: 'Today' });
   const sent = cleaned(filters);
   const result = useQuery({
     queryKey: ['reports', 'run', definition?.key, sent],

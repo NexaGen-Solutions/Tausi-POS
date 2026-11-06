@@ -42,6 +42,17 @@ public class Terminal : VersionedEntity
     public DateTimeOffset? LastSeenAt { get; set; }
     public string? AppVersion { get; set; }
 
+    /// <summary>The terminal app's last update, as it reported it (from, to, Success / Rolled back / Failed / Installing, why, when).</summary>
+    public string? LastUpdateFrom { get; set; }
+    public string? LastUpdateTo { get; set; }
+    public string? LastUpdateResult { get; set; }
+    public string? LastUpdateError { get; set; }
+    public DateTimeOffset? LastUpdateAt { get; set; }
+
+    /// <summary>Why the app last stopped ("Closed to update", "Stopped unexpectedly (exit code 1)"…), and when.</summary>
+    public string? LastExitReason { get; set; }
+    public DateTimeOffset? LastExitAt { get; set; }
+
     /// <summary>Printer names installed on this PC, as the terminal app last reported them (JSON array).</summary>
     public string LocalPrintersJson { get; set; } = "[]";
 

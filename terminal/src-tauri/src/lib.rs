@@ -22,6 +22,7 @@ use tauri::window::Color;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
+use tausi_launcher::state as health;
 use tauri_plugin_updater::{Update, UpdaterExt};
 use tausi_print::{PrintError, PrintRequest};
 use url::Url;
@@ -42,6 +43,7 @@ pub const REMOTE_COMMANDS: &[&str] = &[
     "move_server",
     "update_check",
     "update_install",
+    "terminal_health",
 ];
 
 /// `allow-get-device-config` for `get_device_config`: the permission tauri-build makes for an app command.
@@ -385,8 +387,26 @@ fn kiosk_set(app: AppHandle, enabled: bool) -> Result<(), String> {
 /// Closes the app (after the gesture and an admin-site login on the web side).
 #[tauri::command]
 fn kiosk_exit(app: AppHandle) {
+    record(|s| s.exited(health::exit::CLOSED_BY_ADMIN, health::now()));
     app.state::<ExitAllowed>().0.store(true, Ordering::SeqCst);
     app.exit(0);
+}
+
+/// The terminal's health (`%LOCALAPPDATA%\Tausi POS\Terminal\state.json`, shared with the launcher):
+/// its version, how its last update went and why it last stopped. The POS screens report it to the
+/// server, which shows it on the Terminals page.
+#[tauri::command]
+fn terminal_health() -> health::TerminalState {
+    health::default_path().map(|p| health::TerminalState::load(&p)).unwrap_or_default()
+}
+
+/// Changes the health file; a failure to write it never stops the app.
+fn record(f: impl FnOnce(&mut health::TerminalState)) {
+    if let Some(path) = health::default_path() {
+        if let Err(e) = health::TerminalState::change(&path, f) {
+            eprintln!("Could not write the terminal's health file: {e}");
+        }
+    }
 }
 
 /// Is a release newer than this app, and not newer than the server? (Server first.)
@@ -455,8 +475,21 @@ fn update_install(app: AppHandle) -> Result<(), String> {
     let Some((update, bytes)) = pending else {
         return Err("No update is ready.".into());
     };
+    let current = app.package_info().version.to_string();
+    let to = update.version.clone();
+    // If the installer never finishes (power cut, antivirus), the launcher finds "Installing" and the
+    // previous version, and goes back to it.
+    record(|s| s.installing(&current, &to, health::now()));
     app.state::<ExitAllowed>().0.store(true, Ordering::SeqCst);
-    update.install(bytes).map_err(|e| e.to_string())
+    update.install(bytes).map_err(|e| {
+        record(|s| {
+            if let Some(u) = &mut s.last_update {
+                u.result = health::update::FAILED.to_string();
+                u.error = Some(e.to_string());
+            }
+        });
+        e.to_string()
+    })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -486,7 +519,8 @@ pub fn run() {
             kiosk_exit,
             move_server,
             update_check,
-            update_install
+            update_install,
+            terminal_health
         ])
         .manage(ExitAllowed(AtomicBool::new(false)))
         .manage(PendingUpdate(Mutex::new(None)))
@@ -494,8 +528,12 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let app = window.app_handle();
-                if kiosk_enabled(app) && !app.state::<ExitAllowed>().0.load(Ordering::SeqCst) {
+                let allowed = app.state::<ExitAllowed>().0.load(Ordering::SeqCst);
+                if kiosk_enabled(app) && !allowed {
                     api.prevent_close();
+                } else if !allowed {
+                    // Closed by hand (kiosk mode off): the launcher mustn't start it again.
+                    record(|s| s.exited(health::exit::CLOSED, health::now()));
                 }
             }
         })
@@ -541,6 +579,9 @@ pub fn run() {
                 .build()?;
             // Take keyboard focus on start, so a cashier can type a PIN without touching the screen.
             let _ = window.set_focus();
+            // Started: the launcher stops waiting, and an update to this version succeeded.
+            let version = handle.package_info().version.to_string();
+            record(|s| s.started(&version, health::now()));
 
             if !cfg!(debug_assertions) {
                 // The installer starts the app for every user (the machine's Run key). Older
