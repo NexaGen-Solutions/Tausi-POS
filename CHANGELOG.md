@@ -2,6 +2,12 @@
 
 Tausi POS by NexaGen Solutions. Each release's changes, newest first (built by the release workflow from the commit messages).
 
+## 1.1.0 (unreleased)
+
+New features. Install 1.0.1 first: it changes how terminals update.
+
+### Added
+
 ## 1.0.1 (unreleased)
 
 Fixes for 1.0.0. **Each counter PC needs the new `TausiPOS-Setup-1.0.1.exe` run once by hand**, because
