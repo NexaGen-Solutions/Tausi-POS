@@ -61,6 +61,8 @@ export function TablesPage() {
   const canAdd = can('order.add');
   // Settling can't be approved for someone else, so only Allowed counts.
   const canSettle = permission('ticket.settle') === 'Allowed';
+  const canReports =
+    permission('reports.own') === 'Allowed' || permission('reports.all') === 'Allowed';
   const selected = data?.tables.find((table) => table.id === selectedId) ?? null;
   const chosen = selected?.tickets.find((k) => k.id === chosenId) ?? selected?.tickets[0] ?? null;
   const shown = data ? (tab === 'mine' ? data.tables.filter(isMyTable) : data.tables) : [];
@@ -156,9 +158,16 @@ export function TablesPage() {
     <div className="pos-screen map-screen">
       <PosTopBar
         extra={
-          <Button variant="ghost-dark" onClick={() => navigate('/pos/my-sales')}>
-            {t('pos.mySales')}
-          </Button>
+          <>
+            <Button variant="ghost-dark" onClick={() => navigate('/pos/my-sales')}>
+              {t('pos.mySales')}
+            </Button>
+            {canReports && (
+              <Button variant="ghost-dark" onClick={() => navigate('/pos/reports')}>
+                {t('pos.reports')}
+              </Button>
+            )}
+          </>
         }
       />
       <OfflineBanner />

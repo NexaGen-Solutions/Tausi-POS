@@ -420,6 +420,16 @@ Each entry: date, decision, reason.
 | 2026-11-06 | **Dependabot alerts:** `sharp` in `tools/brand` is upgraded to 0.35.5 (the icons it builds are pixel-for-pixel the same, so the images were not rebuilt), and `web/package.json` forces `minimatch` 11.0.5 with `overrides`, because ESLint 10 and typescript-eslint still ask for minimatch 10. Both are development tools only: nothing in the server, the terminal or the web build uses them. Remove the override when ESLint moves to minimatch 11. | Owner asked to fix the four alerts. |
 | 2026-11-06 | **`tauri-plugin-updater` 2.14.1** (from 2.14.0) in the 1.0.1 terminal: it moves the `zip` crate from 4.6 to 9.4, clearing three Dependabot alerts (one critical). The risk was low, since the updater checks the installer's signature before it opens it, but the updater ships on every counter. The fourth new alert, `glib` 0.18, is in the GTK libraries Tauri uses on Linux only; the Windows terminal doesn't include it, and it clears when Tauri moves to GTK 0.20. | Dependabot, 6 Nov. |
 
+## Reports on the terminal (task 17b)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-11-06 | **The terminal runs the admin site's report classes** through `TerminalReports` (`/api/pos/reports/{key}/run` and `/slip`), so the same dates give the same figures. The server sets the user filter: with only `reports.own` it is always the logged-in user and the terminal filter is ignored, whatever the request says; `reports.all` may choose. Only Allowed counts (no approval pad for reports). | Prompt 17b: one set of calculations, enforced on the server. |
+| 2026-11-06 | **Revenue only:** `TerminalReports.RevenueOnly` takes the `cost`, `profit` and `margin` columns, and notes about cost or recipes, out of every terminal result, for every user. The admin site's reports don't change. | Prompt 17b. |
+| 2026-11-06 | **Daily sales is a new report class** (`daily-sales`, also on the admin site, receipt version included): gross sales, discounts, net of VAT and VAT; payments by type with counts; settled tickets, average ticket and open tickets; voids and gifts. With a user it is their figures: lines they added, payments they brought, their voids and gifts. The existing Daily summary has cost and profit, so it couldn't be used on the terminal. | Prompt 17b ("add one for Daily sales if it doesn't exist"). |
+| 2026-11-06 | **Sales by item prints one line per item** on the receipt printer ("6 x Tusker Lager … 1,200", sales after discounts) with each category's gifts and voids in a footer; the screen keeps every revenue column. Seven lines per item would make a long slip for a full menu. | Paper length. |
+| 2026-11-06 | **Done differently from the prompt:** there is no wireframe board for this screen (the owner said to build it without one); it follows My sales and the table map (tabs, big monospace figures, a scrolling table, a touch calendar for Pick dates). The user and terminal lists come from the admin reports' options, which `reports.all` may read. | Owner, 6 Nov. |
+
 ## After v1
 
 Owner's decisions and larger items for a later version. Not in 1.0.0.

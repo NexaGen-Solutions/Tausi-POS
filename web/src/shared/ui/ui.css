@@ -467,3 +467,67 @@
   gap: var(--space-2);
   justify-content: flex-end;
 }
+
+/* Calendar: a touch date-range picker */
+.nx-calendar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.nx-calendar__month {
+  font-size: 18px;
+  font-weight: 600;
+}
+.nx-calendar__move {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
+.nx-calendar__grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+.nx-calendar__grid th {
+  padding: var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.nx-calendar__grid td {
+  padding: 2px;
+  text-align: center;
+}
+.nx-calendar__day {
+  width: 100%;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  cursor: pointer;
+}
+.nx-calendar__day--chosen {
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-selected-text);
+}
+.nx-calendar__day:disabled {
+  background: var(--color-disabled);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+.nx-calendar__hint {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+}

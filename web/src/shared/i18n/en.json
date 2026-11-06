@@ -18,7 +18,20 @@
     "edit": "Edit",
     "add": "Add",
     "up": "Move up",
-    "down": "Move down"
+    "down": "Move down",
+    "calendar": {
+      "previous": "Previous month",
+      "next": "Next month",
+      "mon": "Mo",
+      "tue": "Tu",
+      "wed": "We",
+      "thu": "Th",
+      "fri": "Fr",
+      "sat": "Sa",
+      "sun": "Su",
+      "pickStart": "Tap the first day.",
+      "pickEnd": "Tap the last day, or the same day again for one day."
+    }
   },
   "connection": {
     "offline": "Not connected to the server. Reconnecting…",
@@ -71,6 +84,7 @@
       "pin_invalid": "A PIN must be 4 to 6 digits."
     },
     "mySales": "My sales",
+    "reports": "Reports",
     "backToTables": "Back to tables",
     "map": {
       "allTables": "All tables",
@@ -420,6 +434,39 @@
     },
     "training": {
       "band": "TRAINING · not real sales"
+    },
+    "reportsPage": {
+      "title": "Reports",
+      "ownOnly": "Only your own figures",
+      "tabs": "Reports",
+      "dates": "Dates",
+      "Today": "Today",
+      "Yesterday": "Yesterday",
+      "ThisWeek": "This week",
+      "pick": "Pick dates",
+      "pickTitle": "Pick dates",
+      "use": "Show these dates",
+      "user": "User",
+      "terminal": "Terminal",
+      "everyone": "Everyone",
+      "everyTerminal": "Every terminal",
+      "print": "Print",
+      "printed": "The report is printing.",
+      "empty": "Nothing sold in these dates.",
+      "showItems": "Show items",
+      "hideItems": "Hide items",
+      "figures": {
+        "sales": "Sales",
+        "items": "Items",
+        "paid": "Paid",
+        "tickets": "Tickets",
+        "users": "Staff"
+      },
+      "report": {
+        "sales-by-user": "Sales by user",
+        "daily-sales": "Daily sales",
+        "sales-by-item": "Sales by item"
+      }
     }
   },
   "approval": {

@@ -1,0 +1,186 @@
+/* Task 17b: reports on the terminal (1280×800 touch) */
+.pos-reports {
+  height: calc(100vh - var(--training-band, 0px));
+  min-height: 0;
+}
+.pos-reports__bar,
+.pos-reports__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) 0;
+}
+.pos-reports__bar {
+  justify-content: space-between;
+}
+.pos-reports__tabs,
+.pos-reports__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.pos-reports__tab,
+.pos-reports__date {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+.pos-reports__date {
+  min-height: var(--touch-min);
+  font-size: 16px;
+}
+.pos-reports__tab--active,
+.pos-reports__date--active {
+  border-color: var(--color-surface-dark);
+  background: var(--color-surface-dark);
+  color: var(--color-topbar-text);
+  font-weight: 600;
+}
+.pos-reports__select {
+  min-width: 200px;
+}
+.pos-reports__select .nx-field__select {
+  min-height: var(--touch-min);
+}
+.pos-reports__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+.pos-reports__period {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.pos-reports__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.pos-reports__figure {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 180px;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.pos-reports__figure-label {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.pos-reports__figure-value {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 600;
+}
+.pos-reports__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.pos-reports__error {
+  margin: var(--space-4) var(--space-5);
+  color: var(--color-warning-text);
+}
+.pos-reports__pick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.pos-report__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+.pos-report__table th,
+.pos-report__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
+  text-align: left;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.pos-report__table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-panel);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pos-report__table .pos-report__number {
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+.pos-report__group th {
+  background: var(--color-row-alt);
+  font-weight: 600;
+}
+.pos-report__fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pos-report__fold-hint {
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pos-report__row--muted td {
+  color: var(--color-text-muted);
+}
+.pos-report__subtotal td,
+.pos-report__total td {
+  font-weight: 600;
+}
+.pos-report__total td {
+  border-top: 2px solid var(--color-border);
+}
+.pos-report__footer td {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.pos-report__notes {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--color-text-secondary);
+}
+.pos-report__empty {
+  margin: 0;
+  padding: var(--space-6);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
