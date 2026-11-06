@@ -78,7 +78,7 @@ public static class DependencyInjection
 
         // M-Pesa (1.1): Safaricom's Daraja, the Tausi relay and the collector that runs while tickets are open.
         services.AddSingleton<Application.Mpesa.IDaraja, Mpesa.HttpDaraja>();
-        services.AddSingleton<Application.Mpesa.IRelayClient, Mpesa.HttpRelayClient>();
+        services.AddSingleton<Application.Mpesa.IRelayClient>(new Mpesa.HttpRelayClient());
         services.AddSingleton<Application.Mpesa.RelayStatus>();
         services.AddSingleton<Mpesa.RelayCollector>();
         services.AddSingleton<Application.Mpesa.IMpesaCatchUp>(sp => sp.GetRequiredService<Mpesa.RelayCollector>());

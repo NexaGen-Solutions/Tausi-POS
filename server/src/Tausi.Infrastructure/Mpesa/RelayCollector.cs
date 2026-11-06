@@ -13,9 +13,10 @@ using Tausi.Domain.Service;
 namespace Tausi.Infrastructure.Mpesa;
 
 /// <summary>The relay's delivery API (relay/src/Tausi.Relay/Delivery.cs), with the business's API key.</summary>
-public sealed class HttpRelayClient : IRelayClient
+public sealed class HttpRelayClient(HttpClient? http = null) : IRelayClient
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(40) };
+    private static readonly HttpClient Shared = new() { Timeout = TimeSpan.FromSeconds(40) };
+    private readonly HttpClient Http = http ?? Shared;
 
     public async Task<IReadOnlyList<RelayPaymentDto>> Collect(string relayUrl, string apiKey, int waitSeconds, CancellationToken ct)
     {

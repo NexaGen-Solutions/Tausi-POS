@@ -38,6 +38,38 @@ jobs:
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release --logger "console;verbosity=normal"
 
+  relay:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.402"  # pinned: 10.0.403's download link is broken (2026-10-25)
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build -c Release --logger "console;verbosity=normal"
+      - name: Tarball (linux-x64, needs the .NET 10 ASP.NET runtime)
+        run: |
+          dotnet publish src/Tausi.Relay -c Release -o out/tausi-relay
+          tar -czf tausi-relay-linux.tar.gz -C out tausi-relay
+      - name: Container image
+        run: |
+          docker build -t tausi-relay:${{ github.sha }} .
+          docker save tausi-relay:${{ github.sha }} | gzip > tausi-relay-image.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tausi-relay
+          path: |
+            relay/tausi-relay-linux.tar.gz
+            relay/tausi-relay-image.tar.gz
+          retention-days: 3
+
   web:
     runs-on: ubuntu-latest
     defaults:
