@@ -20,10 +20,16 @@ import { useTicketLock } from '../ticket/useTicketLock';
 import { usePinSession } from '../usePinSession';
 import { StartShift } from '../cash/StartShift';
 import { currentShiftKey, type CurrentShift } from '../cash/types';
+import { PromptForm } from '../mpesa/PromptForm';
+import { PromptStatus } from '../mpesa/PromptStatus';
+import { ReceivedList } from '../mpesa/ReceivedList';
+import type { Prompt, ReceivedPayment } from '../mpesa/types';
+import { usePosMpesa } from '../mpesa/usePosMpesa';
 import { quickCash } from './quickCash';
 import './settle.css';
 
 type PayType = 'Cash' | 'Mpesa' | 'Card';
+type MpesaMode = 'prompt' | 'received' | 'typed';
 
 interface BroughtBy {
   userId: string;
@@ -111,6 +117,34 @@ export function SettlePage() {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [unprinted, setUnprinted] = useState<string | null>(null);
+  const mpesa = usePosMpesa();
+  const [mpesaMode, setMpesaMode] = useState<MpesaMode | null>(null);
+  // undefined: nothing done here yet, so a prompt still waiting on the ticket (the cashier came back) shows.
+  const [promptState, setPrompt] = useState<Prompt | null | undefined>(undefined);
+  const [lastPhone, setLastPhone] = useState('');
+  // A prompt still waiting (the cashier came back to the screen) is shown again.
+  const currentPrompt = useQuery({
+    queryKey: ['mpesa-prompt', id],
+    queryFn: () => api<Prompt | null>(`/api/pos/mpesa/tickets/${id}/prompts/current`),
+    enabled: !!mpesa?.stkEnabled,
+  });
+  const prompt =
+    promptState !== undefined
+      ? promptState
+      : currentPrompt.data?.status === 'Waiting'
+        ? currentPrompt.data
+        : null;
+  useEffect(() => {
+    if (prompt?.status === 'Paid') void queries.invalidateQueries({ queryKey: ['ticket', id] });
+  }, [prompt?.status, queries, id]);
+  const modes: MpesaMode[] = mpesa?.setUp
+    ? [
+        ...(mpesa.stkEnabled ? (['prompt'] as const) : []),
+        'received',
+        ...(mpesa.allowTypedCodes ? (['typed'] as const) : []),
+      ]
+    : ['typed'];
+  const mode = mpesaMode && modes.includes(mpesaMode) ? mpesaMode : modes[0];
 
   const remaining = ticket?.remaining ?? 0;
   const payments: Payment[] = ticket?.payments ?? [];
@@ -176,6 +210,26 @@ export function SettlePage() {
         setAmount('');
       },
     );
+  const addReceived = (r: ReceivedPayment) =>
+    addPayment({ type: 'Mpesa', mpesaTransactionId: r.id, amount: null }, () => undefined);
+  const setPromptBroughtBy = (paymentId: string, userId: string) =>
+    run(async () => {
+      save(
+        await api<TicketDetail>(`/api/pos/tickets/${id}/payments/${paymentId}/brought-by`, {
+          method: 'PUT',
+          body: { broughtByUserId: userId },
+        }),
+      );
+      setPrompt((p) =>
+        p
+          ? {
+              ...p,
+              broughtByUserId: userId,
+              broughtBy: people.find((x) => x.userId === userId)?.name ?? p.broughtBy,
+            }
+          : p,
+      );
+    });
   const remove = (payment: Payment) =>
     run(async () => {
       save(
@@ -480,41 +534,113 @@ export function SettlePage() {
               )}
               {type === 'Mpesa' && (
                 <>
-                  <label className="settle-field">
-                    <span>
-                      {rules.mpesaCodeRequired
-                        ? t('pos.settle.mpesaCode')
-                        : t('pos.settle.mpesaCodeOptional')}
-                    </span>
-                    <input
-                      className="settle-money-input"
-                      value={code}
-                      maxLength={10}
-                      autoCapitalize="characters"
-                      onChange={(e) =>
-                        setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
-                      }
-                      disabled={disabled}
+                  {modes.length > 1 && (
+                    <div className="mpesa-modes" role="group" aria-label={t('pos.mpesa.how')}>
+                      {modes.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          className={`mpesa-mode${mode === m ? ' mpesa-mode--on' : ''}`}
+                          aria-pressed={mode === m}
+                          onClick={() => setMpesaMode(m)}
+                        >
+                          {m === 'received'
+                            ? t('pos.mpesa.modes.received', { count: mpesa?.received ?? 0 })
+                            : t(`pos.mpesa.modes.${m}`)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {mode === 'prompt' &&
+                    (prompt ? (
+                      <PromptStatus
+                        prompt={prompt}
+                        currency={currency}
+                        onChange={setPrompt}
+                        onSendAgain={() => setPrompt(null)}
+                        onDone={() => setPrompt(null)}
+                      >
+                        {prompt.paymentId && rules.recordBroughtBy && (
+                          <label className="settle-field">
+                            <span>{t('pos.settle.broughtBy')}</span>
+                            <select
+                              value={prompt.broughtByUserId ?? ''}
+                              onChange={(e) =>
+                                void setPromptBroughtBy(prompt.paymentId!, e.target.value)
+                              }
+                              disabled={disabled}
+                            >
+                              {people.map((p) => (
+                                <option key={p.userId} value={p.userId}>
+                                  {byLabel(p)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                      </PromptStatus>
+                    ) : (
+                      <PromptForm
+                        key={lastPhone}
+                        ticketId={id}
+                        remaining={remaining}
+                        currency={currency}
+                        business={brand.data?.name ?? ''}
+                        fromOrderScreen={false}
+                        disabled={disabled || remaining <= 0}
+                        initialPhone={lastPhone}
+                        onSent={(p, phone) => {
+                          setLastPhone(phone);
+                          setPrompt(p);
+                        }}
+                      />
+                    ))}
+                  {mode === 'received' && (
+                    <ReceivedList
+                      ticketId={id}
+                      disabled={disabled || remaining <= 0}
+                      onAdd={(r) => void addReceived(r)}
                     />
-                  </label>
-                  {amountField}
-                  {broughtBySelect(t('pos.settle.broughtBy'))}
-                  <Button
-                    variant="dark"
-                    size="lg"
-                    block
-                    disabled={
-                      disabled ||
-                      (rules.mpesaCodeRequired
-                        ? code.length !== 10
-                        : ![0, 10].includes(code.length)) ||
-                      remaining <= 0
-                    }
-                    onClick={() => void addMpesa()}
-                  >
-                    {t('pos.settle.addMpesa')}
-                  </Button>
-                  <p className="settle-note">{t('pos.settle.mpesaNote')}</p>
+                  )}
+                  {mode === 'typed' && (
+                    <>
+                      <label className="settle-field">
+                        <span>
+                          {rules.mpesaCodeRequired
+                            ? t('pos.settle.mpesaCode')
+                            : t('pos.settle.mpesaCodeOptional')}
+                        </span>
+                        <input
+                          className="settle-money-input"
+                          value={code}
+                          maxLength={10}
+                          autoCapitalize="characters"
+                          onChange={(e) =>
+                            setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                          }
+                          disabled={disabled}
+                        />
+                      </label>
+                      {amountField}
+                      {broughtBySelect(t('pos.settle.broughtBy'))}
+                      <Button
+                        variant="dark"
+                        size="lg"
+                        block
+                        disabled={
+                          disabled ||
+                          (rules.mpesaCodeRequired
+                            ? code.length !== 10
+                            : ![0, 10].includes(code.length)) ||
+                          remaining <= 0
+                        }
+                        onClick={() => void addMpesa()}
+                      >
+                        {t('pos.settle.addMpesa')}
+                      </Button>
+                      <p className="settle-note">{t('pos.settle.mpesaNote')}</p>
+                    </>
+                  )}
                 </>
               )}
               {type === 'Card' && (

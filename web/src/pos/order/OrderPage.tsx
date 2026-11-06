@@ -34,6 +34,8 @@ import { OptionsDialog } from './OptionsDialog';
 import { useOrder, type ShownLine } from './useOrder';
 import { useToast } from '../../shared/ui';
 import './order.css';
+import { AskForMpesa } from '../mpesa/AskForMpesa';
+import { usePosMpesa } from '../mpesa/usePosMpesa';
 
 const time = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -91,6 +93,7 @@ export function OrderPage() {
   const toast = useToast();
 
   const currency = brand.data?.currency ?? 'KES';
+  const mpesa = usePosMpesa();
   const printing = device.data?.printing ?? null;
   const sendAndBill = printing?.mode === 'SendAndBill';
   const permission = (key: string): PermissionValue => me.data?.permissions[key] ?? 'NotAllowed';
@@ -553,6 +556,18 @@ export function OrderPage() {
           <Button size="lg" block disabled={disabled || !ticket || isTakeaway} onClick={moveTable}>
             {t('pos.order.moveTable')}
           </Button>
+          {mpesa?.waiterPrompts && ticket && (
+            <AskForMpesa
+              ticketId={ticket.id}
+              ticketNumber={ticket.number}
+              where={ticket.tableName ? tableLabel(ticket.tableName) : t('pos.order.takeaway')}
+              total={ticket.total}
+              remaining={ticket.remaining ?? ticket.total}
+              currency={currency}
+              business={brand.data?.name ?? ''}
+              disabled={disabled}
+            />
+          )}
         </nav>
 
         <section className="order-menu" aria-label={t('pos.order.menu')}>

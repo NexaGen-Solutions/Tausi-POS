@@ -5,6 +5,7 @@ export const adminNav = [
   { path: 'deliveries', label: 'admin.nav.deliveries' },
   { path: 'stock-counts', label: 'admin.nav.stockCounts' },
   { path: 'cash-book', label: 'admin.nav.cashBook' },
+  { path: 'mpesa', label: 'admin.nav.mpesa' },
   { path: 'staff', label: 'admin.nav.staff' },
   { path: 'permissions', label: 'admin.nav.permissions' },
   { path: 'terminals', label: 'admin.nav.terminals' },

@@ -41,6 +41,8 @@ export const posEvents = [
   'user.pin_reset',
   'terminal.status',
   'terminal.revoked',
+  'mpesa.received',
+  'mpesa.prompt',
 ] as const;
 
 export type PosEventName = (typeof posEvents)[number] | 'reconnected';

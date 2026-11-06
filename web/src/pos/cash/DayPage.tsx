@@ -44,6 +44,8 @@ function shortDate(iso: string): string {
 }
 
 interface DayStatus {
+  /** M-Pesa payments from Safaricom not on a bill yet: a warning, never a block. */
+  mpesa?: { count: number; amount: number } | null;
   open: boolean;
   workPeriodId: string | null;
   openedAt: string | null;
@@ -94,9 +96,12 @@ export function DayPage() {
   const close = async () => {
     setBusy(true);
     try {
-      await api('/api/pos/day/close', { method: 'POST' });
+      const closed = await api<{ mpesaWarning?: string | null }>('/api/pos/day/close', {
+        method: 'POST',
+      });
       setConfirming(false);
       toast(t('pos.day.closedToast'));
+      if (closed?.mpesaWarning) toast(closed.mpesaWarning, { tone: 'warning' });
       await queries.invalidateQueries();
     } catch (error) {
       toast(error instanceof ApiError ? error.message : t('common.somethingWrong'), {
@@ -206,6 +211,20 @@ export function DayPage() {
                 </ul>
                 <p className="cash-note">{t('pos.day.pendingNote')}</p>
               </>
+            )}
+            {status.mpesa && (
+              <p className="cash-note cash-note--warning" role="status">
+                {status.mpesa.count === 1
+                  ? t('pos.mpesa.closeDayWarningOne', {
+                      amount: formatMoney(status.mpesa.amount, currency),
+                    })
+                  : t('pos.mpesa.closeDayWarning', {
+                      count: status.mpesa.count,
+                      amount: formatMoney(status.mpesa.amount, currency),
+                    })}
+                {' · '}
+                <a href="/admin/mpesa">{t('pos.mpesa.closeDayLink')}</a>
+              </p>
             )}
           </section>
 

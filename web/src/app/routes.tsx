@@ -14,6 +14,8 @@ import { DeliveriesPage } from '../admin/stock/DeliveriesPage';
 import { CountsPage } from '../admin/stock/CountsPage';
 import { CountPage } from '../admin/stock/CountPage';
 import { CashBookPage } from '../admin/money/CashBookPage';
+import { MpesaLedgerPage } from '../admin/money/MpesaLedgerPage';
+import { MpesaSettingsPage } from '../admin/settings/MpesaSettingsPage';
 import { AccountsPage } from '../admin/money/AccountsPage';
 import { ReportsPage } from '../admin/reports/ReportsPage';
 import { TicketPage } from '../admin/reports/TicketPage';
@@ -140,12 +142,14 @@ export const routes: RouteObject[] = [
       { path: 'stock-counts', element: <CountsPage /> },
       { path: 'stock-counts/:id', element: <CountPage /> },
       { path: 'cash-book', element: <CashBookPage /> },
+      { path: 'mpesa', element: <MpesaLedgerPage /> },
       { path: 'cashbook', element: <Navigate to="/admin/cash-book" replace /> },
       { path: 'accounts', element: <AccountsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'tickets/:id', element: <TicketPage /> },
       { path: 'settings/licence', element: <LicencePage /> },
       { path: 'settings/training', element: <TrainingPage /> },
+      { path: 'settings/mpesa', element: <MpesaSettingsPage /> },
       { path: 'settings/system', element: <SystemPage /> },
       { path: 'settings/backups', element: <BackupsPage /> },
       { path: 'stock/locations', element: <LocationsPage /> },

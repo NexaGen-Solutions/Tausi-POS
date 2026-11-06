@@ -19,6 +19,8 @@ export interface TileState {
   partPaidLeft: number | null;
   /** Other waiters' tables hidden from this user: "Taken", with no amount or name. */
   hidden: boolean;
+  /** An M-Pesa payment from Safaricom is on one of its tickets (board 25). */
+  mpesaReceived: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export function tileState(
       notPrinted: 0,
       partPaidLeft: null,
       hidden: false,
+      mpesaReceived: false,
     };
 
   const total = tickets.reduce((sum, t) => sum + t.total, 0);
@@ -60,7 +63,16 @@ export function tileState(
   const partPaid = tickets.filter((t) => t.left != null);
   const partPaidLeft =
     partPaid.length > 0 ? partPaid.reduce((sum, t) => sum + (t.left ?? 0), 0) : null;
-  const shared = { total, waiter, lockedElsewhere, notPrinted, partPaidLeft, hidden };
+  const mpesaReceived = tickets.some((t) => t.mpesaReceived === true);
+  const shared = {
+    total,
+    waiter,
+    lockedElsewhere,
+    notPrinted,
+    partPaidLeft,
+    hidden,
+    mpesaReceived,
+  };
   return idle >= idleLimitMinutes
     ? { kind: 'idle', idleMinutes: idle, ...shared }
     : { kind: 'occupied', idleMinutes: null, ...shared };
@@ -109,6 +121,7 @@ export function tileLabel(table: TableTile, state: TileState): string {
   if (state.notPrinted > 0) parts.push(t('pos.map.notPrinted', { count: state.notPrinted }));
   if (state.partPaidLeft !== null)
     parts.push(t('pos.map.partPaid', { left: formatAmount(state.partPaidLeft) }));
+  if (state.mpesaReceived) parts.push(t('pos.mpesa.mapReceived'));
   if (state.lockedElsewhere) parts.push(t('pos.map.lockedElsewhere'));
   return `${table.name}: ${parts.join(', ')}`;
 }

@@ -23,6 +23,8 @@ export interface TicketSummary {
   paid?: number;
   /** "Part paid · KSh 370 left": what's left when some of it is paid. */
   left?: number | null;
+  /** A prompt or QR payment from Safaricom is on it: the cashier can settle it. */
+  mpesaReceived?: boolean;
   /** Another waiter's, hidden from this user (pos.showOthersTickets off): only that it's there. */
   private?: boolean;
 }
