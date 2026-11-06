@@ -1,0 +1,30 @@
+                   Test
+              SALES BY ITEM
+             Tue 20 Oct 2026
+          Open tickets included
+    Printed by SAM · 20 Oct 2026 21:09
+Includes 1 open ticket
+Rounding on receipts: KSh 0.5 (not in the
+item amounts)
+------------------------------------------
+Beers                                2,070
+6 x Tusker Lager                     1,200
+2 x Heineken                           600
+1 x Guiness                            270
+9 x Beers total                      2,070
+Gifts 1 · Voids 2
+..........................................
+Soft drinks                            100
+1 x Sodas 300ml                        100
+1 x Soft drinks total                  100
+Gifts 0 · Voids 0
+..........................................
+Pool                                  31.5
+1 x Pool Table                        31.5
+1 x Pool total                        31.5
+Gifts 0 · Voids 0
+..........................................
+------------------------------------------
+11 x Total                         2,201.5
+------------------------------------------
+                  [cut]

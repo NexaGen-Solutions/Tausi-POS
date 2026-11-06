@@ -9,14 +9,15 @@ namespace Tausi.Application.Reports;
 /// </summary>
 public static class ReportSlip
 {
-    public static PrintDocument Build(ReportResult result, string business, TimeZoneInfo zone, int columns, bool cut = true)
+    public static PrintDocument Build(ReportResult result, string business, TimeZoneInfo zone, int columns, bool cut = true, string? printedBy = null)
     {
         var b = new ReceiptBuilder(columns, cut)
             .Text(business, TextStyle.Center | TextStyle.Bold)
             .Text(result.Title.ToUpperInvariant(), TextStyle.Center | TextStyle.Bold)
             .Text(result.Period, TextStyle.Center);
         foreach (var filter in result.FilterText) b.Text(filter, TextStyle.Center);
-        b.Text($"Run {TimeZoneInfo.ConvertTime(result.RunAt, zone):d MMM yyyy HH:mm}", TextStyle.Center);
+        var run = $"{TimeZoneInfo.ConvertTime(result.RunAt, zone):d MMM yyyy HH:mm}";
+        b.Text(printedBy is null ? $"Run {run}" : $"Printed by {printedBy} · {run}", TextStyle.Center);
         foreach (var note in result.Notes) b.Text(note);
         b.Separator();
 

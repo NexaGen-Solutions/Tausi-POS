@@ -43,8 +43,8 @@ public static class PermissionCatalog
         new(CashExpense, "Money", "Expenses", $"Pay out from the drawer for supplies, transport and the like. {NeedsApprovalHelp}", true),
         new(CashBook, "Money", "Cash book", "The cash book and the daily summary on the admin site.", true),
 
-        new(ReportsOwn, "Reports", "Own sales", "My sales on the terminal.", false),
-        new(ReportsAll, "Reports", "All reports", "Everyone's sales and every report.", false),
+        new(ReportsOwn, "Reports", "Own sales", "My sales and the terminal's Reports screen, with only your own figures.", false),
+        new(ReportsAll, "Reports", "All reports", "Everyone's sales and every report, on the admin site and the terminal's Reports screen.", false),
 
         new(DayOpenClose, "Day", "Open and close the day", "Also signs off cashiers' cash-ups.", false),
 

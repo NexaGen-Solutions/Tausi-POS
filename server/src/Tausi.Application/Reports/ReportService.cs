@@ -39,7 +39,7 @@ public sealed class ReportService(
     /// <summary>The order of the wireframe's tab row, then the reports added by Task 13.</summary>
     public static readonly string[] Order =
     [
-        "sales-by-user", "sales-by-item", "payments", "voids", "price-changes", "stock-on-hand", "stock-variance",
+        "sales-by-user", "sales-by-item", "daily-sales", "payments", "voids", "price-changes", "stock-on-hand", "stock-variance",
         "purchases", "daily-summary", "vat", "tickets", "users", "audit", "supplier-statement", "payables-aging",
     ];
 
