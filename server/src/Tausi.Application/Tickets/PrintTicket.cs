@@ -144,7 +144,7 @@ public sealed class PrintTicket(
 /// added to the queue in the caller's transaction.
 /// </summary>
 public sealed class TicketPrints(
-    ITausiDb db, PrintQueue queue, ILogoProvider logos, IAuditLog audit, TimeProvider clock, BusinessClock businessClock)
+    ITausiDb db, PrintQueue queue, ILogoProvider logos, IAuditLog audit, TimeProvider clock, BusinessClock businessClock, Mpesa.BillQrCodes qrCodes)
 {
     /// <summary>A reprint (asked for here or approved later) waits until new items have been sent.</summary>
     public static void EnsureNothingNew(Ticket ticket)
@@ -267,7 +267,9 @@ public sealed class TicketPrints(
             BusinessClock.ToLocal(now, BusinessTimeZone.Find(business.TimeZone)),
             ticket.Lines.Where(l => l.Counts).OrderBy(l => l.AddedAt).Select(ToSlipLine).ToList(),
             corrected, DiscountLabel(ticket));
-        var document = Slips.Bill(slip, SlipStyle.For(printer, logo, business.Currency, settings));
+        ticket.ApplyRounding(business.Rounding);
+        var qr = await qrCodes.For(ticket, ticket.Remaining, printer.PaperWidthMm, ct);
+        var document = Slips.Bill(slip with { Qr = qr }, SlipStyle.For(printer, logo, business.Currency, settings));
         var label = reprint ? $"Bill {ticket.BillNumber} · reprint" : corrected ? $"Corrected bill {ticket.BillNumber}" : $"Bill {ticket.BillNumber}";
         return queue.Enqueue(printer, PrintJobKind.Bill, document, ticket.Id, label, reprint);
     }

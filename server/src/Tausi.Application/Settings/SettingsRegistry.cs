@@ -56,6 +56,7 @@ public static class SettingsRegistry
         public const string Money = "money";
         public const string CashUp = "cashup";
         public const string Stock = "stock";
+        public const string Mpesa = "mpesa";
     }
 
     public static readonly IReadOnlyList<(string Key, string Title)> SectionTitles =
@@ -67,6 +68,7 @@ public static class SettingsRegistry
         (Sections.Money, "Money"),
         (Sections.CashUp, "Cash-up"),
         (Sections.Stock, "Stock"),
+        (Sections.Mpesa, "M-Pesa"),
     ];
 
     public const string BusinessName = "business.name";
@@ -104,6 +106,16 @@ public static class SettingsRegistry
     public const string CashDenominations = "cash.denominations";
     public const string CashupBlind = "cashup.blind";
     public const string StockReturnOnVoidIfNotServed = "stock.returnOnVoidIfNotServed";
+    public const string MpesaType = "mpesa.type";
+    public const string MpesaTill = "mpesa.tillNumber";
+    public const string MpesaStore = "mpesa.storeNumber";
+    public const string MpesaPaybill = "mpesa.paybillNumber";
+    public const string MpesaEnvironment = "mpesa.environment";
+    public const string MpesaRelayUrl = "mpesa.relayUrl";
+    public const string MpesaStkEnabled = "mpesa.stkEnabled";
+    public const string MpesaWaiterPrompts = "mpesa.waiterPrompts";
+    public const string MpesaQrOnBill = "mpesa.qrOnBill";
+    public const string MpesaAllowTypedCodes = "mpesa.allowTypedCodes";
 
     public const int MaxMinutes = 24 * 60;
 
@@ -187,6 +199,27 @@ public static class SettingsRegistry
             "One row per note in the cash count; coins are one amount.", Min: 1, Max: 1_000_000),
         new(CashupBlind, SettingType.Bool, true, Sections.CashUp, "Blind count",
             "The cashier sees the expected cash only after submitting the count."),
+
+        new(MpesaType, SettingType.Enum, "BuyGoods", Sections.Mpesa, "Type",
+            "Buy Goods (a till) or Paybill.", Allowed: ["BuyGoods", "Paybill"]),
+        new(MpesaTill, SettingType.String, "", Sections.Mpesa, "Till number",
+            "The number customers pay to (Buy Goods).", MaxLength: 10),
+        new(MpesaStore, SettingType.String, "", Sections.Mpesa, "Store number",
+            "Buy Goods only: the head office (store) number on your Safaricom letter. Prompts to phones are sent from it, paid into the till.", MaxLength: 10),
+        new(MpesaPaybill, SettingType.String, "", Sections.Mpesa, "Paybill number",
+            "Customers type the ticket number as the account number.", MaxLength: 10),
+        new(MpesaEnvironment, SettingType.Enum, "Sandbox", Sections.Mpesa, "Environment",
+            "Sandbox for testing with Safaricom's test numbers; Live for real money.", Allowed: ["Sandbox", "Live"]),
+        new(MpesaRelayUrl, SettingType.String, "https://pay.nexagensolutions.com", Sections.Mpesa, "Relay address",
+            "NexaGen's relay, which receives Safaricom's messages for your server.", MaxLength: 200),
+        new(MpesaQrOnBill, SettingType.Bool, true, Sections.Mpesa, "Print \"Scan to pay\" QR on bills",
+            "Each bill gets a QR code for its amount. If M-Pesa doesn't answer within 3 seconds, the bill prints without it."),
+        new(MpesaStkEnabled, SettingType.Bool, true, Sections.Mpesa, "Send prompt to phone (STK push)",
+            "The cashier can send a PIN prompt to the customer's phone."),
+        new(MpesaWaiterPrompts, SettingType.Bool, true, Sections.Mpesa, "Waiters can send prompts from the order screen",
+            "The cashier still completes the bill."),
+        new(MpesaAllowTypedCodes, SettingType.Bool, true, Sections.Mpesa, "Allow typing a code when offline",
+            "Cashiers can type the code from the customer's SMS. It's checked against Safaricom's copy when that arrives."),
     ];
 
     private static readonly Dictionary<string, SettingDefinition> ByKey = All.ToDictionary(d => d.Key, StringComparer.Ordinal);

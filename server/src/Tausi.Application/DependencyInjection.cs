@@ -25,6 +25,14 @@ public static class DependencyInjection
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<PrintQueue>();
         services.AddScoped<Reports.ReportService>();
+        services.AddScoped<Mpesa.MpesaApply>();
+        services.AddScoped<Mpesa.MpesaInbox>();
+        services.AddScoped<Mpesa.MpesaPromptAnswers>();
+        services.AddScoped<Mpesa.MpesaPrompts>();
+        services.AddScoped<Mpesa.MpesaReceived>();
+        services.AddScoped<Mpesa.MpesaLedger>();
+        services.AddScoped<Mpesa.MpesaAdmin>();
+        services.AddScoped<Mpesa.BillQrCodes>();
         services.AddSingleton<Setup.SetupGate>();
         services.AddScoped<Setup.SetupFlow>();
         services.AddScoped<Setup.SetupBusiness>();

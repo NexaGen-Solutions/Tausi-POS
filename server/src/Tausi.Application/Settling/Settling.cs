@@ -35,7 +35,10 @@ public static class SettleCodes
 /// <param name="BroughtByUserId">Who brought the money; defaults to the user who opened the ticket.</param>
 public sealed record AddPaymentRequest(
     PaymentType Type, decimal? Amount = null, decimal? Tendered = null, string? MpesaCode = null,
-    string? CardReference = null, Guid? BroughtByUserId = null);
+    string? CardReference = null, Guid? BroughtByUserId = null, Guid? MpesaTransactionId = null);
+
+/// <summary>Who brought a pending payment (board 23: the cashier can change it).</summary>
+public sealed record SetBroughtByRequest(Guid BroughtByUserId);
 
 /// <param name="Change">The change to give for the cash taken (0 without cash).</param>
 /// <param name="LogOut">The session ended (pos.logoutAfterSettle): back to the PIN pad.</param>
@@ -56,7 +59,7 @@ public sealed record SettledTicketDto(
 /// </summary>
 public sealed class PaymentCommands(
     ITausiDb db, TicketEditing editing, IPermissionService permissions, IApprovalTokenSource approval,
-    Cash.ShiftReader shifts, IAuditLog audit, TicketEvents events, TimeProvider clock)
+    Cash.ShiftReader shifts, IAuditLog audit, TicketEvents events, TimeProvider clock, ICurrentSession session, Mpesa.ISecretProtector secrets)
 {
     public async Task<TicketDetailDto> Add(Guid ticketId, AddPaymentRequest r, CancellationToken ct)
     {
@@ -92,14 +95,55 @@ public sealed class PaymentCommands(
             }
             case PaymentType.Mpesa:
             {
+                var training = session.Terminal?.Training == true;
+                if (r.MpesaTransactionId is { } received)
+                {
+                    // Board 24: a payment Safaricom sent, added to this bill (up to what it still owes).
+                    Mpesa.MpesaApply.EnsureNotTraining(training);
+                    var transaction = await db.MpesaTransactions.FirstOrDefaultAsync(t => t.Id == received, ct)
+                        ?? throw new NotFoundException("That M-Pesa payment wasn't found.");
+                    if (transaction.Available <= 0)
+                        throw new ConflictException($"{transaction.TransactionId} has been used in full.", Domain.Mpesa.MpesaCodes.UsedUp);
+                    payment.Amount = transaction.Apply(Within(Math.Min(r.Amount ?? remaining, transaction.Available), remaining, "M-Pesa"));
+                    payment.MpesaCode = transaction.CodeKnown ? transaction.TransactionId : null;
+                    payment.MpesaTransactionId = transaction.Id;
+                    break;
+                }
                 // Optional when the setting is off, but a code that is typed must still be right and unused.
                 var code = string.IsNullOrWhiteSpace(r.MpesaCode) && !rules.MpesaCodeRequired
                     ? null
                     : Payment.CleanMpesaCode(r.MpesaCode)
                       ?? throw new DomainException("Type the 10-character M-Pesa code from the SMS.", SettleCodes.MpesaCodeInvalid);
+                var mpesa = training ? null : await Mpesa.MpesaSettings.Load(db, secrets, ct);
+                if (code is not null && mpesa is { SetUp: true, AllowTypedCodes: false })
+                    throw new DomainException("Typing codes is switched off. Use Payments received or send a prompt.", SettleCodes.MpesaCodeInvalid);
+                var known = code is null || training ? null : await db.MpesaTransactions.FirstOrDefaultAsync(t => t.TransactionId == code, ct);
+                if (known is not null)
+                {
+                    // A code typed before and not confirmed: used once, ever (removed payments included), as in 1.0.
+                    if (!known.Confirmed) await EnsureCodeUnused(code!, ct);
+                    // A code Safaricom already sent: it pays from that transaction, up to what is left of it.
+                    if (known.Available <= 0) await EnsureCodeUnused(code!, ct, known);
+                    payment.Amount = known.Apply(Within(Math.Min(r.Amount ?? remaining, known.Available), remaining, "M-Pesa"));
+                    payment.MpesaCode = code;
+                    payment.MpesaTransactionId = known.Id;
+                    break;
+                }
                 if (code is not null) await EnsureCodeUnused(code, ct);
                 payment.MpesaCode = code;
                 payment.Amount = Within(r.Amount ?? remaining, remaining, "M-Pesa");
+                if (code is not null && !training)
+                {
+                    // Unconfirmed until Safaricom's own message with this code arrives; flagged after 24 hours.
+                    var typed = new Domain.Mpesa.MpesaTransaction
+                    {
+                        TransactionId = code, Amount = payment.Amount, Source = Domain.Mpesa.MpesaSource.Typed, Confirmed = false,
+                        At = payment.TakenAt, ReceivedAt = payment.TakenAt, TypedByUserId = edit.User.UserId, MatchedTicketId = ticket.Id,
+                    };
+                    typed.Apply(payment.Amount);
+                    db.MpesaTransactions.Add(typed);
+                    payment.MpesaTransactionId = typed.Id;
+                }
                 break;
             }
             case PaymentType.Card:
@@ -149,6 +193,12 @@ public sealed class PaymentCommands(
         payment.Status = PaymentStatus.Removed;
         payment.RemovedAt = now;
         payment.RemovedByUserId = edit.User.UserId;
+        if (payment.MpesaTransactionId is { } transactionId &&
+            await db.MpesaTransactions.FirstOrDefaultAsync(t => t.Id == transactionId, ct) is { } transaction)
+        {
+            // Money from Safaricom is available again. A typed code stays used, as in 1.0: once, ever.
+            if (transaction.Confirmed) transaction.Release(payment.Amount);
+        }
         edit.Ticket.Touch(now);
         audit.Write(new AuditRecord(AuditActions.PaymentRemoved, nameof(Ticket), edit.Ticket.Id.ToString(),
             new { ticket = edit.Ticket.Number, type = payment.Type.ToString(), payment.Amount, payment.MpesaCode }, null));
@@ -158,9 +208,36 @@ public sealed class PaymentCommands(
         return await TicketDetails.Mine(db, edit.Ticket, edit.User, ct);
     }
 
-    /// <summary>"Code SJK3XXXXXX was already used on #1031 (Table 3, 20:14)", removed payments included.</summary>
-    private async Task EnsureCodeUnused(string code, CancellationToken ct)
+    /// <summary>Changes who brought a pending payment (needs ticket.settle).</summary>
+    public async Task<TicketDetailDto> SetBroughtBy(Guid ticketId, Guid paymentId, SetBroughtByRequest r, CancellationToken ct)
     {
+        await using var edit = await editing.Open(ticketId, ct);
+        await permissions.Require(edit.User, PermissionKeys.TicketSettle, approval.ApprovalToken, ct);
+        var payment = edit.Ticket.Payments.FirstOrDefault(p => p.Id == paymentId)
+            ?? throw new NotFoundException("That payment is not on this ticket.");
+        if (payment.Status != PaymentStatus.Pending)
+            throw new DomainException("This payment is final and can't be changed.", SettleCodes.PaymentFinal);
+        if (!await db.Users.AnyAsync(u => u.Id == r.BroughtByUserId, ct)) throw new DomainException("Choose who brought it.");
+        var old = payment.BroughtByUserId;
+        payment.BroughtByUserId = r.BroughtByUserId;
+        audit.Write(new AuditRecord(AuditActions.PaymentBroughtByChanged, nameof(Ticket), edit.Ticket.Id.ToString(),
+            new { ticket = edit.Ticket.Number, broughtBy = old }, new { ticket = edit.Ticket.Number, broughtBy = r.BroughtByUserId }));
+        await db.SaveChangesAsync(ct);
+        await edit.Transaction.CommitAsync(ct);
+        await events.Changed(edit.Ticket, edit.Ticket.TableId, ct);
+        return await TicketDetails.Mine(db, edit.Ticket, edit.User, ct);
+    }
+
+    /// <summary>"Code SJK3XXXXXX was already used on #1031 (Table 3, 20:14)", removed payments included.</summary>
+    private async Task EnsureCodeUnused(string code, CancellationToken ct, Domain.Mpesa.MpesaTransaction? usedUp = null)
+    {
+        if (usedUp is not null)
+        {
+            var on = await db.Payments.AsNoTracking().Where(p => p.MpesaTransactionId == usedUp.Id && p.Status != PaymentStatus.Removed)
+                .Join(db.Tickets.AsNoTracking(), p => p.TicketId, k => k.Id, (p, k) => k.Number).Distinct().ToListAsync(ct);
+            throw new ConflictException(
+                $"Code {code} was already used in full{(on.Count > 0 ? " on " + string.Join(", ", on.Select(n => $"#{n}")) : "")}.", SettleCodes.MpesaCodeUsed);
+        }
         var used = await db.Payments.AsNoTracking().Where(p => p.MpesaCode == code)
             .Select(p => new { p.TicketId, p.TakenAt }).FirstOrDefaultAsync(ct);
         if (used is null) return;
@@ -240,7 +317,16 @@ public sealed class SettleTicket(
         ticket.ClearLock();
         ticket.Touch(now);
         var payments = ticket.Payments.Where(p => p.Counts).OrderBy(p => p.TakenAt).ToList();
-        foreach (var payment in payments) payment.Status = PaymentStatus.Final;
+        foreach (var payment in payments)
+        {
+            payment.Status = PaymentStatus.Final;
+            if (payment.ShiftId is null)
+            {
+                // Added by M-Pesa itself (a prompt, a QR payment): the cashier who settles takes it.
+                payment.ShiftId = shift.Id;
+                payment.TakenByUserId = edit.User.UserId;
+            }
+        }
 
         var zone = await Money.BusinessDates.Zone(db, ct);
         foreach (var draft in SalePosting.Drafts(ticket, payments, day.Id, now, zone)) await ledger.Post(draft, ct);

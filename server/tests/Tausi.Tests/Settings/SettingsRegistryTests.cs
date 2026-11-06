@@ -18,6 +18,8 @@ public class SettingsRegistryTests
         "print.mode", "print.logoOnBill", "print.poweredByFooter", "print.vatAmounts", "print.dispenseBold", "print.dispenseAmounts", "print.dispenseTotal", "print.showVoidsOnReceipt",
         "money.rounding", "payments.mpesaCodeRequired", "payments.recordBroughtBy", "tickets.closeVoidedWithoutReceipt",
         "cash.defaultFloat", "cash.denominations", "cashup.blind", "stock.returnOnVoidIfNotServed", "books.backdateDays", "print.keepSlipTextDays",
+        "mpesa.type", "mpesa.tillNumber", "mpesa.storeNumber", "mpesa.paybillNumber", "mpesa.environment", "mpesa.relayUrl",
+        "mpesa.stkEnabled", "mpesa.waiterPrompts", "mpesa.qrOnBill", "mpesa.allowTypedCodes",
     ];
 
     public static readonly TheoryData<string> Keys = new(KeyList);

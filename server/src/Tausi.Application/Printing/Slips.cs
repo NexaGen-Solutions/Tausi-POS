@@ -48,7 +48,7 @@ public sealed record BusinessInfo(string Name, string? Address = null, string? P
 /// <param name="DiscountLabel">"Discount 10% (Regular customer)"; the amount is the lines' discount shares.</param>
 public sealed record BillSlip(
     BusinessInfo Business, int BillNumber, long TicketNumber, bool Reprint, string Where, string Waiter, string Terminal,
-    DateTimeOffset At, IReadOnlyList<SlipLine> Lines, bool Corrected = false, string? DiscountLabel = null);
+    DateTimeOffset At, IReadOnlyList<SlipLine> Lines, bool Corrected = false, string? DiscountLabel = null, Mpesa.BillQr? Qr = null);
 
 /// <summary>The lines one person added in this round.</summary>
 public sealed record DispenseGroup(string Waiter, IReadOnlyList<SlipLine> Lines);
@@ -112,8 +112,27 @@ public static class Slips
     public static PrintDocument Bill(BillSlip d, SlipStyle style)
     {
         var b = WriteBill(new ReceiptBuilder(style.Columns, style.Cut), d, style);
+        if (d.Qr is { } qr) WriteQr(b, qr, style);
         WriteFooter(b, d.Business, style);
         return b.Text(NotAReceiptText, TextStyle.Center | TextStyle.Small).Cut().Build();
+    }
+
+    /// <summary>Board 26: "SCAN TO PAY WITH M-PESA", the QR, and how to pay without it.</summary>
+    private static void WriteQr(ReceiptBuilder b, Mpesa.BillQr qr, SlipStyle style)
+    {
+        var amount = Money(qr.Amount, style.Currency);
+        b.Separator();
+        if (qr.Image is not null) b.Text("SCAN TO PAY WITH M-PESA", TextStyle.Center | TextStyle.Bold).Image(qr.Image, "[M-Pesa QR code]");
+        if (qr.Paybill)
+        {
+            b.Text($"Paybill {qr.PayTo} · Account {qr.TicketNumber}", TextStyle.Center).Text(amount, TextStyle.Center);
+            if (qr.Image is not null) b.Text($"Or pay to Paybill {qr.PayTo}, account {qr.TicketNumber}.", TextStyle.Center);
+        }
+        else
+        {
+            b.Text($"Till {qr.PayTo} · {amount} · #{qr.TicketNumber}", TextStyle.Center);
+            b.Text($"{(qr.Image is null ? "Pay" : "Or pay")} to Till {qr.PayTo} and show the message to your waiter.", TextStyle.Center);
+        }
     }
 
     /// <summary>Lines with the same item, options and price, added together (the bill shows them once).</summary>

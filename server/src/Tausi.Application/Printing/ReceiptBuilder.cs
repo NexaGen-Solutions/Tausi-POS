@@ -134,9 +134,11 @@ public sealed class ReceiptBuilder
     }
 
     /// <summary>Prints the logo as a raster image, centred. Does nothing when there is no logo.</summary>
-    public ReceiptBuilder Logo(MonoBitmap? logo)
+    public ReceiptBuilder Logo(MonoBitmap? logo) => logo is null ? this : Image(logo, "[logo]");
+
+    /// <summary>Prints a 1-bit image (the logo, a QR code) centred; the text version shows <paramref name="label"/>.</summary>
+    public ReceiptBuilder Image(MonoBitmap logo, string label)
     {
-        if (logo is null) return this;
         Write(0x1B, 0x61, 0x01);
         var xBytes = logo.BytesPerRow;
         Write(0x1D, 0x76, 0x30, 0x00,
@@ -145,7 +147,7 @@ public sealed class ReceiptBuilder
         Write(logo.Data);
         Write(0x0A);
         Write(0x1B, 0x61, 0x00);
-        _text.AppendLine(CenterPad("[logo]"));
+        _text.AppendLine(CenterPad(label));
         return this;
     }
 

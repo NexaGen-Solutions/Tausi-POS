@@ -1047,6 +1047,225 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.ToTable("MoneyDocuments");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("C2BRegisteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("C2BRegisteredFor")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ConsumerKey")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ConsumerSecret")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Passkey")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RelayApiKey")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StkCallbackUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MpesaAccounts");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaPrompt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CheckoutRequestId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("FromOrderScreen")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastQueriedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MerchantRequestId")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int?>("ResultCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResultMessage")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SentByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CheckoutRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("SentByUserId");
+
+                    b.HasIndex("TicketId", "Status");
+
+                    b.ToTable("MpesaPrompts");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("AmountApplied")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BillReference")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("MatchedTicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NotFromPosAccount")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("NotFromPosAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("NotFromPosByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NotFromPosReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("PayerName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("PromptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ShortCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TransactionId")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid?>("TypedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "ReceivedAt");
+
+                    b.ToTable("MpesaTransactions");
+                });
+
             modelBuilder.Entity("Tausi.Domain.People.ApprovalGrant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1901,6 +2120,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<Guid?>("MpesaTransactionId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset?>("RemovedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1943,6 +2165,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("BroughtByUserId");
 
+                    b.HasIndex("MpesaTransactionId");
+
                     b.HasIndex("ShiftId");
 
                     b.HasIndex("TakenByUserId");
@@ -1953,7 +2177,8 @@ namespace Tausi.Infrastructure.Migrations.Postgres
 
                     b.HasIndex("MpesaCode", "IsTraining")
                         .IsUnique()
-                        .HasFilter("\"MpesaCode\" IS NOT NULL");
+                        .HasDatabaseName("IX_Payments_MpesaCode_IsTraining_Untracked")
+                        .HasFilter("\"MpesaCode\" IS NOT NULL AND \"MpesaTransactionId\" IS NULL");
 
                     b.HasIndex("TicketId", "Status");
 
@@ -3178,6 +3403,21 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaPrompt", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("SentByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.Ticket", null)
+                        .WithMany()
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Tausi.Domain.People.RolePermission", b =>
                 {
                     b.HasOne("Tausi.Domain.People.Role", "Role")
@@ -3286,6 +3526,11 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .HasForeignKey("BroughtByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Mpesa.MpesaTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("MpesaTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Tausi.Domain.People.User", null)
                         .WithMany()

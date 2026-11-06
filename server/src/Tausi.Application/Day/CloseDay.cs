@@ -109,10 +109,16 @@ public static class DayClosing
 
 /// <summary>GET /api/pos/day: what blocks the close, and the day's summary.</summary>
 public sealed record DayStatusDto(
-    bool Open, Guid? WorkPeriodId, DateTimeOffset? OpenedAt, string? OpenedBy, DayBlockersDto Blockers, DaySummaryDto? Summary);
+    bool Open, Guid? WorkPeriodId, DateTimeOffset? OpenedAt, string? OpenedBy, DayBlockersDto Blockers, DaySummaryDto? Summary,
+    MpesaUnappliedDto? Mpesa = null);
+
+/// <summary>M-Pesa payments from Safaricom not on a bill yet: a warning on Close day, never a block.</summary>
+public sealed record MpesaUnappliedDto(int Count, decimal Amount);
 
 /// <summary>The answer to a close: the summary printed, and when every terminal logs out.</summary>
-public sealed record DayClosedDto(Guid WorkPeriodId, DateTimeOffset ClosedAt, DateTimeOffset LogoutAt, bool Printed, DaySummaryDto Summary);
+public sealed record DayClosedDto(
+    Guid WorkPeriodId, DateTimeOffset ClosedAt, DateTimeOffset LogoutAt, bool Printed, DaySummaryDto Summary, string? MpesaWarning = null,
+    MpesaUnappliedDto? Mpesa = null);
 
 public sealed class GetDayStatus(ITausiDb db, ICurrentSession session, IPermissionService permissions, DaySummaries summaries)
 {
@@ -125,7 +131,17 @@ public sealed class GetDayStatus(ITausiDb db, ICurrentSession session, IPermissi
         if (day is null) return new DayStatusDto(false, null, null, null, new DayBlockersDto([], [], []), null);
         var opener = await db.Users.AsNoTracking().Where(u => u.Id == day.OpenedByUserId).Select(u => u.Name).FirstOrDefaultAsync(ct);
         var blockers = await DayClosing.Blockers(db, ct);
-        return new DayStatusDto(true, day.Id, day.OpenedAt, opener, blockers, blockers.Blocked ? null : await summaries.For(day.Id, ct));
+        return new DayStatusDto(true, day.Id, day.OpenedAt, opener, blockers, blockers.Blocked ? null : await summaries.For(day.Id, ct),
+            await Unapplied(db, ct));
+    }
+
+    /// <summary>Payments from Safaricom with money not on a bill yet (none: null).</summary>
+    public static async Task<MpesaUnappliedDto?> Unapplied(ITausiDb db, CancellationToken ct)
+    {
+        var open = await db.MpesaTransactions.AsNoTracking()
+            .Where(t => t.Confirmed && (t.Status == Domain.Mpesa.MpesaStatus.Unapplied || t.Status == Domain.Mpesa.MpesaStatus.PartlyApplied))
+            .Select(t => t.Amount - t.AmountApplied).ToListAsync(ct);
+        return open.Count == 0 ? null : new MpesaUnappliedDto(open.Count, open.Sum());
     }
 }
 
@@ -137,8 +153,11 @@ public sealed class GetDayStatus(ITausiDb db, ICurrentSession session, IPermissi
 /// </summary>
 public sealed class CloseWorkPeriod(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    DaySummaries summaries, CashPrints prints, IAuditLog audit, IPosEvents events, TimeProvider clock)
+    DaySummaries summaries, CashPrints prints, IAuditLog audit, IPosEvents events, TimeProvider clock, Mpesa.IMpesaCatchUp mpesa)
 {
+    /// <summary>How long Close day waits for the last M-Pesa payments from the relay.</summary>
+    public static readonly TimeSpan MpesaWait = TimeSpan.FromSeconds(15);
+
     /// <summary>How long terminals get to finish before everyone is logged out.</summary>
     public static readonly TimeSpan LogoutWarning = TimeSpan.FromSeconds(60);
 
@@ -146,8 +165,26 @@ public sealed class CloseWorkPeriod(
     {
         var user = session.RequireUser();
         var grant = await permissions.Require(user, PermissionKeys.DayOpenClose, approval.ApprovalToken, ct);
-        return await Close(user.UserId, user.Name, user.TerminalId ?? session.Terminal?.TerminalId, grant.ApprovedByUserId, ct)
+        var warning = await CollectMpesa(ct);
+        var closed = await Close(user.UserId, user.Name, user.TerminalId ?? session.Terminal?.TerminalId, grant.ApprovedByUserId, ct)
             ?? throw new ConflictException("The day isn't open.");
+        return closed with { MpesaWarning = warning, Mpesa = await GetDayStatus.Unapplied(db, ct) };
+    }
+
+    /// <summary>The last M-Pesa payments from the relay, waiting at most 15 seconds; a warning when they couldn't be fetched.</summary>
+    private async Task<string?> CollectMpesa(CancellationToken ct)
+    {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(MpesaWait);
+        try
+        {
+            await mpesa.Run(limit.Token).WaitAsync(MpesaWait, ct);
+            return null;
+        }
+        catch (Exception e) when (!ct.IsCancellationRequested && e is OperationCanceledException or TimeoutException or HttpRequestException or InvalidOperationException)
+        {
+            return "The last M-Pesa payments couldn't be fetched from the relay. They will arrive when the next day opens.";
+        }
     }
 
     /// <summary>Without a session (the development command). Returns null when no day was open.</summary>

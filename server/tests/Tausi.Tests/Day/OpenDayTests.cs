@@ -41,7 +41,7 @@ public class OpenDayTests : IAsyncLifetime
         _session.User = user;
         var open = new OpenDay(
             _db.Context, _session, new PermissionService(_db.Context, _clock), new FakeApprovalSource(),
-            new AuditLog(_db.Context, _session, _clock), _events, _clock);
+            new AuditLog(_db.Context, _session, _clock), _events, _clock, new NoCatchUp());
         return open.Execute(CancellationToken.None);
     }
 
@@ -105,4 +105,10 @@ public class OpenDayTests : IAsyncLifetime
         await Open(_supervisor);
         (await _db.NewContext().WorkPeriods.CountAsync()).Should().Be(2);
     }
+}
+
+/// <summary>No relay: the day opens without collecting M-Pesa payments.</summary>
+internal sealed class NoCatchUp : Tausi.Application.Mpesa.IMpesaCatchUp
+{
+    public Task<int> Run(CancellationToken ct) => Task.FromResult(0);
 }
