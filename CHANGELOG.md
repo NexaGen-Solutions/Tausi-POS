@@ -22,6 +22,8 @@ this version fixes how terminals update; after that they update from the server 
   (from the server, keeping the pairing) if the app is missing.
 - **The Terminals page shows each terminal's last update and why it last stopped**, with a warning when
   an update failed or was rolled back.
+- **Security:** the terminal's updater library is updated (its zip handling had published security
+  issues). Updates were already safe, because every installer's signature is checked first.
 
 ## 1.0.0 (2026-11-03)
 
