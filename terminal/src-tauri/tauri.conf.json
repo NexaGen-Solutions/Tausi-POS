@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Tausi POS",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "identifier": "com.nexagensolutions.tausipos",
   "build": {
     "beforeDevCommand": "npm --prefix ../web run dev",

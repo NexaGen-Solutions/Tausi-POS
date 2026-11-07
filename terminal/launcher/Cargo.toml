@@ -1,6 +1,6 @@
 [package]
 name = "tausi-launcher"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 description = "Tausi POS launcher: starts the terminal app, keeps it running, rolls back a failed update and repairs a missing app"
 
