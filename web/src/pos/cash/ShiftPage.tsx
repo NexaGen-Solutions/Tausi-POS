@@ -9,7 +9,14 @@ import { Button, Modal, TopBar, useToast } from '../../shared/ui';
 import { usePinSession } from '../usePinSession';
 import { CashCountForm } from './CashCountForm';
 import { StartShift } from './StartShift';
-import { currentShiftKey, type CashCount, type CurrentShift, type Shift } from './types';
+import {
+  currentShiftKey,
+  openShiftsKey,
+  type CashCount,
+  type CurrentShift,
+  type OpenShiftRow,
+  type Shift,
+} from './types';
 import '../settle/settle.css';
 import './cash.css';
 
@@ -27,6 +34,19 @@ export function ShiftPage() {
     staleTime: 0,
   });
   const shift = current.data?.shift ?? null;
+  // 1.0.2: supervisors see every open shift, to close one its cashier left open.
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: () =>
+      api<{ user: { id: string }; permissions: Record<string, string> }>('/api/auth/me'),
+  });
+  const canCloseOthers = me.data?.permissions['cash.close_others_shift'] === 'Allowed';
+  const others = useQuery({
+    queryKey: openShiftsKey,
+    queryFn: () => api<OpenShiftRow[]>('/api/pos/shifts/open'),
+    enabled: canCloseOthers,
+  });
+  const othersOpen = (others.data ?? []).filter((s) => s.cashierId !== me.data?.user.id).length;
   const [count, setCount] = useState<CashCount | null>(null);
   const [moving, setMoving] = useState<Move | null>(null);
   const [busy, setBusy] = useState(false);
@@ -93,13 +113,20 @@ export function ShiftPage() {
         title={shift ? t('pos.cash.title') : t('pos.cash.startTitle')}
         end={
           user && (
-            <span className="order-who">
-              {t('pos.whoWhere', {
-                terminal: user.terminalName ?? '',
-                name: user.name,
-                role: user.role,
-              })}
-            </span>
+            <>
+              {canCloseOthers && (
+                <Button variant="ghost-dark" onClick={() => navigate('/pos/shifts/open')}>
+                  {t('pos.closeOther.openShiftsCount', { count: othersOpen })}
+                </Button>
+              )}
+              <span className="order-who">
+                {t('pos.whoWhere', {
+                  terminal: user.terminalName ?? '',
+                  name: user.name,
+                  role: user.role,
+                })}
+              </span>
+            </>
           )
         }
       />

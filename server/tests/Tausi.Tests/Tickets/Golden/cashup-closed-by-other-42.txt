@@ -1,0 +1,29 @@
+                   Test
+       CASH-UP · Counter A · CAROL
+       20 Oct 21:00 - 20 Oct 21:01
+Shift of: CAROL
+Closed by: SAM · Reason: Cashier left
+without closing
+------------------------------------------
+Opening float                        2,000
+Cash settled                          +370
+EXPECTED                         KSh 2,370
+------------------------------------------
+Coins                                2,270
+COUNTED                          KSh 2,270
+SHORT                                 -100
+------------------------------------------
+M-Pesa (0)                               0
+Card (0)                                 0
+------------------------------------------
+Cash brought by
+edna                                   370
+------------------------------------------
+Receipts                       1 · No. 1-1
+------------------------------------------
+Signed off by Administrator
+
+
+______________________________
+Signature
+                  [cut]

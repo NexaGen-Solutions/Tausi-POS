@@ -521,6 +521,48 @@
       "closeDayWarning": "{count} unapplied M-Pesa payments · {amount}",
       "closeDayLink": "Open the M-Pesa payments list on the admin site",
       "closeDayWarningOne": "1 unapplied M-Pesa payment · {amount}"
+    },
+    "closeOther": {
+      "title": "Closing {name}'s shift · {terminal} · opened {opened}",
+      "warning": "You're closing another cashier's shift. The cash must be counted now.",
+      "screenTitle": "Close another cashier's shift",
+      "reason": "Why are you closing it?",
+      "chooseReason": "Choose a reason",
+      "reasons": {
+        "0": "Cashier left without closing",
+        "1": "Cashier is ill or absent",
+        "2": "End of day",
+        "3": "Other"
+      },
+      "note": "Note",
+      "countTitle": "Count the drawer",
+      "submitCount": "Submit the count · {amount}",
+      "signOff": "Sign-off",
+      "signOffHelp": "Another supervisor signs off with their PIN. If nobody else is here, tick the box and sign off yourself: the slip, the report and the audit log will show it.",
+      "alone": "I counted this cash alone",
+      "closeWithPin": "Close the shift (supervisor's PIN)",
+      "closeAlone": "Close the shift",
+      "closed": "{name}'s shift is closed.",
+      "pendingTitle": "Payments not completed",
+      "pendingHelp": "These payments on part-paid tickets are still in this shift. Move them to your shift, or remove them (the tickets go back to unpaid).",
+      "move": "Move them to my shift",
+      "remove": "Remove them",
+      "moveOnTerminal": "Moving them needs your own shift open on a terminal.",
+      "openShifts": "Open shifts",
+      "openShiftsCount": "Open shifts ({count})",
+      "backToShift": "My shift",
+      "noneOpen": "No other shift is open.",
+      "cashier": "Cashier",
+      "terminal": "Terminal",
+      "openedAt": "Opened",
+      "cashTaken": "Cash taken",
+      "close": "Close this shift",
+      "closingBy": "being closed by {name}",
+      "askSupervisor": "Ask a supervisor to close it",
+      "noticeTitle": "Your shift was closed",
+      "notice": "Your shift on {terminal} was closed by {name} on {at}. Difference: {difference}.",
+      "noticeReason": "Reason: {reason}",
+      "ok": "OK"
     }
   },
   "approval": {
@@ -1797,6 +1839,11 @@
       "check": "Check",
       "empty": "No M-Pesa payments in these dates.",
       "note": "Unapplied payments are listed on the Close day screen. Export to Excel to check against the Safaricom till statement."
+    },
+    "openShifts": {
+      "title": "Open shifts",
+      "back": "Cash book",
+      "help": "Shifts their cashiers left open. Closing one counts its drawer, signs it off and lets the day close."
     }
   },
   "permissions": {
@@ -1820,6 +1867,7 @@
     "stock.adjust": "Stock adjustments",
     "cash.expense": "Expenses",
     "cash.book": "Cash book",
+    "cash.close_others_shift": "Close another cashier's shift",
     "reports.own": "See own sales",
     "reports.all": "See all reports",
     "day.open_close": "Open and close the day",

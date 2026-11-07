@@ -21,6 +21,7 @@ public static class AuditActions
     public const string ShiftOpened = "shift.opened";
     public const string ShiftCounted = "shift.counted";
     public const string ShiftClosed = "shift.closed";
+    public const string ShiftPendingMoved = "shift.pending_moved";
     public const string PayOut = "shift.pay_out";
     public const string CashDrop = "shift.cash_drop";
     public const string PaymentAdded = "payment.added";

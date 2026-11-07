@@ -16,6 +16,8 @@ import { CountPage } from '../admin/stock/CountPage';
 import { CashBookPage } from '../admin/money/CashBookPage';
 import { MpesaLedgerPage } from '../admin/money/MpesaLedgerPage';
 import { MpesaSettingsPage } from '../admin/settings/MpesaSettingsPage';
+import { CloseShiftAdminPage, OpenShiftsAdminPage } from '../admin/money/OpenShiftsAdminPage';
+import { CloseOthersShiftPage, OpenShiftsPage } from '../pos/cash/OpenShifts';
 import { AccountsPage } from '../admin/money/AccountsPage';
 import { ReportsPage } from '../admin/reports/ReportsPage';
 import { TicketPage } from '../admin/reports/TicketPage';
@@ -115,6 +117,22 @@ export const routes: RouteObject[] = [
         ),
       },
       {
+        path: 'shifts/open',
+        element: (
+          <RequireSession>
+            <OpenShiftsPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'shifts/:id/close-other',
+        element: (
+          <RequireSession>
+            <CloseOthersShiftPage />
+          </RequireSession>
+        ),
+      },
+      {
         path: 'my-sales',
         element: (
           <RequireSession>
@@ -152,6 +170,8 @@ export const routes: RouteObject[] = [
       { path: 'stock-counts/:id', element: <CountPage /> },
       { path: 'cash-book', element: <CashBookPage /> },
       { path: 'mpesa', element: <MpesaLedgerPage /> },
+      { path: 'cash-book/open-shifts', element: <OpenShiftsAdminPage /> },
+      { path: 'cash-book/open-shifts/:id', element: <CloseShiftAdminPage /> },
       { path: 'cashbook', element: <Navigate to="/admin/cash-book" replace /> },
       { path: 'accounts', element: <AccountsPage /> },
       { path: 'reports', element: <ReportsPage /> },

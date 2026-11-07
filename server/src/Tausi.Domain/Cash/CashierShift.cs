@@ -44,6 +44,30 @@ public class CashierShift : VersionedEntity, ITrainingData
     public DateTimeOffset? ClosedAt { get; set; }
     public Guid? SignedOffByUserId { get; set; }
 
+    /// <summary>Who counted and closed it: the cashier, or a supervisor closing a shift the cashier left open (1.0.2).</summary>
+    public Guid? ClosedByUserId { get; set; }
+
+    /// <summary>Why someone else closed it (one of <see cref="CloseReasons"/>).</summary>
+    public string? CloseReason { get; set; }
+
+    /// <summary>The note with the reason "Other".</summary>
+    public string? CloseNote { get; set; }
+
+    /// <summary>Counted and signed off by the same person, nobody else being there: flagged on the slip, the report and the audit.</summary>
+    public bool CountedAlone { get; set; }
+
+    /// <summary>When the cashier dismissed the notice that someone else closed their shift.</summary>
+    public DateTimeOffset? CashierNoticeSeenAt { get; set; }
+
+    /// <summary>Closed by someone other than its cashier.</summary>
+    public bool ClosedByOther => ClosedByUserId is { } by && by != CashierUserId;
+
+    public const int MaxCloseNoteLength = 200;
+
+    /// <summary>Why a supervisor closes another cashier's shift.</summary>
+    public static readonly IReadOnlyList<string> CloseReasons =
+        ["Cashier left without closing", "Cashier is ill or absent", "End of day", "Other"];
+
     public bool IsOpen => Status == ShiftStatus.Open;
 }
 

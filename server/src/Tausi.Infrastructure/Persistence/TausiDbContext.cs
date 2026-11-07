@@ -448,7 +448,10 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.FloatCountsJson).HasMaxLength(500);
             e.Property(x => x.CountJson).HasMaxLength(500);
             e.Property(x => x.Note).HasMaxLength(CashierShift.MaxNoteLength);
+            e.Property(x => x.CloseReason).HasMaxLength(60);
+            e.Property(x => x.CloseNote).HasMaxLength(CashierShift.MaxCloseNoteLength);
             e.Ignore(x => x.IsOpen);
+            e.Ignore(x => x.ClosedByOther);
             // One open shift per cashier and one per drawer, even if two terminals try at once.
             var perCashier = e.HasIndex(x => new { x.CashierUserId, x.Status, x.IsTraining }).IsUnique();
             var perDrawer = e.HasIndex(x => new { x.TerminalId, x.Status, x.IsTraining }).IsUnique();

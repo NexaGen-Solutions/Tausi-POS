@@ -110,7 +110,7 @@ public static class DayClosing
 /// <summary>GET /api/pos/day: what blocks the close, and the day's summary.</summary>
 public sealed record DayStatusDto(
     bool Open, Guid? WorkPeriodId, DateTimeOffset? OpenedAt, string? OpenedBy, DayBlockersDto Blockers, DaySummaryDto? Summary,
-    MpesaUnappliedDto? Mpesa = null);
+    MpesaUnappliedDto? Mpesa = null, bool CanCloseShifts = false);
 
 /// <summary>M-Pesa payments from Safaricom not on a bill yet: a warning on Close day, never a block.</summary>
 public sealed record MpesaUnappliedDto(int Count, decimal Amount);
@@ -131,8 +131,10 @@ public sealed class GetDayStatus(ITausiDb db, ICurrentSession session, IPermissi
         if (day is null) return new DayStatusDto(false, null, null, null, new DayBlockersDto([], [], []), null);
         var opener = await db.Users.AsNoTracking().Where(u => u.Id == day.OpenedByUserId).Select(u => u.Name).FirstOrDefaultAsync(ct);
         var blockers = await DayClosing.Blockers(db, ct);
+        // 1.0.2: shifts left open can be closed from here by users with cash.close_others_shift.
+        var canClose = await permissions.Check(user, PermissionKeys.CashCloseOthersShift, ct) == PermissionValue.Allowed;
         return new DayStatusDto(true, day.Id, day.OpenedAt, opener, blockers, blockers.Blocked ? null : await summaries.For(day.Id, ct),
-            await Unapplied(db, ct));
+            await Unapplied(db, ct), canClose);
     }
 
     /// <summary>Payments from Safaricom with money not on a bill yet (none: null).</summary>

@@ -133,4 +133,39 @@ public class CashupApiTests(TicketsApp app) : IAsyncLifetime
         (await edna.Http.GetAsync("/api/pos/day")).StatusCode.Should().Be(HttpStatusCode.Forbidden, "only day.open_close sees the day");
         (await edna.Http.PostAsync("/api/pos/my-sales/print", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task A_supervisor_closes_a_shift_its_cashier_left_open_from_another_terminal()
+    {
+        var (carol, shiftId) = await CarolWithShift(1000m);
+        var sam = await On("SAM");
+        var open = await Ok(await sam.Http.GetAsync("/api/pos/shifts/open"));
+        open.EnumerateArray().Should().Contain(s => s.GetProperty("id").GetGuid() == shiftId);
+
+        var counted = await Ok(await sam.Http.PostAsJsonAsync($"/api/pos/shifts/{shiftId}/other/count",
+            new { count = new { total = 900 }, reason = "Cashier left without closing" }));
+        counted.GetProperty("difference").GetDecimal().Should().Be(-100m);
+        counted.GetProperty("closedBy").GetString().Should().Be("SAM");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/pos/shifts/{shiftId}/other/close") { Content = JsonContent.Create(new { countedAlone = false }) };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        request.Headers.Add("X-Approval-Token", await Token(sam, "Administrator"));
+        var closed = await Ok(await sam.Http.SendAsync(request));
+        closed.GetProperty("status").GetString().Should().Be("Closed");
+        closed.GetProperty("signedOffBy").GetString().Should().Be("Administrator");
+        closed.GetProperty("closedByOther").GetBoolean().Should().BeTrue();
+
+        // CAROL's notice at her next login.
+        var again = await On("CAROL");
+        var notices = await Ok(await again.Http.GetAsync("/api/pos/shift-notices"));
+        var notice = notices.EnumerateArray().Single(n => n.GetProperty("shiftId").GetGuid() == shiftId);
+        notice.GetProperty("closedBy").GetString().Should().Be("SAM");
+        (await again.Http.PostAsync($"/api/pos/shift-notices/{shiftId}/ok", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Ok(await again.Http.GetAsync("/api/pos/shift-notices"))).EnumerateArray().Should().NotContain(n => n.GetProperty("shiftId").GetGuid() == shiftId);
+
+        // A cashier or a waiter can't.
+        (await carol.Http.GetAsync("/api/pos/shifts/open")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var edna = await On("edna");
+        (await edna.Http.GetAsync("/api/pos/shifts/open")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

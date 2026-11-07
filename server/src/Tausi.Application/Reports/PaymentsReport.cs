@@ -46,7 +46,10 @@ public sealed class PaymentsReport : ReportBase
             return ReportRow.Of(
                 $"{c.UserName(s.CashierUserId)} · {c.TerminalName(s.TerminalId)}", s.OpenedAt, s.OpeningFloat, cash,
                 Taken(s.Id, PaymentType.Mpesa), Taken(s.Id, PaymentType.Card), payOuts, drops, expected, s.Counted, s.Difference,
-                s.IsOpen ? "Open" : c.UserName(s.SignedOffByUserId));
+                s.IsOpen ? "Open"
+                    : c.UserName(s.SignedOffByUserId)
+                      + (s.ClosedByOther ? $" · closed by {c.UserName(s.ClosedByUserId)} ({s.CloseReason})" : "")
+                      + (s.CountedAlone ? " · Closed and signed off by the same person" : ""));
         }).ToList();
         var shiftTable = new ReportTable("Cashier shifts",
         [

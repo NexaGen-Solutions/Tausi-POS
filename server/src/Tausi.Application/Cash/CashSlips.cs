@@ -26,8 +26,15 @@ public static class CashSlips
         var b = new ReceiptBuilder(style.Columns, style.Cut)
             .Text(business, TextStyle.Center | TextStyle.Bold)
             .Text($"CASH-UP · {s.Terminal} · {s.Cashier}", TextStyle.Center | TextStyle.Bold | TextStyle.DoubleHeight)
-            .Text($"{Time(local(s.OpenedAt))} - {(s.ClosedAt is { } c ? Time(local(c)) : "open")}", TextStyle.Center)
-            .Separator()
+            .Text($"{Time(local(s.OpenedAt))} - {(s.ClosedAt is { } c ? Time(local(c)) : "open")}", TextStyle.Center);
+        if (s.ClosedByOther)
+        {
+            // Closed by a supervisor because its cashier left it open (1.0.2).
+            b.Text($"Shift of: {s.Cashier}")
+                .Text($"Closed by: {s.ClosedBy} · Reason: {s.CloseReason}{(string.IsNullOrEmpty(s.CloseNote) ? "" : $" ({s.CloseNote})")}");
+            if (s.CountedAlone) b.Text("Counted alone", TextStyle.Bold).Text("Closed and signed off by the same person");
+        }
+        b.Separator()
             .Columns2("Opening float", Amount(s.OpeningFloat))
             .Columns2("Cash settled", "+" + Amount(s.CashSettled));
         foreach (var payOut in s.Movements.Where(m => m.Kind == nameof(DrawerMovementKind.PayOut)))

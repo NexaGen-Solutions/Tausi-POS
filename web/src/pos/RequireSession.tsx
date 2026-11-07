@@ -1,3 +1,4 @@
+import { ShiftNoticeGate } from './cash/OpenShifts';
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { usePinSession } from './usePinSession';
@@ -9,5 +10,10 @@ export function RequireSession({ children }: { children: ReactNode }) {
   if (!session) return <Navigate to="/pos" replace />;
   if (session.mustChangePin && location.pathname !== '/pos/change-pin')
     return <Navigate to="/pos/change-pin" replace />;
-  return children;
+  return (
+    <>
+      {children}
+      <ShiftNoticeGate />
+    </>
+  );
 }

@@ -24,6 +24,28 @@ New features. Install 1.0.1 first: it changes how terminals update.
   about unapplied payments. Set it up under **Settings → M-Pesa** (see `docs/MPESA.md`). Safaricom's
   messages reach the bar through NexaGen's Tausi relay (`docs/RELAY.md`).
 
+### Fixed
+
+- **A shift left open no longer stops the day from closing** (also in 1.0.2). Supervisors and admins can now close another
+  cashier's shift, from Close day, from **My shift → Open shifts**, or on the admin site under
+  **Cash book → Open shifts**, on any terminal. They give a reason, count the drawer (blind, if the
+  setting is on), deal with any payments not completed, and sign off with another supervisor's PIN, or
+  alone with "I counted this cash alone", which the slip, the Payments and cash-ups report and the audit log
+  then show. The slip prints on the closer's terminal, and the cashier sees a notice at their next login.
+  Who may do it is the new **Close another cashier's shift** permission (Supervisor and Admin by default).
+
+## 1.0.2 (unreleased)
+
+### Fixed
+
+- **A shift left open no longer stops the day from closing.** Supervisors and admins can now close another
+  cashier's shift, from Close day, from **My shift → Open shifts**, or on the admin site under
+  **Cash book → Open shifts**, on any terminal. They give a reason, count the drawer (blind, if the
+  setting is on), deal with any payments not completed, and sign off with another supervisor's PIN, or
+  alone with "I counted this cash alone", which the slip, the Payments and cash-ups report and the audit log
+  then show. The slip prints on the closer's terminal, and the cashier sees a notice at their next login.
+  Who may do it is the new **Close another cashier's shift** permission (Supervisor and Admin by default).
+
 ## 1.0.1 (unreleased)
 
 Fixes for 1.0.0. **Each counter PC needs the new `TausiPOS-Setup-1.0.1.exe` run once by hand**, because

@@ -447,6 +447,17 @@ Each entry: date, decision, reason.
 | 2026-11-06 | **No M-Pesa in training mode:** prompts, received payments and the QR are refused or left out on a training terminal; typed codes work as in 1.0 there (no transaction is made). | Training must not touch real money. |
 | 2026-11-06 | **Done differently:** the terminal's read-only M-Pesa list on the Reports screen (Task 17b) isn't built here, because 17b is on its own branch; its API (`POST /api/pos/mpesa/ledger`) is ready. See Follow-ups. | 17b and 18 are separate branches. |
 
+## Closing other cashiers' shifts (task 19, v1.0.2)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-11-07 | **`cash.close_others_shift`** ("Close another cashier's shift", Money): Allowed or Not allowed only (the closer is the approver); Supervisor and Admin Allowed, Cashier and Waiter Not allowed. Closing the day still needs `day.open_close`, which Supervisor and Admin have by default. | The owner's decision (prompt 19). |
+| 2026-11-07 | **Done differently: the new key's defaults reach existing installs through the seeder at startup, not a migration.** The seeder already adds every key a role is missing, with its default, and leaves set keys alone; that is how earlier keys (`ticket.others`) were rolled out, and a migration can't know each install's role ids. | Same effect, one mechanism. |
+| 2026-11-07 | **Another cashier's shift is counted and closed through its own endpoints** (`/api/pos/shifts/{id}/other/…`), used by the terminal and the admin site. The count records the closer (`ClosedByUserId`), reason and note; the close is signed off by another `day.open_close` user's PIN (the approval pad), or by the closer alone with "I counted this cash alone" (only if they have `day.open_close`); their own PIN without the tick is refused. The difference, the move to the safe and the lock are the cashier's own close (`ShiftPosting.Close`). | Prompt 19, Part C. |
+| 2026-11-07 | **The blind count applies to the person counting another's shift**, not to a supervisor merely viewing a shift summary (unchanged from 1.0). | Prompt 19, Part C step 3. |
+| 2026-11-07 | **Pending payments of any type block the close** of another's shift (1.0's own close checked only cash); they can be moved to the closer's open shift on that terminal, or removed (audited, the ticket goes back to unpaid). On the admin site there is no drawer of the closer's, so only Remove is offered. | Prompt 19, pending payments. |
+| 2026-11-07 | **The slip prints on the closer's terminal**; closed from the admin site, no slip prints (it is on the shift's record and the report). | The closer may be in the office. |
+
 ## After v1
 
 Owner's decisions and larger items for a later version. Not in 1.0.0.

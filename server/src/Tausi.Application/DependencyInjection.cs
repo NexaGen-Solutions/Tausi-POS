@@ -34,6 +34,8 @@ public static class DependencyInjection
         services.AddScoped<Mpesa.MpesaLedger>();
         services.AddScoped<Mpesa.MpesaAdmin>();
         services.AddScoped<Mpesa.BillQrCodes>();
+        services.AddScoped<Cash.OthersShifts>();
+        services.AddScoped<Cash.ShiftNotices>();
         services.AddSingleton<Setup.SetupGate>();
         services.AddScoped<Setup.SetupFlow>();
         services.AddScoped<Setup.SetupBusiness>();
