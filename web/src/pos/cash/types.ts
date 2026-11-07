@@ -26,6 +26,12 @@ export interface Shift {
   difference: number | null;
   note: string | null;
   signedOffBy: string | null;
+  /** 1.0.2: who counted and closed it, and why, when it wasn't its cashier. */
+  closedBy?: string | null;
+  closedByOther?: boolean;
+  closeReason?: string | null;
+  closeNote?: string | null;
+  countedAlone?: boolean;
   receipts: number;
   firstReceipt: number | null;
   lastReceipt: number | null;
@@ -62,3 +68,43 @@ export function countTotal(count: CashCount): number {
     (count.coins || 0)
   );
 }
+
+/** An open shift in the Open shifts list (1.0.2). */
+export interface OpenShiftRow {
+  id: string;
+  cashierId: string;
+  cashier: string;
+  terminalId: string;
+  terminal: string;
+  openedAt: string;
+  cashTaken: number;
+  counted: boolean;
+  closingBy: string | null;
+  pending: PendingPayment[];
+}
+
+export interface PendingPayment {
+  id: string;
+  ticketId: string;
+  ticketNumber: number;
+  type: 'Cash' | 'Mpesa' | 'Card';
+  amount: number;
+}
+
+export interface ShiftNotice {
+  shiftId: string;
+  terminal: string;
+  closedBy: string;
+  closedAt: string;
+  difference: number;
+  reason: string | null;
+}
+
+export const CLOSE_REASONS = [
+  'Cashier left without closing',
+  'Cashier is ill or absent',
+  'End of day',
+  'Other',
+] as const;
+
+export const openShiftsKey = ['shifts', 'open'] as const;

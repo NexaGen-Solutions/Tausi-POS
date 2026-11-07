@@ -177,6 +177,9 @@ export function CashBookPage() {
           >
             ›
           </Button>
+          <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/cash-book/open-shifts">
+            {t('admin.openShifts.title')}
+          </Link>
           <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/accounts">
             {t('admin.cashbook.accounts')}
           </Link>

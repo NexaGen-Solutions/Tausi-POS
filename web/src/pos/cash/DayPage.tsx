@@ -44,6 +44,8 @@ function shortDate(iso: string): string {
 }
 
 interface DayStatus {
+  /** 1.0.2: this user may close other cashiers' shifts (cash.close_others_shift). */
+  canCloseShifts?: boolean;
   open: boolean;
   workPeriodId: string | null;
   openedAt: string | null;
@@ -181,10 +183,17 @@ export function DayPage() {
                 </h3>
                 <ul className="cash-list">
                   {blockers.openShifts.map((s) => (
-                    <li key={s.id}>
+                    <li key={s.id} className="cash-shift-row">
                       <Link to="/pos/shift">
                         {s.cashier} · {s.terminal}
                       </Link>
+                      {s.cashier === me.data?.user.name ? null : status.canCloseShifts ? (
+                        <Button onClick={() => navigate(`/pos/shifts/${s.id}/close-other`)}>
+                          {t('pos.closeOther.close')}
+                        </Button>
+                      ) : (
+                        <span className="cash-note">{t('pos.closeOther.askSupervisor')}</span>
+                      )}
                     </li>
                   ))}
                 </ul>
