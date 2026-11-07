@@ -109,7 +109,8 @@ public static class DayClosing
 
 /// <summary>GET /api/pos/day: what blocks the close, and the day's summary.</summary>
 public sealed record DayStatusDto(
-    bool Open, Guid? WorkPeriodId, DateTimeOffset? OpenedAt, string? OpenedBy, DayBlockersDto Blockers, DaySummaryDto? Summary);
+    bool Open, Guid? WorkPeriodId, DateTimeOffset? OpenedAt, string? OpenedBy, DayBlockersDto Blockers, DaySummaryDto? Summary,
+    bool CanCloseShifts = false);
 
 /// <summary>The answer to a close: the summary printed, and when every terminal logs out.</summary>
 public sealed record DayClosedDto(Guid WorkPeriodId, DateTimeOffset ClosedAt, DateTimeOffset LogoutAt, bool Printed, DaySummaryDto Summary);
@@ -125,7 +126,9 @@ public sealed class GetDayStatus(ITausiDb db, ICurrentSession session, IPermissi
         if (day is null) return new DayStatusDto(false, null, null, null, new DayBlockersDto([], [], []), null);
         var opener = await db.Users.AsNoTracking().Where(u => u.Id == day.OpenedByUserId).Select(u => u.Name).FirstOrDefaultAsync(ct);
         var blockers = await DayClosing.Blockers(db, ct);
-        return new DayStatusDto(true, day.Id, day.OpenedAt, opener, blockers, blockers.Blocked ? null : await summaries.For(day.Id, ct));
+        // 1.0.2: shifts left open can be closed from here by users with cash.close_others_shift.
+        var canClose = await permissions.Check(user, PermissionKeys.CashCloseOthersShift, ct) == PermissionValue.Allowed;
+        return new DayStatusDto(true, day.Id, day.OpenedAt, opener, blockers, blockers.Blocked ? null : await summaries.For(day.Id, ct), canClose);
     }
 }
 

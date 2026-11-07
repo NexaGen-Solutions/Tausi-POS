@@ -24,6 +24,23 @@ public static class DayEndpoints
         pos.MapGet("/shifts/{id:guid}/summary", (Guid id, ShiftQueries shifts, CancellationToken ct) => shifts.Summary(id, ct));
         pos.MapPost("/shifts/{id:guid}/count", (Guid id, CountShiftRequest r, CountShift count, CancellationToken ct) => count.Execute(id, r, ct));
         pos.MapPost("/shifts/{id:guid}/close", (Guid id, CloseShift close, CancellationToken ct) => close.Execute(id, ct));
+
+        // Another cashier's open shift (1.0.2, cash.close_others_shift): from any terminal or the admin site.
+        pos.MapGet("/shifts/open", (OthersShifts others, CancellationToken ct) => others.List(ct));
+        pos.MapGet("/shifts/{id:guid}/other", (Guid id, OthersShifts others, CancellationToken ct) => others.View(id, ct));
+        pos.MapPost("/shifts/{id:guid}/other/count", (Guid id, CountOthersShiftRequest r, OthersShifts others, CancellationToken ct) =>
+            others.Count(id, r, ct));
+        pos.MapPost("/shifts/{id:guid}/other/pending/move", (Guid id, OthersShifts others, CancellationToken ct) => others.MovePending(id, ct));
+        pos.MapPost("/shifts/{id:guid}/other/pending/remove", (Guid id, OthersShifts others, CancellationToken ct) => others.RemovePending(id, ct));
+        pos.MapPost("/shifts/{id:guid}/other/close", (Guid id, CloseOthersShiftRequest r, OthersShifts others, CancellationToken ct) =>
+            others.Close(id, r, ct));
+        // The cashier's notice at their next login, dismissed with OK.
+        pos.MapGet("/shift-notices", (ShiftNotices notices, CancellationToken ct) => notices.Mine(ct));
+        pos.MapPost("/shift-notices/{id:guid}/ok", async (Guid id, ShiftNotices notices, CancellationToken ct) =>
+        {
+            await notices.Dismiss(id, ct);
+            return Results.NoContent();
+        });
         pos.MapPost("/shifts/{id:guid}/pay-out", (Guid id, DrawerMovementRequest r, DrawerMovements moves, CancellationToken ct) =>
             moves.PayOut(id, r, ct));
         pos.MapPost("/shifts/{id:guid}/drop", (Guid id, DrawerMovementRequest r, DrawerMovements moves, CancellationToken ct) =>

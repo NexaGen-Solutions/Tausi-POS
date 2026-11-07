@@ -28,6 +28,10 @@ public static class ShiftCodes
     public const string Closed = "shift_closed";
     public const string BelowZero = "drawer_below_zero";
     public const string PendingCash = "pending_cash";
+    public const string ClosingByOther = "shift_closing_by_other";
+    public const string PendingPayments = "pending_payments";
+    public const string NoShiftHere = "no_shift_here";
+    public const string SignOffNeeded = "sign_off_needed";
 }
 
 /// <summary>
@@ -97,7 +101,8 @@ public sealed record ShiftDto(
     bool Blind, bool CountSubmitted, IReadOnlyDictionary<string, int> CountNotes, decimal CountCoins, decimal? Counted, decimal? Difference,
     string? Note, string? SignedOffBy, int Receipts, long? FirstReceipt, long? LastReceipt,
     IReadOnlyList<int> Denominations, IReadOnlyList<WaiterCashDto> Waiters, IReadOnlyList<DrawerMovementDto> Movements,
-    IReadOnlyList<ExpenseCategoryDto> Categories, int MpesaNoCodeCount = 0, decimal MpesaNoCodeTotal = 0);
+    IReadOnlyList<ExpenseCategoryDto> Categories, int MpesaNoCodeCount = 0, decimal MpesaNoCodeTotal = 0,
+    string? ClosedBy = null, bool ClosedByOther = false, string? CloseReason = null, string? CloseNote = null, bool CountedAlone = false);
 
 /// <summary>"Start shift" defaults for a cashier with none open.</summary>
 public sealed record ShiftStartDto(decimal DefaultFloat, IReadOnlyList<int> Denominations);
@@ -143,7 +148,7 @@ public sealed class ShiftReader(ITausiDb db)
     }
 
     /// <summary>The cash-up screen's view of a shift. <paramref name="viewer"/> decides what a blind count hides.</summary>
-    public async Task<ShiftDto> View(CashierShift shift, Guid viewer, CancellationToken ct)
+    public async Task<ShiftDto> View(CashierShift shift, Guid viewer, CancellationToken ct, bool counting = false)
     {
         var settings = await CashSettings.Load(db, ct);
         var figures = await Figures(shift.Id, ct);
@@ -152,8 +157,11 @@ public sealed class ShiftReader(ITausiDb db)
         var signedOff = shift.SignedOffByUserId is { } s
             ? await db.Users.AsNoTracking().Where(u => u.Id == s).Select(u => u.Name).FirstOrDefaultAsync(ct) : null;
         var counted = shift.CountedAt is not null;
-        // A blind count hides the expected cash from the cashier until they have counted.
-        var hide = settings.BlindCount && !counted && viewer == shift.CashierUserId && shift.IsOpen;
+        // A blind count hides the expected cash until the drawer is counted: from the cashier, and from
+        // a supervisor counting a shift its cashier left open (<paramref name="counting"/>, 1.0.2).
+        var hide = settings.BlindCount && !counted && shift.IsOpen && (viewer == shift.CashierUserId || counting);
+        var closedBy = shift.ClosedByUserId is { } c2
+            ? await db.Users.AsNoTracking().Where(u => u.Id == c2).Select(u => u.Name).FirstOrDefaultAsync(ct) : null;
         var expected = figures.Expected(shift.OpeningFloat);
 
         var receipts = await db.Tickets.AsNoTracking().Where(k => k.SettledShiftId == shift.Id && k.ReceiptNumber != null)
@@ -173,7 +181,8 @@ public sealed class ShiftReader(ITausiDb db)
             settings.Denominations, await Waiters(shift, ct),
             moves.OrderBy(m => m.At).Select(m => new DrawerMovementDto(m.Id, m.Kind.ToString(), m.Amount, m.CategoryName, m.Note,
                 names.GetValueOrDefault(m.ByUserId, "?"), m.At)).ToList(),
-            categories, figures.MpesaNoCodeCount, figures.MpesaNoCodeTotal);
+            categories, figures.MpesaNoCodeCount, figures.MpesaNoCodeTotal,
+            closedBy, shift.ClosedByOther, shift.CloseReason, shift.CloseNote, shift.CountedAlone);
     }
 
     /// <summary>Cash each waiter brought in this shift, and the bills still open on their name.</summary>
@@ -405,6 +414,8 @@ public sealed class CloseShift(
             && await permissions.Check(user, PermissionKeys.DayOpenClose, ct) != PermissionValue.Allowed)
             throw new ForbiddenException("This is another cashier's shift.", "not_your_shift");
         if (!shift.IsOpen) throw new ConflictException("This shift is closed already.", ShiftCodes.Closed);
+        if (shift.ClosedByUserId is { } closer && closer != shift.CashierUserId)
+            throw new ConflictException("Someone else is closing this shift. They finish it from Open shifts.", ShiftCodes.ClosingByOther);
         if (shift.CountedAt is null || shift.Counted is not { } counted)
             throw new ConflictException("Count the cash and submit the count first.", ShiftCodes.NotCounted);
         var pending = await db.Payments.AsNoTracking()
@@ -427,6 +438,7 @@ public sealed class CloseShift(
                 .SetProperty(s => s.Status, ShiftStatus.Closed)
                 .SetProperty(s => s.ClosedAt, now)
                 .SetProperty(s => s.SignedOffByUserId, signedOffBy)
+                .SetProperty(s => s.ClosedByUserId, shift.CashierUserId)
                 .SetProperty(s => s.Expected, expected)
                 .SetProperty(s => s.Difference, difference)
                 .SetProperty(s => s.RowVersion, s => s.RowVersion + 1), ct);
@@ -434,6 +446,7 @@ public sealed class CloseShift(
         shift.Status = ShiftStatus.Closed;
         shift.ClosedAt = now;
         shift.SignedOffByUserId = signedOffBy;
+        shift.ClosedByUserId = shift.CashierUserId;
         shift.Expected = expected;
         shift.Difference = difference;
 

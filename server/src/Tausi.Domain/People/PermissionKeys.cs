@@ -24,6 +24,7 @@ public static class PermissionKeys
     public const string StockAdjust = "stock.adjust";
     public const string CashExpense = "cash.expense";
     public const string CashBook = "cash.book";
+    public const string CashCloseOthersShift = "cash.close_others_shift";
     public const string ReportsOwn = "reports.own";
     public const string ReportsAll = "reports.all";
     public const string DayOpenClose = "day.open_close";
@@ -39,7 +40,7 @@ public static class PermissionKeys
         TicketPrint, TicketReprint, TicketMove, TicketMerge, TicketSettle, TicketOthers,
         MenuEdit, MenuEditPrices,
         StockReceive, StockWaste, StockCount, StockAdjust,
-        CashExpense, CashBook,
+        CashExpense, CashBook, CashCloseOthersShift,
         ReportsOwn, ReportsAll, DayOpenClose,
         StaffManage, PermissionsManage, DevicesManage, SettingsManage, ErpManage,
     ];

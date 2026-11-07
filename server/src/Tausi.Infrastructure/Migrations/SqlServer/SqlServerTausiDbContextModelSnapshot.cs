@@ -86,11 +86,25 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("CashierNoticeSeenAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<Guid>("CashierUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("CloseNote")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CloseReason")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<DateTimeOffset?>("ClosedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CountJson")
                         .HasMaxLength(500)
@@ -99,6 +113,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.Property<decimal?>("Counted")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("CountedAlone")
+                        .HasColumnType("bit");
 
                     b.Property<DateTimeOffset?>("CountedAt")
                         .HasColumnType("datetimeoffset");

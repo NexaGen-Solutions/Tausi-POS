@@ -86,11 +86,25 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CashierNoticeSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("CashierUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CloseNote")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CloseReason")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
                     b.Property<DateTimeOffset?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("CountJson")
                         .HasMaxLength(500)
@@ -99,6 +113,9 @@ namespace Tausi.Infrastructure.Migrations.Postgres
                     b.Property<decimal?>("Counted")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("CountedAlone")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset?>("CountedAt")
                         .HasColumnType("timestamp with time zone");

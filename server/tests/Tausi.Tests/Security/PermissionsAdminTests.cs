@@ -43,7 +43,7 @@ public class PermissionsAdminTests : IAsyncLifetime
         PermissionCatalog.NotApprovable.Should().BeEquivalentTo(
             PermissionKeys.TicketSettle, PermissionKeys.TicketOthers, PermissionKeys.MenuEdit, PermissionKeys.MenuEditPrices, PermissionKeys.ReportsOwn,
             PermissionKeys.ReportsAll, PermissionKeys.DayOpenClose, PermissionKeys.StaffManage, PermissionKeys.PermissionsManage,
-            PermissionKeys.DevicesManage, PermissionKeys.SettingsManage, PermissionKeys.ErpManage);
+            PermissionKeys.DevicesManage, PermissionKeys.SettingsManage, PermissionKeys.ErpManage, PermissionKeys.CashCloseOthersShift);
         PermissionCatalog.All.Should().OnlyContain(p => p.Help.Length > 0 && p.Label.Length > 0);
     }
 

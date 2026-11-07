@@ -25,6 +25,8 @@ public static class DependencyInjection
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<PrintQueue>();
         services.AddScoped<Reports.ReportService>();
+        services.AddScoped<Cash.OthersShifts>();
+        services.AddScoped<Cash.ShiftNotices>();
         services.AddSingleton<Setup.SetupGate>();
         services.AddScoped<Setup.SetupFlow>();
         services.AddScoped<Setup.SetupBusiness>();
