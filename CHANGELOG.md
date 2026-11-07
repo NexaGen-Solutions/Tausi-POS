@@ -2,6 +2,20 @@
 
 Tausi POS by NexaGen Solutions. Each release's changes, newest first (built by the release workflow from the commit messages).
 
+## 1.1.0 (unreleased)
+
+New features. Install 1.0.1 first: it changes how terminals update.
+
+### Added
+
+- **Reports on the terminal.** A **Reports** button on the table map opens Sales by user, Daily sales and
+  Sales by item for Today, Yesterday, This week or picked dates, with big totals and a print-out on the
+  terminal's receipt printer. Waiters see only their own figures; supervisors and admins see everyone and
+  can choose a user or terminal. The terminal shows sales only, never cost or profit. The figures are the
+  same as the admin site's reports for the same dates.
+- **Daily sales** report on the admin site too: sales, discounts, VAT, payments by type, tickets, open
+  tickets, voids and gifts.
+
 ## 1.0.1 (unreleased)
 
 Fixes for 1.0.0. **Each counter PC needs the new `TausiPOS-Setup-1.0.1.exe` run once by hand**, because

@@ -141,4 +141,42 @@ public class ReportApiTests(TausiApp app) : IAsyncLifetime
         app.Db(db => db.PrintJobs.Any(j => j.PrinterId == printer && j.Label == "Sales by user")).Should().BeTrue();
         (await supervisor.Http.PostAsJsonAsync("/api/admin/reports/audit/run", new { })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task The_terminal_reports_give_a_waiter_only_their_own_figures_whatever_the_request_says()
+    {
+        await Ticket();
+        var waiter = await app.PairTerminal();
+        (await waiter.LoginWithPin(app.Pins["edna"])).EnsureSuccessStatusCode();
+        var sam = app.Db(db => db.Users.Single(u => u.Name == "SAM").Id);
+        var edna = app.Db(db => db.Users.Single(u => u.Name == "edna").Id);
+
+        // Asking for SAM's figures still gives edna's.
+        var mine = await Ok(await waiter.Http.PostAsJsonAsync("/api/pos/reports/sales-by-user/run", new { quick = "Today", userId = sam }));
+        mine.GetProperty("ownOnly").GetBoolean().Should().BeTrue();
+        var result = mine.GetProperty("result");
+        result.GetProperty("filterText").EnumerateArray().Select(f => f.GetString()).Should().Contain("User: edna").And.NotContain("User: SAM");
+        result.GetProperty("tables")[0].GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("title").GetString())
+            .Should().OnlyContain(t => t == "edna");
+
+        // The same as the admin site's report for edna, without cost.
+        var admin = await app.AdminClient();
+        foreach (var key in TerminalReports.Keys)
+        {
+            var terminal = await Ok(await waiter.Http.PostAsJsonAsync($"/api/pos/reports/{key}/run", new { quick = "Today", userId = sam }));
+            var text = terminal.GetProperty("result").GetRawText();
+            foreach (var word in new[] { "cost", "profit", "margin" }) text.Should().NotContainEquivalentOf(word, key);
+            var site = await Ok(await admin.PostAsJsonAsync($"/api/admin/reports/{key}/run", new { quick = "Today", userId = edna }));
+            var siteTotals = site.GetProperty("tables")[0].GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("total").ToString());
+            terminal.GetProperty("result").GetProperty("tables")[0].GetProperty("groups").EnumerateArray()
+                .Select(g => g.GetProperty("total").ToString()).Should().Equal(siteTotals, key);
+        }
+
+        // A supervisor sees everyone.
+        var supervisor = await app.PairTerminal();
+        (await supervisor.LoginWithPin(app.Pins["SAM"])).EnsureSuccessStatusCode();
+        var all = await Ok(await supervisor.Http.PostAsJsonAsync("/api/pos/reports/daily-sales/run", new { quick = "Today" }));
+        all.GetProperty("ownOnly").GetBoolean().Should().BeFalse();
+        (await supervisor.Http.PostAsJsonAsync("/api/pos/reports/payments/run", new { })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

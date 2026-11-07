@@ -168,3 +168,76 @@ public sealed class SalesByItemReport : ReportBase
             await SalesByUserReport.RoundingNote(c, ct));
     }
 }
+
+/// <summary>
+/// Daily sales: for the chosen dates, the sales (gross, discounts, net of VAT, VAT), the payments by
+/// type, the tickets (count, average, open ones) and the voids and gifts. Revenue only: no cost or
+/// profit, so it suits the terminal too. With a user, it's that user's figures: the lines they added,
+/// the payments they brought, the tickets with their lines, their open tickets, voids and gifts.
+/// </summary>
+public sealed class DailySalesReport : ReportBase
+{
+    public override ReportDefinition Definition { get; } = new("daily-sales", "Daily sales", PermissionKeys.ReportsAll,
+        [ReportFilter.User, ReportFilter.Terminal, ReportFilter.IncludeOpen], Receipt: true);
+
+    public static readonly IReadOnlyList<ReportColumn> Columns =
+        [new("line", "Line"), new("count", "Count", ColumnType.Quantity), new("amount", "Amount", ColumnType.Money)];
+
+    public override async Task<ReportResult> Run(ReportContext c, CancellationToken ct)
+    {
+        var f = c.Filters;
+        var query = SalesQuery.Lines(c.Db, c.Period, c.IncludeOpen);
+        if (f.TerminalId is { } terminal) query = query.Where(l => l.AddedTerminalId == terminal);
+        if (f.UserId is { } user) query = query.Where(l => l.AddedByUserId == user);
+        var lines = await query.ToListAsync(ct);
+
+        var (start, end) = (c.Period.Start, c.Period.End);
+        var payments = await c.Db.Payments.AsNoTracking()
+            .Where(p => p.TakenAt >= start && p.TakenAt < end && p.Status == PaymentStatus.Final)
+            .Where(p => f.TerminalId == null || p.TerminalId == f.TerminalId)
+            .Where(p => f.UserId == null || p.BroughtByUserId == f.UserId)
+            .Select(p => new { p.Type, p.Amount }).ToListAsync(ct);
+        var voids = (await VoidQueries.ForPeriod(c, ct))
+            .Where(v => (f.TerminalId is null || v.Terminal == f.TerminalId) && (f.UserId is null || v.AddedBy == f.UserId)).ToList();
+
+        var sold = lines.Where(l => !l.IsGift).ToList();
+        var gross = sold.Sum(l => l.Gross);
+        var discounts = sold.Sum(l => l.Discount);
+        var sales = gross - discounts;
+        var settled = lines.Where(l => l.TicketStatus == TicketStatus.Settled).ToList();
+        var tickets = settled.Select(l => l.TicketId).Distinct().Count();
+        var open = lines.Where(l => l.TicketStatus == TicketStatus.Open).ToList();
+        decimal Paid(PaymentType type) => payments.Where(p => p.Type == type).Sum(p => p.Amount);
+        var gifts = lines.Where(l => l.IsGift).ToList();
+
+        var groups = new List<ReportGroup>
+        {
+            new("Sales",
+            [
+                ReportRow.Of("Gross sales", sold.Sum(l => l.Quantity), gross),
+                ReportRow.Of("Discounts", null, discounts),
+                ReportRow.Of("Net of VAT", null, sold.Sum(l => l.Net)),
+                ReportRow.Of("VAT", null, sold.Sum(l => l.Vat)),
+            ], ReportRow.Of("Sales after discounts", null, sales), Total: sales),
+            new("Payments",
+            [
+                ReportRow.Of("Cash", payments.Count(p => p.Type == PaymentType.Cash), Paid(PaymentType.Cash)),
+                ReportRow.Of("M-Pesa", payments.Count(p => p.Type == PaymentType.Mpesa), Paid(PaymentType.Mpesa)),
+                ReportRow.Of("Card", payments.Count(p => p.Type == PaymentType.Card), Paid(PaymentType.Card)),
+            ], ReportRow.Of("Total paid", payments.Count, payments.Sum(p => p.Amount)), Total: payments.Sum(p => p.Amount)),
+            new("Tickets",
+            [
+                ReportRow.Of("Settled tickets", tickets, settled.Sum(l => l.Amount)),
+                ReportRow.Of("Average ticket", null, tickets == 0 ? 0m : Domain.Money.MoneyMath.Round(settled.Sum(l => l.Amount) / tickets)),
+                ReportRow.Of("Open tickets", open.Select(l => l.TicketId).Distinct().Count(), open.Sum(l => l.Amount)),
+            ]),
+            new("Voids and gifts",
+            [
+                ReportRow.Of("Voids", voids.Sum(v => v.Quantity), voids.Sum(v => v.Amount)),
+                ReportRow.Of("Gifts", gifts.Sum(l => l.Quantity), gifts.Sum(l => l.GiftValue)),
+            ]),
+        };
+        return await Result(c, [new ReportTable(null, Columns, groups)], ct,
+            await OpenNote(c, ct), await SalesByUserReport.RoundingNote(c, ct));
+    }
+}

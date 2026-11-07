@@ -31,6 +31,7 @@ import { SetupPage } from '../pos/SetupPage';
 import { SplashPage } from '../pos/SplashPage';
 import { SetupWizard } from '../setup/SetupWizard';
 import { MySalesPage } from '../pos/MySalesPage';
+import { PosReportsPage } from '../pos/reports/PosReportsPage';
 import { TablesPage } from '../pos/tables/TablesPage';
 import { OrderPage } from '../pos/order/OrderPage';
 import { SettlePage } from '../pos/settle/SettlePage';
@@ -116,6 +117,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireSession>
             <MySalesPage />
+          </RequireSession>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <RequireSession>
+            <PosReportsPage />
           </RequireSession>
         ),
       },

@@ -642,4 +642,157 @@ public class ReportsTests : StockTestBase
         var detail = await F.Get<TicketDetailReport>().Execute(day.Edna1, None);
         detail.Prints.Should().NotBeEmpty().And.OnlyContain(p => p.Text == null);
     }
+
+    // ---- The terminal's Reports screen (Task 17b) ----
+
+    private TerminalReports Terminal => F.Get<TerminalReports>();
+
+    private static readonly System.Text.Json.JsonSerializerOptions Json = new() { WriteIndented = false };
+
+    /// <summary>What a result shows, without the time it ran.</summary>
+    private static string Shown(ReportResult r) => System.Text.Json.JsonSerializer.Serialize(r with { RunAt = default }, Json);
+
+    [Theory]
+    [InlineData("sales-by-user")]
+    [InlineData("daily-sales")]
+    [InlineData("sales-by-item")]
+    public async Task Terminal_reports_equal_the_admin_reports_for_the_same_filters(string key)
+    {
+        await BusyDay();
+        var edna = F.User("edna").Id;
+        var admin = await Run(key, new ReportFilters { Quick = QuickRange.Today });
+        var terminal = await Terminal.Run(key, new TerminalReportFilters { Quick = QuickRange.Today }, None);
+        terminal.OwnOnly.Should().BeFalse("the Administrator has reports.all");
+        Shown(terminal.Result).Should().Be(Shown(TerminalReports.RevenueOnly(admin)));
+
+        var adminEdna = await Run(key, new ReportFilters { From = Today, To = Today, UserId = edna });
+        var terminalEdna = await Terminal.Run(key, new TerminalReportFilters { From = Today, To = Today, UserId = edna }, None);
+        Shown(terminalEdna.Result).Should().Be(Shown(TerminalReports.RevenueOnly(adminEdna)));
+        if (key == "sales-by-item") return;
+        Shown(TerminalReports.RevenueOnly(admin)).Should().Be(Shown(admin), "only Sales by item has cost columns to take out");
+    }
+
+    [Theory]
+    [InlineData("sales-by-user")]
+    [InlineData("daily-sales")]
+    [InlineData("sales-by-item")]
+    public async Task A_waiter_gets_only_their_own_figures_even_when_the_request_asks_for_someone_else(string key)
+    {
+        await BusyDay();
+        var own = await Run(key, new ReportFilters { Quick = QuickRange.Today, UserId = F.User("edna").Id });
+        var all = await Run(key, new ReportFilters { Quick = QuickRange.Today });
+
+        await F.LoginOn("edna", "Counter A");
+        var asked = new TerminalReportFilters { Quick = QuickRange.Today, UserId = F.User("Ruth").Id, TerminalId = F.Read().Terminals.Single(t => t.Name == "Counter B").Id };
+        var mine = await Terminal.Run(key, asked, None);
+        var plain = await Terminal.Run(key, new TerminalReportFilters(), None);
+
+        mine.OwnOnly.Should().BeTrue();
+        Shown(mine.Result).Should().Be(Shown(TerminalReports.RevenueOnly(own)), "the server sets the user to edna, whatever was asked");
+        Shown(plain.Result).Should().Be(Shown(mine.Result), "no filters: today, and still only edna");
+        Shown(mine.Result).Should().NotBe(Shown(TerminalReports.RevenueOnly(all)), "Ruth sold too");
+        if (key == "sales-by-user") mine.Result.Tables[0].Groups.Select(g => g.Title).Should().Equal("edna");
+    }
+
+    [Fact]
+    public async Task Terminal_reports_need_reports_own_or_reports_all()
+    {
+        await BusyDay();
+        await F.SetPermission("Waiter", PermissionKeys.ReportsOwn, PermissionValue.NotAllowed);
+        await F.LoginOn("edna", "Counter A");
+        await FluentActions.Awaiting(() => Terminal.Run("daily-sales", new TerminalReportFilters(), None))
+            .Should().ThrowAsync<PermissionDeniedException>();
+        await FluentActions.Awaiting(() => Terminal.Run("payments", new TerminalReportFilters(), None))
+            .Should().ThrowAsync<Tausi.Application.Common.NotFoundException>("only the three sales reports are on the terminal");
+    }
+
+    [Fact]
+    public async Task No_terminal_report_has_cost_margin_or_profit_for_anyone()
+    {
+        await BusyDay();
+        foreach (var (name, terminal) in new[] { ("Administrator", "Counter B"), ("SAM", "Counter A"), ("edna", "Counter A") })
+        {
+            await F.LoginOn(name, terminal);
+            foreach (var key in TerminalReports.Keys)
+            {
+                var text = Shown((await Terminal.Run(key, new TerminalReportFilters(), None)).Result);
+                foreach (var word in new[] { "cost", "profit", "margin", "recipe" })
+                    text.Should().NotContainEquivalentOf(word, $"{name}'s {key}");
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Daily_sales_agrees_with_the_ledger_and_the_other_reports()
+    {
+        await BusyDay();
+        var daily = await Run("daily-sales", Settled);
+        decimal Figure(string group, string line) =>
+            (decimal)daily.Tables[0].Groups.Single(g => g.Title == group).Rows.Single(r => (string)r.Cells[0]! == line).Cells[2]!;
+        decimal Debits(string code) => -LedgerNet(code, e => e.SourceType == SalePosting.SourceType);
+        var sales = LedgerNet(LedgerAccountCodes.Sales) + LedgerNet(LedgerAccountCodes.VatPayable, e => e.SourceType == SalePosting.SourceType);
+
+        daily.Tables[0].Groups.Single(g => g.Title == "Sales").Total.Should().Be(sales);
+        (Figure("Sales", "Gross sales") - Figure("Sales", "Discounts")).Should().Be(sales);
+        (Figure("Sales", "Net of VAT") + Figure("Sales", "VAT")).Should().Be(sales);
+        Figure("Sales", "VAT").Should().Be(LedgerNet(LedgerAccountCodes.VatPayable, e => e.SourceType == SalePosting.SourceType));
+        Figure("Payments", "Cash").Should().Be(Debits(LedgerAccountCodes.Cash));
+        Figure("Payments", "M-Pesa").Should().Be(Debits(LedgerAccountCodes.MPesa));
+        Figure("Payments", "Card").Should().Be(Debits(LedgerAccountCodes.CardClearing));
+        Figure("Tickets", "Settled tickets").Should().Be(sales);
+        Figure("Tickets", "Average ticket").Should().Be(Tausi.Domain.Money.MoneyMath.Round(sales / 3), "three settled tickets (one merged in)");
+        GrandTotal(await Run("sales-by-user", Settled)).Should().Be(sales);
+
+        var withOpen = await Run("daily-sales");
+        var open = withOpen.Tables[0].Groups.Single(g => g.Title == "Tickets").Rows.Single(r => (string)r.Cells[0]! == "Open tickets");
+        open.Cells[1].Should().Be(1m);
+        var openId = F.Read().Tickets.Single(k => k.Status == TicketStatus.Open).Id;
+        open.Cells[2].Should().Be(F.Read().OrderLines.Where(l => l.TicketId == openId).Sum(l => l.Gross));
+    }
+
+    [Theory]
+    [InlineData("sales-by-user", 42)]
+    [InlineData("sales-by-user", 32)]
+    [InlineData("daily-sales", 42)]
+    [InlineData("daily-sales", 32)]
+    [InlineData("sales-by-item", 42)]
+    [InlineData("sales-by-item", 32)]
+    public async Task Terminal_report_slips_match_their_golden_slips(string key, int columns)
+    {
+        await BusyDay();
+        await F.LoginOn("SAM", "Counter A");
+        var result = (await Terminal.Run(key, new TerminalReportFilters(), None)).Result;
+        if (key == "sales-by-item") result = TerminalReports.OneLinePerItem(result);
+        var doc = ReportSlip.Build(result, "Test", TimeZoneInfo.FindSystemTimeZoneById("Africa/Nairobi"), columns, printedBy: "SAM");
+        doc.Text.Should().Contain("Printed by SAM");
+        Tausi.Tests.Printing.SlipsTests.Golden($"terminal-{key}-{columns}", doc);
+    }
+
+    [Fact]
+    public async Task Print_sends_the_report_on_screen_to_this_terminals_receipt_printer()
+    {
+        await BusyDay();
+        await F.LoginOn("edna", "Counter A");
+        var before = F.Read().PrintJobs.Count();
+        await Terminal.Print("daily-sales", new TerminalReportFilters { UserId = F.User("Ruth").Id }, None);
+        var job = F.Read().PrintJobs.OrderBy(j => j.CreatedAt).ToList().Last();
+        F.Read().PrintJobs.Count().Should().Be(before + 1);
+        job.Label.Should().Be("Daily sales");
+        job.PrinterId.Should().Be(F.Read().Terminals.Single(t => t.Name == "Counter A").ReceiptPrinterId!.Value);
+        job.TextPreview.Should().Contain("Printed by edna").And.Contain("User: edna").And.NotContain("Ruth");
+    }
+
+    [Fact]
+    public async Task Sales_by_item_on_paper_has_one_line_per_item_with_the_same_totals()
+    {
+        await BusyDay();
+        var screen = (await Terminal.Run("sales-by-item", new TerminalReportFilters(), None)).Result;
+        var paper = TerminalReports.OneLinePerItem(screen);
+        var table = screen.Tables[0];
+        paper.Tables[0].Columns.Select(c => c.Key).Should().Equal("item", "qty", "amount");
+        paper.Tables[0].Groups.Select(g => g.Rows.Count).Should().Equal(table.Groups.Select(g => g.Rows.Count));
+        ((decimal)paper.Tables[0].Totals!.Cells[2]!).Should()
+            .Be((decimal)table.Totals!.Cells[Column(table, "gross")]! - (decimal)table.Totals.Cells[Column(table, "discount")]!);
+        paper.Tables[0].Groups[0].Footer!.Single().Should().StartWith("Gifts ").And.Contain(" · Voids ");
+    }
 }

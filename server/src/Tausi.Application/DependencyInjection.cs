@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<PrintQueue>();
         services.AddScoped<Reports.ReportService>();
+        services.AddScoped<Reports.TerminalReports>();
         services.AddSingleton<Setup.SetupGate>();
         services.AddScoped<Setup.SetupFlow>();
         services.AddScoped<Setup.SetupBusiness>();
@@ -48,7 +49,7 @@ public static class DependencyInjection
         services.AddScoped<Reports.TicketDetailReport>();
         foreach (var report in new Type[]
                  {
-                     typeof(Reports.SalesByUserReport), typeof(Reports.SalesByItemReport), typeof(Reports.PaymentsReport), typeof(Reports.VoidsReport),
+                     typeof(Reports.SalesByUserReport), typeof(Reports.SalesByItemReport), typeof(Reports.DailySalesReport), typeof(Reports.PaymentsReport), typeof(Reports.VoidsReport),
                      typeof(Reports.PriceChangesReport), typeof(Reports.StockOnHandReport), typeof(Reports.StockVarianceReport),
                      typeof(Reports.PurchasesReport), typeof(Reports.SupplierStatementReport), typeof(Reports.PayablesAgingReport),
                      typeof(Reports.DailySummaryReport), typeof(Reports.VatReport), typeof(Reports.TicketsReport),

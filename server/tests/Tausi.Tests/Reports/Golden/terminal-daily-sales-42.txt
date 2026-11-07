@@ -1,0 +1,33 @@
+                   Test
+               DAILY SALES
+             Tue 20 Oct 2026
+          Open tickets included
+    Printed by SAM · 20 Oct 2026 21:09
+Includes 1 open ticket
+Rounding on receipts: KSh 0.5 (not in the
+item amounts)
+------------------------------------------
+Sales                              2,201.5
+10 x Gross sales                     2,285
+Discounts                             83.5
+Net of VAT                        1,897.86
+VAT                                 303.64
+Sales after discounts              2,201.5
+..........................................
+Payments                             1,952
+2 x Cash                               950
+1 x M-Pesa                             652
+1 x Card                               350
+4 x Total paid                       1,952
+..........................................
+Tickets                                   
+3 x Settled tickets                1,951.5
+Average ticket                       650.5
+1 x Open tickets                       250
+..........................................
+Voids and gifts                           
+2 x Voids                              550
+1 x Gifts                              250
+..........................................
+------------------------------------------
+                  [cut]

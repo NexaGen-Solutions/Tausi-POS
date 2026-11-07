@@ -38,6 +38,15 @@ public static class ReportEndpoints
             return Results.File(file.Content, file.ContentType, file.FileName);
         });
 
+        // The terminal's Reports screen (reports.own: only your own figures; reports.all: everyone). Revenue only.
+        var pos = app.MapGroup("/api/pos/reports").WithTags("Reports").RequireAuthorization().RequiresLicence(LicensedFeature.Reports);
+        pos.MapPost("/{key}/run", (string key, TerminalReportFilters filters, TerminalReports r, CancellationToken ct) => r.Run(key, filters, ct)).ReadsOnly();
+        pos.MapPost("/{key}/slip", async (string key, TerminalReportFilters filters, TerminalReports r, CancellationToken ct) =>
+        {
+            await r.Print(key, filters, ct);
+            return Results.NoContent();
+        });
+
         // The supervisors' Sales by user slip from the Close day screen.
         app.MapPost("/api/pos/reports/sales-by-user/print", async (ReportService r, CancellationToken ct) =>
         {
