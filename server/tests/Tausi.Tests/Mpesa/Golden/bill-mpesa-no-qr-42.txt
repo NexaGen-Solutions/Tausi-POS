@@ -1,0 +1,17 @@
+                   Test
+------------------------------------------
+          BILL 1 · Ticket #1001
+------------------------------------------
+Table 7                  20 Oct 2026 18:00
+Waiter: edna                     Counter A
+------------------------------------------
+2 x Tusker Lager (Cold)                500
+------------------------------------------
+TOTAL                              KSh 500
+Total includes VAT 16%: KSh 68.97
+------------------------------------------
+      Till 123456 · KSh 500 · #1001
+Pay to Till 123456 and show the message to
+               your waiter.
+          This is not a receipt
+                  [cut]

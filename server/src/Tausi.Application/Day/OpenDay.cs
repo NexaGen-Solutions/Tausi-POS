@@ -17,7 +17,7 @@ public sealed record WorkPeriodDto(Guid Id, DateTimeOffset OpenedAt, Guid Opened
 /// </summary>
 public sealed class OpenDay(
     ITausiDb db, ICurrentSession session, IPermissionService permissions, IApprovalTokenSource approval,
-    IAuditLog audit, IPosEvents events, TimeProvider clock)
+    IAuditLog audit, IPosEvents events, TimeProvider clock, Mpesa.IMpesaCatchUp mpesa)
 {
     public async Task<WorkPeriodDto> Execute(CancellationToken ct)
     {
@@ -48,6 +48,18 @@ public sealed class OpenDay(
         }
 
         await events.Publish(PosEventNames.DayOpened, new { workPeriodId = period.Id, openedAt = period.OpenedAt }, ct);
+        // Payments made overnight (or while the server was off) are fetched now, without holding up the opening.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await mpesa.Run(CancellationToken.None);
+            }
+            catch (Exception)
+            {
+                // The background collector tries again once a ticket opens.
+            }
+        }, CancellationToken.None);
         return new WorkPeriodDto(period.Id, period.OpenedAt, period.OpenedByUserId);
     }
 }

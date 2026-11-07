@@ -51,6 +51,7 @@ describe('admin layout', () => {
       'Deliveries',
       'Stock counts',
       'Cash book',
+      'M-Pesa payments',
       'Staff and PINs',
       'Permissions',
       'Terminals and printers',

@@ -37,6 +37,8 @@ public sealed class TicketsFixture : IAsyncDisposable
     public FakeUpdateSource Updates { get; } = new();
     public FakeUpdateInstaller UpdateInstaller { get; } = new();
     public FakeServerProbe Servers { get; } = new();
+    public Tausi.Tests.Mpesa.FakeDaraja Daraja { get; } = new();
+    public Tausi.Tests.Mpesa.FakeRelay Relay { get; } = new();
 
     private TicketsFixture()
     {
@@ -62,6 +64,15 @@ public sealed class TicketsFixture : IAsyncDisposable
         services.AddSingleton<Tausi.Application.Updates.IUpdateInstaller>(UpdateInstaller);
         services.AddSingleton<Tausi.Application.Terminals.IServerProbe>(Servers);
         services.AddScoped<Tausi.Application.Ledger.ILedgerPostingService, Tausi.Infrastructure.Ledger.LedgerPostingService>();
+        services.AddSingleton<Tausi.Application.Mpesa.ISecretProtector, Tausi.Tests.Mpesa.FakeSecrets>();
+        services.AddSingleton<Tausi.Application.Mpesa.IDaraja>(Daraja);
+        services.AddSingleton<Tausi.Application.Mpesa.IRelayClient>(Relay);
+        services.AddSingleton<Tausi.Application.Mpesa.RelayStatus>();
+        services.AddSingleton<Tausi.Infrastructure.Mpesa.RelayCollector>();
+        services.AddSingleton<Tausi.Application.Mpesa.IMpesaCatchUp>(sp => sp.GetRequiredService<Tausi.Infrastructure.Mpesa.RelayCollector>());
+        services.AddSingleton<Tausi.Application.Mpesa.IMonoImages, Tausi.Infrastructure.Mpesa.SkiaMonoImages>();
+        services.AddSingleton<Tausi.Application.Mpesa.BillQrCache>();
+        services.AddLogging();
         _services = services.BuildServiceProvider();
     }
 

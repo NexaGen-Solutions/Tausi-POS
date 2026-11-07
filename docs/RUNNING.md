@@ -596,6 +596,10 @@ The backup tests need `pg_dump` and `pg_restore` (PostgreSQL 16's). Without them
 them in the `postgres:16` Docker image. The terminal app: `cd terminal/src-tauri && cargo test`; its launcher:
 `cd terminal/launcher && cargo test` (the launcher itself runs on Windows only; CI builds it with
 `scripts/terminal-launcher.ps1` and bundles it into the terminal installer).
+The Tausi relay (M-Pesa, hosted by NexaGen; see docs/RELAY.md): `cd relay && dotnet test` (in memory,
+no Docker needed). To run one locally against a PostgreSQL database, set `ConnectionStrings__Relay` and
+`cd relay && dotnet run --project src/Tausi.Relay`; the development settings accept callbacks from this
+PC. A bar server's M-Pesa needs Daraja sandbox credentials: see docs/MPESA.md.
 The installers are tested in CI on Windows (`installer/windows/test-install.ps1`) and the Linux
 package on Ubuntu 24.04 (the `linux-package` job runs `install.sh --with-postgres` for real).
 

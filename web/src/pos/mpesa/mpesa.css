@@ -1,0 +1,212 @@
+/* Task 18: M-Pesa on the settle and order screens (boards 22–25) */
+.mpesa-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: var(--space-2);
+}
+.mpesa-mode {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.mpesa-mode--on {
+  border-color: var(--color-surface-dark);
+  background: var(--color-surface-dark);
+  color: var(--color-topbar-text);
+  font-weight: 600;
+}
+.mpesa-prompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--space-4);
+}
+.mpesa-prompt__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.mpesa-prompt__actions,
+.mpesa-status__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.mpesa-prompt__actions > :last-child {
+  flex: 1;
+}
+.mpesa-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mpesa-input {
+  min-height: var(--touch-primary);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.mpesa-input--on {
+  border-color: var(--color-selected);
+  outline: 2px solid var(--color-focus);
+}
+.mpesa-help {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.mpesa-error {
+  margin: 0;
+  color: var(--color-warning-text);
+}
+.mpesa-mono {
+  font-family: var(--font-mono);
+}
+.mpesa-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  text-align: center;
+}
+.mpesa-status--paid {
+  align-items: stretch;
+  border: 1px solid var(--color-ok);
+  border-radius: var(--radius);
+  text-align: left;
+}
+.mpesa-step {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mpesa-status--paid .mpesa-step {
+  color: var(--color-ok);
+}
+.mpesa-ring {
+  width: 88px;
+  height: 88px;
+  border: 8px solid var(--color-divider);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: mpesa-turn 1.2s linear infinite;
+}
+@keyframes mpesa-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mpesa-ring {
+    animation: none;
+  }
+}
+.mpesa-status__title {
+  margin: 0;
+  font-size: 22px;
+}
+.mpesa-paid {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 26px;
+}
+.mpesa-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-ok);
+  color: var(--color-primary-text);
+  font-family: var(--font-sans);
+}
+.mpesa-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+.mpesa-facts dt {
+  color: var(--color-text-secondary);
+}
+.mpesa-facts dd {
+  margin: 0;
+  text-align: right;
+}
+.mpesa-ok-note {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-small);
+  background: var(--color-row-alt);
+}
+.mpesa-received {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+.mpesa-received__title {
+  margin: 0;
+  font-size: 18px;
+}
+.mpesa-received__scroll {
+  overflow: auto;
+}
+.mpesa-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.mpesa-table th {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+}
+.mpesa-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+  overflow-wrap: anywhere;
+}
+.mpesa-num {
+  text-align: right;
+}
+.mpesa-row--match td {
+  background: var(--color-row-alt);
+}
+.mpesa-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--color-selected-tint);
+  color: var(--color-selected);
+  font-size: 13px;
+  font-weight: 600;
+}
+.mpesa-badge--qr {
+  background: var(--color-ok);
+  color: var(--color-primary-text);
+}

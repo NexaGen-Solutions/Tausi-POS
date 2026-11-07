@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tausi.Relay/Tausi.Relay.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tausi.Relay.Tests/Tausi.Relay.Tests.csproj" />
+  </Folder>
+</Solution>

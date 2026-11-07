@@ -430,6 +430,23 @@ Each entry: date, decision, reason.
 | 2026-11-06 | **Sales by item prints one line per item** on the receipt printer ("6 x Tusker Lager … 1,200", sales after discounts) with each category's gifts and voids in a footer; the screen keeps every revenue column. Seven lines per item would make a long slip for a full menu. | Paper length. |
 | 2026-11-06 | **Done differently from the prompt:** there is no wireframe board for this screen (the owner said to build it without one); it follows My sales and the table map (tabs, big monospace figures, a scrolling table, a touch calendar for Pick dates). The user and terminal lists come from the admin reports' options, which `reports.all` may read. | Owner, 6 Nov. |
 
+## M-Pesa (task 18)
+
+| Date | Decision | Reason |
+| --- | --- | --- |
+| 2026-11-06 | **Owner's decisions:** waiters can send prompts (`mpesa.waiterPrompts`, on by default); the QR prints on every bill (`mpesa.qrOnBill`, on); a payment that covers the bill doesn't settle it, the cashier presses Complete; the server collects from the relay only while tickets are open, plus catch-ups at day open, before Close day and on Fetch payments now; an M-Pesa ledger of applied and unapplied payments. | Prompt 18. |
+| 2026-11-06 | **QR references (Part D finding):** Daraja's Dynamic QR (`/mpesa/qrcode/v1/generate`) only makes the code; the payment arrives as an ordinary C2B confirmation. Safaricom's documentation and SDK write-ups say `BillRefNumber` carries the account number for **Paybill** and is usually empty for **Buy Goods** (till). So: a reference that is exactly an open ticket's number is applied to it (Paybill, and Buy Goods if Safaricom ever passes it); otherwise the payment goes to Payments received, suggested by amount but never applied on amount alone. **Not yet confirmed in the sandbox**: no Daraja sandbox credentials were available; the owner should run one QR payment per type in the sandbox and record what `BillRefNumber` holds. | Prompt 18, Part D step 1. |
+| 2026-11-06 | **The relay's paths are `/pay/<token>/…`, not `/mpesa/<token>/…`:** Daraja refuses callback addresses that contain the word "mpesa". | Found while checking Daraja's rules. |
+| 2026-11-06 | **Delivery is long-poll HTTPS** (`GET /api/v1/payments?wait=25`, then `POST /api/v1/payments/ack`), not a WebSocket: it goes through any proxy, needs no extra library on either side, and the relay holds every payment until it is acknowledged, so nothing is lost between polls. The prompt allowed long-poll as the fallback; it is the only way for now. | Simpler and as safe. |
+| 2026-11-06 | **Phones on the relay are stored masked only:** matching uses the STK checkout id and the M-Pesa code, never the number, so no full number (and so no encryption key) is kept. | Prompt 18 ("encrypted only where matching needs it": it never does). |
+| 2026-11-06 | **One `MpesaTransaction` per M-Pesa code**, used by one or more payments (`Payment.MpesaTransactionId`), never more than its amount and never more than a bill owes (no change). The 1.0 unique index on `Payments.MpesaCode` now covers only payments without a transaction; codes on transactions are kept unique by the transaction. A typed code creates an unconfirmed transaction (confirmed when Safaricom's copy arrives, taking Safaricom's amount); it stays used even if its payment is removed, as in 1.0. | Partial use across bills (Part E) with the 1.0 "once, ever" rule. |
+| 2026-11-06 | **STK by the query route has no M-Pesa code** (Daraja's STK query doesn't return it): the payment is added without a code under a placeholder transaction (`~` and 9 characters, never a real code), and the relay's callback fills in the real code and payer later. A receipt printed before then shows the payment without a code. | Both routes, "whichever answers first wins". |
+| 2026-11-06 | **Payments added by M-Pesa (a prompt, a QR match, Apply to ticket) have no cashier shift** until the ticket is settled; Complete gives them the settling cashier and their shift, so cash-up totals stay per cashier. | Only the cashier settles. |
+| 2026-11-06 | **Secrets** (consumer key and secret, passkey, relay key) are kept in a `MpesaAccounts` row encrypted with the server's data-protection keys (`data/keys`), never returned by any API, and audited only as "changed". A backup restored on another PC can't read them; Settings → M-Pesa asks for them again. The rest of the M-Pesa settings are in the registry (section `mpesa`) and get their own page; the general Settings page leaves that section out. | Prompt 18, Part B. |
+| 2026-11-06 | **Unapplied payments aren't posted** until they are applied (then settled) or marked "not from POS" (Dr M-Pesa, Cr Other income or Owner's capital, on the payment's date). | Prompt 18, Part F. |
+| 2026-11-06 | **No M-Pesa in training mode:** prompts, received payments and the QR are refused or left out on a training terminal; typed codes work as in 1.0 there (no transaction is made). | Training must not touch real money. |
+| 2026-11-06 | **Done differently:** the terminal's read-only M-Pesa list on the Reports screen (Task 17b) isn't built here, because 17b is on its own branch; its API (`POST /api/pos/mpesa/ledger`) is ready. See Follow-ups. | 17b and 18 are separate branches. |
+
 ## After v1
 
 Owner's decisions and larger items for a later version. Not in 1.0.0.
@@ -443,6 +460,10 @@ Owner's decisions and larger items for a later version. Not in 1.0.0.
 - **KRA eTIMS, M-Pesa STK, phone ordering, kitchen display, payroll, balance sheet, multiple warehouses**: "Not in this version" in design.md.
 
 ## Follow-ups
+
+- **M-Pesa:** post unapplied receipts to a suspense account on arrival (today they are posted only when applied or marked not from POS).
+- **M-Pesa on the terminal's Reports screen:** once 17b and 18 are both merged, add the read-only M-Pesa list there for `reports.all` (the API `POST /api/pos/mpesa/ledger` is ready).
+- **M-Pesa sandbox check:** record what `BillRefNumber` holds for a Buy Goods and a Paybill QR payment (see the Task 18 decision on QR references).
 
 - **Long-open work periods and shifts:** a reminder or banner, or closing on a schedule, if owners leave them open for days (not built in 1.0.1, the owner's decision).
 - **Old names:** remove the `Nexagen` fallbacks (env vars, settings section, data-folder and store copies) once every install has moved to the new names.

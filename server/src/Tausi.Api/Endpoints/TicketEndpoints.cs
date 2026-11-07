@@ -70,6 +70,8 @@ public static class TicketEndpoints
             payments.Add(id, r, ct));
         pos.MapDelete("/tickets/{id:guid}/payments/{paymentId:guid}", (Guid id, Guid paymentId, PaymentCommands payments, CancellationToken ct) =>
             payments.Remove(id, paymentId, ct));
+        pos.MapPut("/tickets/{id:guid}/payments/{paymentId:guid}/brought-by", (Guid id, Guid paymentId, SetBroughtByRequest r, PaymentCommands payments,
+            CancellationToken ct) => payments.SetBroughtBy(id, paymentId, r, ct));
         pos.MapPost("/tickets/{id:guid}/settle", (Guid id, SettleTicket settle, CancellationToken ct) => settle.Execute(id, ct));
         pos.MapPost("/tickets/{id:guid}/receipt/reprint", async (Guid id, ReprintReceipt reprint, CancellationToken ct) =>
         {

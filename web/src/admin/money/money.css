@@ -280,3 +280,138 @@
     position: static;
   }
 }
+
+/* Board 27: M-Pesa payments */
+.mpesa-ledger__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.mpesa-ledger__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.mpesa-ledger__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+}
+.mpesa-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.mpesa-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.mpesa-tile--warn {
+  border-color: var(--color-warning);
+  background: var(--color-warning-tint);
+}
+.mpesa-tile__label {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mpesa-tile--warn .mpesa-tile__label,
+.mpesa-tile--warn .mpesa-tile__amount {
+  color: var(--color-warning-text);
+}
+.mpesa-tile__amount {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 600;
+}
+.mpesa-tile__count {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.mpesa-ledger__box {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+}
+.mpesa-ledger__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.mpesa-ledger__table th,
+.mpesa-ledger__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
+  text-align: left;
+  vertical-align: top;
+}
+.mpesa-ledger__table th {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.mpesa-ledger .mpesa-num {
+  text-align: right;
+}
+.mpesa-ledger .mpesa-mono {
+  font-family: var(--font-mono);
+}
+.mpesa-status-badge {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--color-selected-tint);
+  color: var(--color-selected);
+  font-size: 13px;
+  font-weight: 600;
+}
+.mpesa-status-badge--Unapplied,
+.mpesa-status-badge--PartlyApplied {
+  background: var(--color-warning-tint);
+  color: var(--color-warning-text);
+}
+.mpesa-status-badge--NeverConfirmed {
+  background: var(--color-warning);
+  color: var(--color-warning-on);
+}
+.mpesa-status-badge--NotFromPos,
+.mpesa-status-badge--NotConfirmed {
+  background: var(--color-row-alt);
+  color: var(--color-text-secondary);
+}
+.mpesa-note {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.mpesa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.mpesa-empty,
+.mpesa-ledger__note {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-secondary);
+}
+.mpesa-empty {
+  padding: var(--space-4);
+}
+.mpesa-dialog__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

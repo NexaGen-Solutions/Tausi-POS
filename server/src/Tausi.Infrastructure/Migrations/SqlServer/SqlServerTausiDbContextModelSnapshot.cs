@@ -1050,6 +1050,225 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                     b.ToTable("MoneyDocuments");
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("C2BRegisteredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("C2BRegisteredFor")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ConsumerKey")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ConsumerSecret")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Passkey")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RelayApiKey")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StkCallbackUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MpesaAccounts");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaPrompt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset?>("AnsweredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CheckoutRequestId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("FromOrderScreen")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LastQueriedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("MerchantRequestId")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int?>("ResultCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResultMessage")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("SentByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TransactionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CheckoutRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("SentByUserId");
+
+                    b.HasIndex("TicketId", "Status");
+
+                    b.ToTable("MpesaPrompts");
+                });
+
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountApplied")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("BillReference")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("MatchedTicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NotFromPosAccount")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTimeOffset?>("NotFromPosAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("NotFromPosByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NotFromPosReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("PayerName")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid?>("PromptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ShortCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TransactionId")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<Guid?>("TypedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "ReceivedAt");
+
+                    b.ToTable("MpesaTransactions");
+                });
+
             modelBuilder.Entity("Tausi.Domain.People.ApprovalGrant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1906,6 +2125,9 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<Guid?>("MpesaTransactionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTimeOffset?>("RemovedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1948,6 +2170,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("BroughtByUserId");
 
+                    b.HasIndex("MpesaTransactionId");
+
                     b.HasIndex("ShiftId");
 
                     b.HasIndex("TakenByUserId");
@@ -1958,7 +2182,8 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
 
                     b.HasIndex("MpesaCode", "IsTraining")
                         .IsUnique()
-                        .HasFilter("[MpesaCode] IS NOT NULL");
+                        .HasDatabaseName("IX_Payments_MpesaCode_IsTraining_Untracked")
+                        .HasFilter("[MpesaCode] IS NOT NULL AND [MpesaTransactionId] IS NULL");
 
                     b.HasIndex("TicketId", "Status");
 
@@ -3183,6 +3408,21 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Tausi.Domain.Mpesa.MpesaPrompt", b =>
+                {
+                    b.HasOne("Tausi.Domain.People.User", null)
+                        .WithMany()
+                        .HasForeignKey("SentByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Service.Ticket", null)
+                        .WithMany()
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Tausi.Domain.People.RolePermission", b =>
                 {
                     b.HasOne("Tausi.Domain.People.Role", "Role")
@@ -3291,6 +3531,11 @@ namespace Tausi.Infrastructure.Migrations.SqlServer
                         .HasForeignKey("BroughtByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Tausi.Domain.Mpesa.MpesaTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("MpesaTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Tausi.Domain.People.User", null)
                         .WithMany()

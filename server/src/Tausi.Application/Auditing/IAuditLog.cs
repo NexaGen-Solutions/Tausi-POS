@@ -25,6 +25,15 @@ public static class AuditActions
     public const string CashDrop = "shift.cash_drop";
     public const string PaymentAdded = "payment.added";
     public const string PaymentRemoved = "payment.removed";
+    public const string MpesaReceived = "mpesa.received";
+    public const string MpesaConfirmed = "mpesa.confirmed";
+    public const string MpesaPromptSent = "mpesa.prompt_sent";
+    public const string MpesaPromptAnswered = "mpesa.prompt_answered";
+    public const string MpesaPromptCancelled = "mpesa.prompt_cancelled";
+    public const string MpesaApplied = "mpesa.applied";
+    public const string MpesaNotFromPos = "mpesa.not_from_pos";
+    public const string MpesaSettingsChanged = "mpesa.settings_changed";
+    public const string PaymentBroughtByChanged = "payment.brought_by_changed";
     public const string TicketSettled = "ticket.settled";
     public const string ReceiptReprinted = "ticket.receipt_reprinted";
     public const string TicketClosedEmpty = "ticket.closed_empty";

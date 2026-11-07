@@ -15,6 +15,14 @@ New features. Install 1.0.1 first: it changes how terminals update.
   same as the admin site's reports for the same dates.
 - **Daily sales** report on the admin site too: sales, discounts, VAT, payments by type, tickets, open
   tickets, voids and gifts.
+- **M-Pesa.** Send a PIN prompt to the customer's phone from the settle screen (or, if allowed, from the
+  order screen), print a "Scan to pay" QR on every bill, and see payments made to the till on the settle
+  screen to add to a bill. A payment can pay parts of several bills and never gives change. Typed codes are
+  checked against Safaricom's copy, and flagged after 24 hours if it never comes. The cashier still
+  completes every bill. A new **M-Pesa payments** page on the admin site shows what was received, applied
+  and not yet applied, with Apply to ticket, Mark as not from POS and an Excel export. Close day warns
+  about unapplied payments. Set it up under **Settings → M-Pesa** (see `docs/MPESA.md`). Safaricom's
+  messages reach the bar through NexaGen's Tausi relay (`docs/RELAY.md`).
 
 ## 1.0.1 (unreleased)
 

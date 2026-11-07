@@ -58,6 +58,9 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
     public DbSet<GiftLog> GiftLogs => Set<GiftLog>();
     public DbSet<DiscountLog> DiscountLogs => Set<DiscountLog>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Domain.Mpesa.MpesaTransaction> MpesaTransactions => Set<Domain.Mpesa.MpesaTransaction>();
+    public DbSet<Domain.Mpesa.MpesaPrompt> MpesaPrompts => Set<Domain.Mpesa.MpesaPrompt>();
+    public DbSet<Domain.Mpesa.MpesaAccount> MpesaAccounts => Set<Domain.Mpesa.MpesaAccount>();
     public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
     public DbSet<DrawerMovement> DrawerMovements => Set<DrawerMovement>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
@@ -98,6 +101,9 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
 
     /// <summary>A unique index over a nullable column: SQL Server needs "IS NOT NULL" to allow many nulls.</summary>
     protected virtual string? NotNullFilter(string column) => null;
+
+    /// <summary>Filter for the "an M-Pesa code once" index: payments with a code and no M-Pesa transaction.</summary>
+    protected virtual string? UntrackedCodeFilter => null;
 
     /// <summary>Filter for the "one open shift" indexes; the SQL differs per provider.</summary>
     protected virtual string? OpenShiftFilter => null;
@@ -479,9 +485,13 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Ignore(x => x.Counts);
-            // An M-Pesa code is used once, ever (removed payments included).
-            var code = e.HasIndex(x => new { x.MpesaCode, x.IsTraining }).IsUnique();
-            if (NotNullFilter(nameof(Payment.MpesaCode)) is { } codeFilter) code.HasFilter(codeFilter);
+            // An M-Pesa code is used once, ever (removed payments included). A received or typed
+            // transaction may pay parts of several bills: its payments share its code and are
+            // kept in check by the transaction instead (1.1).
+            var code = e.HasIndex(x => new { x.MpesaCode, x.IsTraining }).IsUnique().HasDatabaseName("IX_Payments_MpesaCode_IsTraining_Untracked");
+            if (UntrackedCodeFilter is { } codeFilter) code.HasFilter(codeFilter);
+            e.HasIndex(x => x.MpesaTransactionId);
+            e.HasOne<Domain.Mpesa.MpesaTransaction>().WithMany().HasForeignKey(x => x.MpesaTransactionId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.TicketId, x.Status });
             e.HasIndex(x => x.WorkPeriodId);
             e.HasIndex(x => x.ShiftId);
@@ -489,6 +499,46 @@ public partial class TausiDbContext(DbContextOptions options) : DbContext(option
             e.HasOne<User>().WithMany().HasForeignKey(x => x.BroughtByUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Terminal>().WithMany().HasForeignKey(x => x.TerminalId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<WorkPeriod>().WithMany().HasForeignKey(x => x.WorkPeriodId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<Domain.Mpesa.MpesaTransaction>(e =>
+        {
+            e.Property(x => x.TransactionId).HasMaxLength(Domain.Mpesa.MpesaTransaction.CodeLength);
+            e.HasIndex(x => x.TransactionId).IsUnique();
+            e.Property(x => x.PayerName).HasMaxLength(Domain.Mpesa.MpesaTransaction.MaxNameLength);
+            e.Property(x => x.Phone).HasMaxLength(Domain.Mpesa.MpesaTransaction.MaxPhoneLength);
+            e.Property(x => x.ShortCode).HasMaxLength(20);
+            e.Property(x => x.BillReference).HasMaxLength(Domain.Mpesa.MpesaTransaction.MaxReferenceLength);
+            e.Property(x => x.Source).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.NotFromPosReason).HasMaxLength(Domain.Mpesa.MpesaTransaction.MaxReasonLength);
+            e.Property(x => x.NotFromPosAccount).HasMaxLength(40);
+            e.Ignore(x => x.Available);
+            e.HasIndex(x => new { x.Status, x.ReceivedAt });
+            e.HasIndex(x => x.At);
+        });
+
+        m.Entity<Domain.Mpesa.MpesaAccount>(e =>
+        {
+            e.Property(x => x.ConsumerKey).HasMaxLength(1000);
+            e.Property(x => x.ConsumerSecret).HasMaxLength(1000);
+            e.Property(x => x.Passkey).HasMaxLength(1000);
+            e.Property(x => x.RelayApiKey).HasMaxLength(1000);
+            e.Property(x => x.C2BRegisteredFor).HasMaxLength(300);
+            e.Property(x => x.StkCallbackUrl).HasMaxLength(300);
+        });
+
+        m.Entity<Domain.Mpesa.MpesaPrompt>(e =>
+        {
+            e.Property(x => x.Phone).HasMaxLength(Domain.Mpesa.MpesaTransaction.MaxPhoneLength);
+            e.Property(x => x.CheckoutRequestId).HasMaxLength(80);
+            e.HasIndex(x => x.CheckoutRequestId).IsUnique();
+            e.Property(x => x.MerchantRequestId).HasMaxLength(80);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ResultMessage).HasMaxLength(Domain.Mpesa.MpesaPrompt.MaxMessageLength);
+            e.HasIndex(x => new { x.TicketId, x.Status });
+            e.HasOne<Ticket>().WithMany().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.SentByUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         m.Entity<ApprovalRequest>(e =>

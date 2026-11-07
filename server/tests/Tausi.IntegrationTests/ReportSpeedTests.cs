@@ -70,6 +70,7 @@ public class ReportSpeedTests(PostgresFixture pg, SqlServerFixture sql, ITestOut
         services.AddSingleton<IPosEvents, NoEvents>();
         services.AddSingleton<ILogoProvider, NoLogo>();
         services.AddSingleton<IPinHasher, PlainPinHasher>();
+        services.AddNoMpesa();
         await using var provider = services.BuildServiceProvider();
         await using (var scope = provider.CreateAsyncScope())
         {

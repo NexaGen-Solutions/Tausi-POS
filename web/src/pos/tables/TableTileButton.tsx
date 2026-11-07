@@ -63,6 +63,9 @@ export function TableTileButton({
             {t('pos.map.partPaid', { left: formatAmount(state.partPaidLeft) })}
           </span>
         )}
+        {state.mpesaReceived && (
+          <span className="map-tile__mpesa">{t('pos.mpesa.mapReceived')}</span>
+        )}
         {state.notPrinted > 0 && (
           <span className="map-tile__unprinted">
             {t('pos.map.notPrinted', { count: state.notPrinted })}

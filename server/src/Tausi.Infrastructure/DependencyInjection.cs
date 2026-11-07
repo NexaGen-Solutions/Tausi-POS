@@ -75,6 +75,16 @@ public static class DependencyInjection
         services.AddSingleton<Application.Updates.IUpdateSource, Updates.HttpUpdateSource>();
         services.AddSingleton<Application.Updates.ITerminalUpdateFiles, Updates.TerminalUpdateFiles>();
         services.AddSingleton<Application.Terminals.IServerProbe, Updates.ServerProbe>();
+
+        // M-Pesa (1.1): Safaricom's Daraja, the Tausi relay and the collector that runs while tickets are open.
+        services.AddSingleton<Application.Mpesa.IDaraja, Mpesa.HttpDaraja>();
+        services.AddSingleton<Application.Mpesa.IRelayClient>(new Mpesa.HttpRelayClient());
+        services.AddSingleton<Application.Mpesa.RelayStatus>();
+        services.AddSingleton<Mpesa.RelayCollector>();
+        services.AddSingleton<Application.Mpesa.IMpesaCatchUp>(sp => sp.GetRequiredService<Mpesa.RelayCollector>());
+        services.AddHostedService(sp => sp.GetRequiredService<Mpesa.RelayCollector>());
+        services.AddSingleton<Application.Mpesa.IMonoImages, Mpesa.SkiaMonoImages>();
+        services.AddSingleton<Application.Mpesa.BillQrCache>();
         return services;
     }
 }

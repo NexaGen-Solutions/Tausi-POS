@@ -371,3 +371,11 @@
   border-bottom: 1px solid var(--color-border);
   background: var(--color-panel);
 }
+.map-tile__mpesa {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-small);
+  background: var(--color-ok);
+  color: var(--color-primary-text);
+  font-size: 13px;
+  font-weight: 600;
+}

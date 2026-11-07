@@ -24,6 +24,8 @@ public static class PosEventNames
     public const string ServerRestoring = "server.restoring";
     public const string ServerRestored = "server.restored";
     public const string TerminalsMove = "terminals.move";
+    public const string MpesaReceived = "mpesa.received";
+    public const string MpesaPrompt = "mpesa.prompt";
 }
 
 public interface IPosEvents

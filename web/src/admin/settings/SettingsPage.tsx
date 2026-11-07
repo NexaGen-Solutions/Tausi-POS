@@ -117,6 +117,9 @@ export function SettingsPage() {
             <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/backups">
               {t('admin.backups.title')}
             </Link>
+            <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/mpesa">
+              {t('admin.mpesa.title')}
+            </Link>
             <Link className="nx-btn nx-btn--link nx-btn--md" to="/admin/settings/training">
               {t('admin.training.link')}
             </Link>
@@ -160,7 +163,7 @@ export function SettingsPage() {
           </section>
           <div className="settings__right">
             {data.sections
-              .filter((s) => s.key !== 'business')
+              .filter((s) => s.key !== 'business' && s.key !== 'mpesa')
               .map((s) => (
                 <section
                   key={s.key}

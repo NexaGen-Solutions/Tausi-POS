@@ -110,6 +110,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         services.AddSingleton<IPosEvents, NoEvents>();
         services.AddSingleton<ILogoProvider, NoLogo>();
         services.AddSingleton<IPinHasher, PlainPinHasher>();
+        services.AddNoMpesa();
         await using var provider = services.BuildServiceProvider();
 
         TicketDetailDto ticket;
@@ -265,6 +266,7 @@ public class SqlServerMigrationTests(SqlServerFixture sql) : IClassFixture<SqlSe
         services.AddSingleton<IPosEvents, NoEvents>();
         services.AddSingleton<ILogoProvider, NoLogo>();
         services.AddSingleton<IPinHasher, PlainPinHasher>();
+        services.AddNoMpesa();
         var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ITausiDb>();

@@ -188,3 +188,76 @@
     max-height: none;
   }
 }
+
+/* Board 26: Settings → M-Pesa */
+.mpesa-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.mpesa-choice__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.mpesa-choice__button {
+  min-height: var(--touch-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.mpesa-choice__button--on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 600;
+}
+.mpesa-secret {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.mpesa-secret__value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+}
+.mpesa-checks {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mpesa-check--ok {
+  color: var(--color-ok);
+}
+.mpesa-check--fail {
+  color: var(--color-warning-text);
+}
+.mpesa-relay {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.mpesa-relay__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+.mpesa-relay--Connected .mpesa-relay__dot {
+  background: var(--color-ok);
+}
+.mpesa-relay--Unreachable .mpesa-relay__dot {
+  background: var(--color-warning);
+}

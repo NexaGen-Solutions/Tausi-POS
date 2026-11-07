@@ -64,7 +64,8 @@ public sealed class GetTableMap(ITausiDb db, ICurrentSession session, TableMapVe
                         db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
                         db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault(),
                         k.Lines.Count(l => l.Status == OrderLineStatus.New),
-                        k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList()))
+                        k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList(),
+                        k.Payments.Any(p => p.Status == PaymentStatus.Pending && p.Type == PaymentType.Mpesa && p.MpesaTransactionId != null && p.ShiftId == null)))
                     .ToList(),
             })
             .ToListAsync(ct);
@@ -106,7 +107,8 @@ public sealed class GetTakeawayTickets(ITausiDb db, ICurrentSession session, Tic
                 db.Terminals.Where(x => x.Id == k.LockTerminalId).Select(x => x.Name).FirstOrDefault(),
                 db.Users.Where(u => u.Id == k.LockUserId).Select(u => u.Name).FirstOrDefault(),
                 k.Lines.Count(l => l.Status == OrderLineStatus.New),
-                        k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList()))
+                        k.Payments.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Amount).ToList(),
+                        k.Payments.Any(p => p.Status == PaymentStatus.Pending && p.Type == PaymentType.Mpesa && p.MpesaTransactionId != null && p.ShiftId == null)))
             .ToListAsync(ct);
         var hidden = await access.OthersHidden(me, ct);
         return rows.OrderBy(k => k.OpenedAt).ThenBy(k => k.Number).Select(k => k.ToDto(now, rule))
@@ -213,7 +215,7 @@ internal sealed record TicketRow(
     Guid Id, long Number, Guid? TableId, string? CustomerName, Guid OpenedById, string? OpenedBy,
     List<decimal> LineAmounts, DateTimeOffset OpenedAt, DateTimeOffset LastActivityAt, bool Mine,
     Guid? LockTerminalId, Guid? LockUserId, DateTimeOffset? LockExpiresAt, bool LockSessionLive,
-    string? LockTerminal, string? LockUser, int NewLines, List<decimal> PendingPayments)
+    string? LockTerminal, string? LockUser, int NewLines, List<decimal> PendingPayments, bool MpesaReceived = false)
 {
     public TicketSummaryDto ToDto(DateTimeOffset now, Domain.Money.RoundingRule rule)
     {
@@ -225,7 +227,7 @@ internal sealed record TicketRow(
         // "Part paid · KSh 370 left" on the map while the cashier has taken some of it.
         decimal? left = paid > 0 ? Domain.Money.CashRounding.Apply(total, rule).Rounded - paid : null;
         return new TicketSummaryDto(Id, Number, TableId, CustomerName, OpenedById, OpenedBy ?? "?",
-            total, OpenedAt, LastActivityAt, Mine, locked, NewLines, paid, left);
+            total, OpenedAt, LastActivityAt, Mine, locked, NewLines, paid, left, MpesaReceived: MpesaReceived);
     }
 }
 

@@ -40,6 +40,9 @@ public partial class Payment : Entity, ITrainingData
     public decimal? Change { get; set; }
     /// <summary>Upper case, 10 letters or digits; unique across all payments ever.</summary>
     public string? MpesaCode { get; set; }
+
+    /// <summary>The M-Pesa transaction it used (STK, received or typed); one transaction can pay parts of several bills.</summary>
+    public Guid? MpesaTransactionId { get; set; }
     public string? CardReference { get; set; }
     public Guid TakenByUserId { get; set; }
     public Guid BroughtByUserId { get; set; }

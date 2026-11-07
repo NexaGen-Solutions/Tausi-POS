@@ -37,6 +37,7 @@ builder.Services.AddSingleton(new Tausi.Application.Common.DevelopmentHost(build
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTausiAuth(builder.Configuration, builder.Environment);
+builder.Services.AddSingleton<Tausi.Application.Mpesa.ISecretProtector, Tausi.Api.Platform.DataProtectionSecrets>();
 builder.Services.AddTausiCors();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ProblemMapping>();
@@ -88,6 +89,7 @@ app.MapBackupEndpoints();
 app.MapUpdateEndpoints();
 app.MapMenuEndpoints();
 app.MapTicketEndpoints();
+app.MapMpesaEndpoints();
 app.MapHub<PosHub>(PosHub.Path);
 app.MapTausiWebFallback();
 
