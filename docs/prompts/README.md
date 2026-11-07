@@ -8,4 +8,5 @@ One file per task, grouped by the release it went into or is planned for, and ru
 | --- | --- | --- |
 | [v1.0.0](v1.0.0/) | First release (tagged) | 00 to 16, R1 (rebrand), B1 (brand) |
 | [v1.0.1](v1.0.1/) | Fixes | 17a |
+| [v1.0.2](v1.0.2/) | Fixes (also in 1.1.0) | 19 (close other cashiers' shifts) |
 | [v1.1.0](v1.1.0/) | New features | 17b (reports on the terminal), 18 (M-Pesa) |
